@@ -4,8 +4,8 @@
 
 #pragma once
 #include "Modulator.h"
-#include <juce_dsp/juce_dsp.h>
-#include <juce_dsp/juce_dsp.h>
+#include "juce_dsp/juce_dsp.h"
+#include "juce_dsp/juce_dsp.h"
 
 namespace imagiro {
     class LFO {
