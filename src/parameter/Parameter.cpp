@@ -51,12 +51,11 @@ namespace imagiro {
     }
 
     float Parameter::getModVal(bool useConversion) {
-        if (!modMatrix) {
-            if (useConversion) return getVal();
-            return getUserValue();
-        }
+        // TODO: implement mod matrix
+//        if (modMatrix) return modMatrix->getValue(this, useConversion);
 
-        return modMatrix->getValue(this, useConversion);
+        if (useConversion) return getVal();
+        return getUserValue();
     }
 
     float Parameter::getVal(int stepsToAdvance) {

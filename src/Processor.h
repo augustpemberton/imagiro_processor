@@ -6,9 +6,11 @@
 #include <juce_core/juce_core.h>
 #include <imagiro-util/imagiro-util.h>
 #include "ProcessorBase.h"
-#include "./modulation/ModulationMatrix.h"
+#include "Scale.h"
 #include "parameter/Parameter.h"
-#include "./Scale.h"
+#include "preset/Preset.h"
+#include "imagiro-processor/src/config/Authorization.h"
+#include "imagiro-processor/src/config/VersionManager.h"
 
 class Preset;
 
@@ -29,8 +31,9 @@ namespace imagiro {
     class Processor : public ProcessorBase {
     public:
 
-        Processor();
-        Processor(const juce::AudioProcessor::BusesProperties& ioLayouts);
+        Processor(juce::String currentVersion = "1.0.0", juce::String productSlug = "");
+        Processor(const juce::AudioProcessor::BusesProperties& ioLayouts,
+                  juce::String currentVersion = "1.0.0", juce::String productSlug = "");
 
         struct BPMListener {
             virtual void bpmChanged(double newBPM) {}
@@ -83,12 +86,7 @@ namespace imagiro {
 
         void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
 
-        // =================================================================
-        imagiro::ModulationMatrix& getModMatrix() { return modMatrix; }
-
     public:
-        //juce::SharedResourcePointer<ImagiroLookAndFeel> lf;
-
         std::map<juce::String, Parameter*> parameterMap;
         juce::OwnedArray<Parameter> internalParameters;
 
@@ -100,8 +98,11 @@ namespace imagiro {
         void setScale(const juce::String& scaleID, juce::BigInteger state);
         Scale* getScale(juce::String scaleID);
 
+        Authorization auth;
+        VersionManager versionManager;
+
     protected:
-        imagiro::ModulationMatrix modMatrix;
+
         double lastSampleRate {44100};
 
         juce::AudioPlayHead* playhead {nullptr};

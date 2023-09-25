@@ -1,4 +1,6 @@
 #pragma once
 
 #include "src/Processor.h"
-#include "src/PluginConfig.h"
+#include "src/config/PluginConfig.h"
+#include "src/config/Authorization.h"
+#include "src/config/VersionManager.h"

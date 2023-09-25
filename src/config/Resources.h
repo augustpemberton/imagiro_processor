@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <shared_processing_code/shared_processing_code.h>
 #include "../preset/Preset.h"
 
 class Resources {
@@ -28,10 +27,6 @@ public:
             dataFolder.createDirectory();
 
         return dataFolder;
-    }
-
-    static juce::File getV1DataFolder() {
-        return getDataFolder().getParentDirectory().getChildFile("imagiro piano");
     }
 
     static juce::File getSampleSetFolder(juce::String productName = JucePlugin_Name) {

@@ -12,7 +12,7 @@ Preset::Preset()
             author(presetTree, "author", nullptr),
             favorite(presetTree, "favorite", nullptr),
             validPreset(false) {
-    presetTree.setProperty(Constants::PresetProperties::name, "init", nullptr);
+    presetTree.setProperty("name", "init", nullptr);
     presetTree.appendChild(juce::ValueTree("parameters"), nullptr);
 }
 

@@ -4,7 +4,6 @@
 
 #pragma once
 #include "ParameterHelpers.h"
-#include <shared_plugin_helpers/shared_plugin_helpers.h>
 
 namespace imagiro {
 

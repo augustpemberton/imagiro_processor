@@ -3,18 +3,19 @@
 //
 
 #include "Processor.h"
-//#include <gin_dsp/gin_dsp.h>
-//#include <imagiro_gui/imagiro_gui.h>
 
 namespace imagiro {
 
-    Processor::Processor()
+    Processor::Processor(juce::String currentVersion, juce::String productSlug)
+            : versionManager(currentVersion, productSlug)
     {
         lastLoadedPreset = std::make_unique<Preset>();
     }
 
-    Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts)
-            : ProcessorBase(ioLayouts)
+    Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts,
+                         juce::String currentVersion, juce::String productSlug)
+            : ProcessorBase(ioLayouts),
+            versionManager(currentVersion, productSlug)
     {
         lastLoadedPreset = std::make_unique<Preset>();
     }
@@ -139,7 +140,6 @@ namespace imagiro {
             nextPreset = nullptr;
         }
 
-        TRACE_DSP();
         auto oldSampleRate = lastSampleRate;
         lastSampleRate = getSampleRate();
         if (lastSampleRate != oldSampleRate) {
@@ -177,7 +177,6 @@ namespace imagiro {
             p.addParamState(parameter->getState());
         }
 
-        p.getTree().appendChild(modMatrix.getTree(), nullptr);
         p.getTree().appendChild(getScalesTree(), nullptr);
 
         return p;
@@ -191,8 +190,6 @@ namespace imagiro {
         }
 
         loadScalesTree(preset.getTree().getChildWithName("scales"));
-
-        modMatrix.loadFromTree(preset.getTree().getOrCreateChildWithName("modmatrix", nullptr));
 
         lastLoadedPreset = std::make_unique<Preset>(preset);
         presetListeners.call([&](PresetListener &l) { l.OnPresetChange(preset); });
