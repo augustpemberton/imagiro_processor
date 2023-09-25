@@ -11,9 +11,6 @@
 #include "shared_plugin_helpers/shared_plugin_helpers.h"
 #include "PluginConfig.h"
 
-#define STR1(x)  #x
-#define STR(x)  STR1(x)
-
 PluginConfig::PluginConfig(bool checkForUpdate) : juce::Thread("UpdateCheckThread") {
     properties = Resources::getConfigFile();
 
@@ -31,13 +28,6 @@ bool PluginConfig::isPluginAuthorized(bool recheck)
 
 bool PluginConfig::getAuth() {
     if (isSerialValid(properties->getValue("serial"))) return true;
-
-    auto v1Serial = getV1Serial();
-    if (isSerialValid(v1Serial)) {
-        saveSerial(v1Serial);
-        isAuthorizedCache = true;
-        return true;
-    }
 
     if (hasDemoStarted() && !hasDemoFinished()) return true;
 
@@ -88,15 +78,6 @@ bool PluginConfig::isSerialValid(juce::String serial)
 #endif
 
 	return n == serialRemainder;
-}
-
-juce::String PluginConfig::getV1Serial()
-{
-	auto pianoV1Data = juce::JSON::parse(Resources::getV1DataFolder().getChildFile("RegistrationInfo.js"));
-	if (pianoV1Data == juce::var()) return "";
-
-	auto serial = pianoV1Data.getProperty("Serial", "");
-	return serial;
 }
 
 void PluginConfig::checkUpdate()

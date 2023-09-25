@@ -4,12 +4,12 @@
 
 #pragma once
 #include <juce_core/juce_core.h>
+#include <imagiro-util/imagiro-util.h>
 #include "ProcessorBase.h"
-#include "../modulation/ModulationMatrix.h"
+#include "./modulation/ModulationMatrix.h"
 #include "parameter/Parameter.h"
-#include "../Scale.h"
+#include "./Scale.h"
 
-//class ImagiroLookAndFeel;
 class Preset;
 
 namespace imagiro {

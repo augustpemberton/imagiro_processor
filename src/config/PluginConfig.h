@@ -12,7 +12,10 @@
 
 #include <juce_events/juce_events.h>
 #include <juce_data_structures/juce_data_structures.h>
-#include "src/version.h"
+
+#ifndef PROJECT_VERSION
+#define PROJECT_VERSION 1.0
+#endif
 
 class PluginConfig : juce::Thread, public juce::ChangeBroadcaster {
 
@@ -45,7 +48,6 @@ protected:
     
 	virtual bool isSerialValid(juce::String serial);
 	void saveSerial(juce::String serial);
-	juce::String getV1Serial();
 
     bool checkForUpdate();
     bool hasCheckedForUpdate {false};

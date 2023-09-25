@@ -1,0 +1,7 @@
+#include "src/Processor.cpp"
+#include "src/PluginConfig.cpp"
+#include "src/ProcessorBase.cpp"
+#include "src/preset/Preset.cpp"
+#include "src/parameter/Parameter.cpp"
+#include "src/parameter/ParameterHelpers.cpp"
+#include "src/parameter/ParameterLoader.cpp"

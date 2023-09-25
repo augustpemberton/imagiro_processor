@@ -5,7 +5,6 @@
 #pragma once
 #include <yaml-cpp/yaml.h>
 #include <juce_core/juce_core.h>
-#include <shared_processing_code/shared_processing_code.h>
 
 namespace imagiro {
     struct ParameterLoader {
