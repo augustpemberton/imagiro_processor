@@ -3,8 +3,7 @@
 //
 
 #pragma once
-#include <gin_plugin/gin_plugin.h>
-#include "../processor/parameter/Parameter.h"
+#include "../parameter/Parameter.h"
 
 namespace imagiro {
     class Modulator;
@@ -50,7 +49,11 @@ namespace imagiro {
 
     class ModulationMatrix {
     public:
-        ModulationMatrix() = default;
+        ModulationMatrix() {
+            for (auto& smoother : smoothers) {
+                smoother.reset(100);
+            }
+        }
 
         struct SourceInfo {
             juce::String id;
@@ -72,7 +75,7 @@ namespace imagiro {
 
         void finishBlock (int numSamples) {
             for (auto && smoother : smoothers) {
-                smoother.process (numSamples);
+                smoother.skip(numSamples);
             }
         }
 
@@ -131,7 +134,7 @@ namespace imagiro {
 
         juce::Array<SourceInfo> sources;
         juce::Array<ParamInfo> parameters;
-        juce::Array<gin::ValueSmoother<float>> smoothers;
+        juce::Array<juce::SmoothedValue<float>> smoothers;
 
         double sampleRate = 44100;
 

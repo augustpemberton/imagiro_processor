@@ -66,11 +66,6 @@ namespace imagiro {
 
     void ModulationMatrix::setSampleRate(double sr) {
         sampleRate = sr;
-
-        for (auto& s : smoothers) {
-            s.setSampleRate (sr);
-            s.setTime (0.02);
-        }
     }
 
     juce::Array<ModSrcId> ModulationMatrix::getModSources(Parameter* param) {
