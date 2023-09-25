@@ -1,0 +1,21 @@
+//
+// Created by August Pemberton on 16/11/2022.
+//
+
+#pragma once
+#include <juce_audio_processors/juce_audio_processors.h>
+
+
+namespace imagiro {
+    class Parameter;
+    class DisplayValue;
+    struct ParameterConfig {
+        juce::NormalisableRange<float> range {0, 1};
+        float defaultValue {0};
+        std::function<float(float)> conversionFunction {nullptr};
+        std::function<DisplayValue(const Parameter&, float)> textFunction {nullptr};
+        std::function<float(const Parameter&, juce::String)> valueFunction {nullptr};
+        juce::String name {"default"};
+        bool reverse {false};
+    };
+}
