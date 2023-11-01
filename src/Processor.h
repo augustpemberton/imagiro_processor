@@ -13,6 +13,9 @@
 #include "config/VersionManager.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 #include "imagiro_processor/src/config/Resources.h"
+#include "version.h"
+#include "BinaryData.h"
+#include "imagiro_processor/src/parameter/ParameterLoader.h"
 
 class Preset;
 
@@ -107,6 +110,15 @@ namespace imagiro {
         Authorization auth;
         VersionManager versionManager;
 
+        virtual juce::String getParametersYAMLString() {
+#if JUCE_DEBUG
+            auto file = juce::File(juce::String(SRCPATH) + "/Parameters.yaml");
+            return file.loadFileAsString();
+#else
+            return BinaryData::Parameters_yaml;
+#endif
+        }
+
     protected:
         double lastSampleRate {44100};
 
@@ -136,6 +148,8 @@ namespace imagiro {
         juce::AudioSampleBuffer dryBuffer;
 
         juce::SharedResourcePointer<Resources> resources;
+
+        ParameterLoader paramLoader;
 
     };
 }

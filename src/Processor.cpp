@@ -8,7 +8,8 @@
 namespace imagiro {
 
     Processor::Processor(juce::String currentVersion, juce::String productSlug)
-            : versionManager(currentVersion, productSlug)
+            : versionManager(currentVersion, productSlug),
+              paramLoader(*this, getParametersYAMLString())
     {
         bypassGain.reset(250);
     }
@@ -16,7 +17,8 @@ namespace imagiro {
     Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts,
                          juce::String currentVersion, juce::String productSlug)
             : ProcessorBase(ioLayouts),
-            versionManager(currentVersion, productSlug)
+              versionManager(currentVersion, productSlug),
+              paramLoader(*this, getParametersYAMLString())
     {
         bypassGain.reset(250);
     }
@@ -196,11 +198,15 @@ namespace imagiro {
             }
         }
 
+#if !JucePlugin_IsSynth
         for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
             dryBuffer.copyFrom(c, 0,
                                buffer.getReadPointer(c),
                                buffer.getNumSamples());
         }
+#else
+        dryBuffer.clear();
+#endif
 
         process(buffer, midiMessages);
 
@@ -292,7 +298,7 @@ namespace imagiro {
     }
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-        dryBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
+        dryBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);
         }
