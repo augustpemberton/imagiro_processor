@@ -79,19 +79,33 @@ namespace imagiro {
         auto preset = createPreset(lastLoadedPreset ? lastLoadedPreset->getPreset().getName() : "init", true);
         auto s = preset.getState();
 
-        juce::MemoryOutputStream mos (destData, false);
-        mos.writeString(choc::json::toString(s));
+        juce::ValueTree stateTree ("stateTree");
+        stateTree.setProperty("state", juce::String(choc::json::toString(s)), nullptr);
+        auto lastLoadedPath = lastLoadedPreset ? lastLoadedPreset->getPresetRelativePath() : "";
+        stateTree.setProperty("lastLoadedPresetPath", lastLoadedPath, nullptr);
+
+        copyXmlToBinary(*stateTree.createXml(), destData);
     }
 
     void Processor::setStateInformation(const void *data, int sizeInBytes) {
-        juce::MemoryInputStream mis (data, sizeInBytes, false);
-        auto stateString = mis.readEntireStreamAsString();
+        auto xml = getXmlFromBinary(data, sizeInBytes);
+        if (!xml) return;
+        auto stateTree = juce::ValueTree::fromXml(*xml);
+        auto stateString = stateTree.getProperty("state").toString();
+
         try {
             auto s = choc::json::parse(stateString.toStdString());
             loadPreset(Preset::fromState(s));
         } catch (choc::json::ParseError e) {
             DBG("unable to load preset");
             DBG(e.what());
+        }
+
+        auto lastLoadedPresetPath = resources->getPresetsFolder().getChildFile(
+                stateTree.getProperty("lastLoadedPresetPath").toString());
+
+        if (lastLoadedPresetPath.exists()) {
+            lastLoadedPreset = {FileBackedPreset::createFromFile(lastLoadedPresetPath)};
         }
     }
 

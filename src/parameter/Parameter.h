@@ -91,6 +91,17 @@ namespace imagiro {
             juce::String config {0};
             bool locked;
 
+            bool operator==(const ParamState& other) {
+                return uid == other.uid &&
+                       abs(value - other.value) < 0.0001f &&
+                       config == other.config &&
+                       locked == other.locked;
+            }
+
+            bool operator!=(const ParamState& other) {
+                return !operator==(other);
+            }
+
             choc::value::Value getState() {
                 auto state = choc::value::createObject("ParamState");
                 state.addMember("uid", uid.toStdString());

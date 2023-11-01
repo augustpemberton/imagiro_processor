@@ -18,6 +18,7 @@ public:
     static FileBackedPreset save (Preset p, const std::string& category);
 
     juce::File getFile() const;
+    juce::String getPresetRelativePath() const;
 
     bool getFavorite();
     void setFavorite(bool fav);

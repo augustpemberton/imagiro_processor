@@ -22,6 +22,7 @@ choc::value::Value Preset::getState() const {
     }
 
     state.addMember("paramStates", paramStatesValue);
+    state.addMember("data", data);
 
     return state;
 }
@@ -33,6 +34,8 @@ Preset Preset::fromState(const choc::value::ValueView &state) {
     for (auto paramState : state["paramStates"]) {
         p.paramStates.push_back(imagiro::Parameter::ParamState::fromState(paramState));
     }
+
+    p.data = state["data"];
 
     return p;
 }

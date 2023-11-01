@@ -12,6 +12,7 @@
 #include "config/Authorization.h"
 #include "config/VersionManager.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
+#include "imagiro_processor/src/config/Resources.h"
 
 class Preset;
 
@@ -133,6 +134,8 @@ namespace imagiro {
 
         juce::SmoothedValue<float> bypassGain;
         juce::AudioSampleBuffer dryBuffer;
+
+        juce::SharedResourcePointer<Resources> resources;
 
     };
 }
