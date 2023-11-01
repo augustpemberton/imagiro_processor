@@ -93,6 +93,7 @@ bool Authorization::hasDemoStarted() {
 }
 
 bool Authorization::hasDemoFinished() {
+    if (!hasDemoStarted()) return false;
     return getDemoTimeLeft() <= juce::RelativeTime(0);
 }
 
