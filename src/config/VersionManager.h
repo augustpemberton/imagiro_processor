@@ -19,6 +19,7 @@ public:
     void checkForUpdate();
 
     juce::String getCurrentVersion();
+    juce::String getUpdateURL();
 
 private:
     juce::ListenerList<Listener> listeners;
@@ -35,7 +36,8 @@ private:
 
     const juce::String updateBaseURL =
 #if JUCE_DEBUG
-            "http://localhost:3000";
+            "https://imagi.ro";
+            //"http://localhost:3000";
 #else
             "https://imagi.ro";
 #endif

@@ -13,6 +13,9 @@ Authorization::Authorization()
 // ============================ Authorization
 
 bool Authorization::isAuthorized() {
+//#if JUCE_DEBUG
+//    return true;
+//#endif
     return isAuthorizedCache;
 }
 
@@ -76,6 +79,8 @@ void Authorization::startDemo() {
     properties->setValue("demoStarted", true);
     properties->setValue("demoStartTime", juce::Time::currentTimeMillis());
     properties->saveIfNeeded();
+
+    loadSavedAuth();
 }
 
 
@@ -88,7 +93,7 @@ bool Authorization::hasDemoStarted() {
 }
 
 bool Authorization::hasDemoFinished() {
-    return getDemoTimeLeft() < juce::RelativeTime(0);
+    return getDemoTimeLeft() <= juce::RelativeTime(0);
 }
 
 juce::RelativeTime Authorization::getDemoTimeLeft() {

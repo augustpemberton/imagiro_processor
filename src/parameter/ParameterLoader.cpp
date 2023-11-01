@@ -5,51 +5,22 @@
 #include "ParameterLoader.h"
 
 namespace imagiro {
-    ParameterLoader::ParameterLoader(Processor& processor, const juce::String& yamlString, int streams, int mods)
+    ParameterLoader::ParameterLoader(Processor& processor, const juce::String& yamlString)
             : processor(processor) {
         auto params = YAML::Load(yamlString.toStdString());
-        load(params, streams, mods);
+        load(params);
     }
 
-    ParameterLoader::ParameterLoader(Processor& processor, const juce::File& yamlFile, int streams, int mods)
+    ParameterLoader::ParameterLoader(Processor& processor, const juce::File& yamlFile)
             : processor(processor) {
         auto params = YAML::Load(yamlFile.loadFileAsString().toStdString());
-        load(params, streams, mods);
+        load(params);
     }
 
-    void ParameterLoader::load(const YAML::Node& config, int streams, int mods) {
+    void ParameterLoader::load(const YAML::Node& config) {
         for (const auto& kv : config) {
             juce::String uid (kv.first.as<std::string>());
-
-            if (uid == "stream") {
-                for (auto i=0; i<streams; i++) {
-                    auto UIDSuffix = "-" + juce::String(i);
-                    auto namePrefix= "stream " + juce::String(i+1) + " ";
-
-                    for (auto streamParam : kv.second) {
-                        juce::String u = streamParam.first.as<std::string>();
-                        processor.addParam(
-                                loadParameter(u + UIDSuffix, streamParam.second, namePrefix, i));
-                    }
-                }
-            }
-
-            else if (uid == "mod") {
-                for (auto i=0; i<mods; i++) {
-                    auto UIDSuffix = "-" + juce::String(i);
-                    auto namePrefix = "mod " + juce::String(i) + " ";
-
-                    for (auto modParam : kv.second) {
-                        juce::String u = modParam.first.as<std::string>();
-                        processor.addParam(
-                                loadParameter(u + UIDSuffix, modParam.second, namePrefix, i));
-                    }
-                }
-            }
-
-            else {
-                processor.addParam(loadParameter(uid, kv.second));
-            }
+            processor.addParam(loadParameter(uid, kv.second));
         }
     }
 

@@ -4,13 +4,14 @@
 
 #pragma once
 #include <juce_core/juce_core.h>
-#include <imagiro-util/imagiro-util.h>
+#include <imagiro_util/imagiro_util.h>
 #include "ProcessorBase.h"
 #include "Scale.h"
 #include "parameter/Parameter.h"
 #include "preset/Preset.h"
-#include "imagiro-processor/src/config/Authorization.h"
-#include "imagiro-processor/src/config/VersionManager.h"
+#include "config/Authorization.h"
+#include "config/VersionManager.h"
+#include "imagiro_processor/src/preset/FileBackedPreset.h"
 
 class Preset;
 
@@ -28,12 +29,14 @@ namespace imagiro {
         Type type;
     };
 
-    class Processor : public ProcessorBase {
+    class Processor : public ProcessorBase, public Parameter::Listener {
     public:
 
         Processor(juce::String currentVersion = "1.0.0", juce::String productSlug = "");
         Processor(const juce::AudioProcessor::BusesProperties& ioLayouts,
                   juce::String currentVersion = "1.0.0", juce::String productSlug = "");
+
+        ~Processor() override;
 
         struct BPMListener {
             virtual void bpmChanged(double newBPM) {}
@@ -45,7 +48,6 @@ namespace imagiro {
 
         // =================================================================
         void reset() override;
-        void addPluginParameter (Parameter* parameter);
 
         Parameter* addParam (std::unique_ptr<Parameter> p);
 
@@ -62,13 +64,14 @@ namespace imagiro {
         void removePresetListener(PresetListener *l);
 
         virtual void randomizeParameters();
+        void queuePreset(FileBackedPreset preset, bool loadOnAudioThread = false);
         void queuePreset(Preset preset, bool loadOnAudioThread = false);
         virtual Preset createPreset(const juce::String &name, bool isDawPreset = false);
 
         void getStateInformation(juce::MemoryBlock &destData) override;
         void setStateInformation(const void *data, int sizeInBytes) override;
 
-        std::unique_ptr<Preset> lastLoadedPreset;
+        std::optional<FileBackedPreset> lastLoadedPreset;
         bool showPresets{false};
         bool showFavoritePresetsOnly {false};
 
@@ -84,9 +87,11 @@ namespace imagiro {
         float getNotes(float seconds);
         float getNotesFromSamples(float samples);
 
+        void prepareToPlay(double sampleRate, int samplesPerBlock) override;
         void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
+        virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {};
+        void parameterChanged(imagiro::Parameter *param) override;
 
-    public:
         std::map<juce::String, Parameter*> parameterMap;
         juce::OwnedArray<Parameter> internalParameters;
 
@@ -102,7 +107,6 @@ namespace imagiro {
         VersionManager versionManager;
 
     protected:
-
         double lastSampleRate {44100};
 
         juce::AudioPlayHead* playhead {nullptr};
@@ -114,6 +118,7 @@ namespace imagiro {
         juce::ListenerList<BPMListener> bpmListeners;
 
         std::unique_ptr<Preset> nextPreset;
+        virtual void loadPreset(FileBackedPreset preset);
         virtual void loadPreset(Preset preset);
 
         void updateTrackProperties(const juce::AudioProcessor::TrackProperties& newProperties) override;
@@ -121,10 +126,13 @@ namespace imagiro {
         juce::ListenerList<PresetListener> presetListeners;
 
         std::map<juce::String, Scale> scales;
-        juce::ValueTree getScalesTree();
-        void loadScalesTree(juce::ValueTree t);
+        choc::value::Value getScalesState();
+        void loadScalesTree(const choc::value::ValueView& t);
 
         juce::Array<Parameter*> allParameters;
+
+        juce::SmoothedValue<float> bypassGain;
+        juce::AudioSampleBuffer dryBuffer;
 
     };
 }

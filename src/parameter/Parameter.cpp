@@ -22,7 +22,6 @@ namespace imagiro {
               name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
-
         startTimerHz(20);
     }
 
@@ -289,5 +288,26 @@ namespace imagiro {
 
     bool Parameter::isLocked() const {
         return locked;
+    }
+
+    void Parameter::generateSmoothedValueBlock(int samples) {
+        valueSmoother.setTargetValue(getValue());
+        for (auto s=0; s<samples; s++) {
+            smoothedValueBuffer.setSample(0, s, valueSmoother.getNextValue());
+        }
+    }
+
+    float Parameter::getSmoothedValue(int blockIndex) {
+        return smoothedValueBuffer.getSample(0, blockIndex);
+    }
+
+    float Parameter::getSmoothedUserValue(int blockIndex) {
+        return convertFrom0to1(getSmoothedValue(blockIndex));
+    }
+
+    void Parameter::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        valueSmoother.reset(sampleRate, 0.01);
+        smoothedValueBuffer.setSize(1, samplesPerBlock);
+        smoothedValueBuffer.clear();
     }
 }

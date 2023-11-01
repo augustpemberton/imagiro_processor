@@ -7,6 +7,7 @@
 
 #include "ParameterConfig.h"
 #include "ParameterHelpers.h"
+#include "choc/containers/choc_Value.h"
 
 namespace imagiro {
     class Processor;
@@ -41,7 +42,7 @@ namespace imagiro {
         juce::String getUID()               { return uid;       }
 
         virtual void reset() {}
-        virtual void prepareToPlay (double /*sampleRate*/, int /*samplesPerBlock*/)    {}
+        virtual void prepareToPlay (double sampleRate, int samplesPerBlock);
 
         //==============================================================================
         void setModIndex (int i)            { modIndex = i;     }
@@ -90,21 +91,21 @@ namespace imagiro {
             juce::String config {0};
             bool locked;
 
-            juce::ValueTree toTree() {
-                return juce::ValueTree("parameter", {
-                        juce::NamedValueSet::NamedValue("uid", uid),
-                        juce::NamedValueSet::NamedValue("value", value),
-                        juce::NamedValueSet::NamedValue("config", config),
-                        juce::NamedValueSet::NamedValue("locked", locked)
-                });
+            choc::value::Value getState() {
+                auto state = choc::value::createObject("ParamState");
+                state.addMember("uid", uid.toStdString());
+                state.addMember("value", value);
+                state.addMember("config", config.toStdString());
+                state.addMember("locked", locked);
+                return state;
             }
 
-            static ParamState fromTree(juce::ValueTree tree) {
+            static ParamState fromState(choc::value::ValueView& state) {
                 return {
-                    tree.getProperty("uid"),
-                    tree.getProperty("value"),
-                    tree.getProperty("config"),
-                    tree.getProperty("locked")
+                    state["uid"].getWithDefault(""),
+                    state["value"].getWithDefault(0.f),
+                    state["config"].getWithDefault(""),
+                    state["locked"].getWithDefault(false),
                 };
             }
         };
@@ -145,6 +146,10 @@ namespace imagiro {
         void setLocked(bool locked);
         bool isLocked() const;
 
+        void generateSmoothedValueBlock(int samples);
+        float getSmoothedValue(int blockIndex);
+        float getSmoothedUserValue(int blockIndex);
+
     protected:
         bool internal {false};
         ModulationMatrix* modMatrix = nullptr;
@@ -166,6 +171,9 @@ namespace imagiro {
         juce::ListenerList<Listener> listeners;
 
         bool locked {false};
+
+        juce::SmoothedValue<float> valueSmoother;
+        juce::AudioSampleBuffer smoothedValueBuffer;
     };
 
 }

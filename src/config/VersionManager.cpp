@@ -66,4 +66,8 @@ void VersionManager::run() {
     if (updateAvailable) listeners.call(&Listener::OnUpdateDiscovered);
 }
 
+juce::String VersionManager::getUpdateURL() {
+    return updateBaseURL + "/api/download/slug/" + pluginSlug;
+}
+
 
