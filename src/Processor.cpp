@@ -236,6 +236,7 @@ namespace imagiro {
         p.setName(name.toStdString());
 
         for (auto parameter : getPluginParameters()) {
+            if (parameter->getUID() == "bypass") continue;
             p.addParamState(parameter->getState());
         }
 
