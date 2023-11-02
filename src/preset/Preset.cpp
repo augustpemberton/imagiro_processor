@@ -29,7 +29,12 @@ choc::value::Value Preset::getState() const {
 
 Preset Preset::fromState(const choc::value::ValueView &state) {
     Preset p;
-    p.name = state["name"].getWithDefault("init");
+    try {
+        p.name = state["name"].getWithDefault("init");
+    } catch (choc::value::Error& e) {
+        DBG(e.what());
+        return p;
+    }
 
     for (auto paramState : state["paramStates"]) {
         p.paramStates.push_back(imagiro::Parameter::ParamState::fromState(paramState));
