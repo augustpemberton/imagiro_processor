@@ -208,7 +208,12 @@ namespace imagiro {
         dryBuffer.clear();
 #endif
 
-        process(buffer, midiMessages);
+        {
+            juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
+            process(buffer, midiMessages);
+        }
+
+        cpuLoad.store(measurer.getLoadAsProportion());
 
         // apply bypass
         for (auto s=0; s<buffer.getNumSamples(); s++) {
@@ -299,6 +304,7 @@ namespace imagiro {
     }
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        measurer.reset(sampleRate, samplesPerBlock);
         dryBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);

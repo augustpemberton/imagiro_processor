@@ -119,6 +119,10 @@ namespace imagiro {
 #endif
         }
 
+        float getCpuLoad() {
+            return cpuLoad.load();
+        }
+
     protected:
         double lastSampleRate {44100};
 
@@ -150,6 +154,9 @@ namespace imagiro {
         juce::SharedResourcePointer<Resources> resources;
 
         ParameterLoader paramLoader;
+
+        juce::AudioProcessLoadMeasurer measurer;
+        std::atomic<float> cpuLoad;
 
     };
 }
