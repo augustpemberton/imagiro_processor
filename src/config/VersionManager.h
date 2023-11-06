@@ -7,6 +7,7 @@
 class VersionManager : juce::Thread {
 public:
     VersionManager(juce::String currentVersion, juce::String pluginSlug);
+    ~VersionManager();
 
     struct Listener {
         virtual void OnUpdateDiscovered() {};
