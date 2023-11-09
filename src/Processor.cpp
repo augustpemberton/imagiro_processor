@@ -165,6 +165,11 @@ namespace imagiro {
     }
 
     void Processor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+#if JucePlugin_IsSynth
+        buffer.clear();
+#endif
+        if (!auth.isAuthorized()) return;
+
         for (auto param : getPluginParameters()) {
             param->generateSmoothedValueBlock(buffer.getNumSamples());
         }

@@ -11,6 +11,10 @@ VersionManager::VersionManager(juce::String currentVersion_, juce::String plugin
     checkForUpdate();
 }
 
+VersionManager::~VersionManager() {
+    stopThread(50);
+}
+
 std::optional<juce::String> VersionManager::isUpdateAvailable() {
     if (updateAvailable) return newVersion;
     return {};
