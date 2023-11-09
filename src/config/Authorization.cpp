@@ -13,7 +13,11 @@ Authorization::Authorization()
 // ============================ Authorization
 
 bool Authorization::isAuthorized() {
-#if JUCE_DEBUG
+//#if JUCE_DEBUG
+//    return true;
+//#endif
+
+#ifdef SKIP_AUTH
     return true;
 #endif
     return isAuthorizedCache;
