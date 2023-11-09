@@ -13,9 +13,9 @@ Authorization::Authorization()
 // ============================ Authorization
 
 bool Authorization::isAuthorized() {
-//#if JUCE_DEBUG
-//    return true;
-//#endif
+#if JUCE_DEBUG
+    return true;
+#endif
     return isAuthorizedCache;
 }
 
