@@ -4,7 +4,6 @@
 
 struct ProcessorBase : public juce::AudioProcessor
 {
-    using APVTS = juce::AudioProcessorValueTreeState;
     ProcessorBase();
     explicit ProcessorBase(const BusesProperties& ioLayouts);
 

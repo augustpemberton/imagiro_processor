@@ -4,6 +4,6 @@
 #include "src/parameter/Parameter.cpp"
 #include "src/parameter/ParameterHelpers.cpp"
 #include "src/parameter/ParameterLoader.cpp"
-#include "src/config/Authorization.cpp"
+#include "src/config/AuthorizationManager.cpp"
 #include "src/config/VersionManager.cpp"
 #include "src/preset/FileBackedPreset.cpp"

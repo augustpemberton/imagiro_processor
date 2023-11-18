@@ -26,7 +26,12 @@ public:
 #if JUCE_MAC
                 .getChildFile ("Application Support")
 #endif
+<<<<<<< HEAD
                 .getChildFile ("imagiro").getChildFile (PROJECT_NAME);
+=======
+                .getChildFile (JucePlugin_Manufacturer)
+                        .getChildFile (JucePlugin_Name);
+>>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
@@ -34,6 +39,7 @@ public:
         return dataFolder;
     }
 
+<<<<<<< HEAD
     static juce::File getSampleSetFolder(juce::String productName = PROJECT_NAME) {
         auto prop = getConfigFile();
 
@@ -63,6 +69,8 @@ public:
             .findChildFiles(juce::File::findFiles, true, "*.imag");
     }
 
+=======
+>>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
     static std::unique_ptr<juce::PropertiesFile> getConfigFile() {
         juce::PropertiesFile::Options options;
         //options.storageFormat = juce::PropertiesFile::storeAsBinary;
@@ -71,10 +79,6 @@ public:
         if (configFile.exists()) configFile.create();
 
         return std::make_unique<juce::PropertiesFile>(configFile, options);
-    }
-
-    static juce::File getSerialFile() {
-        return getDataFolder().getChildFile("imagiro.serial");
     }
 
     static juce::File getPresetsFolder() {
@@ -148,7 +152,6 @@ public:
     }
 
     static juce::ValueTree getFavoritesTree() {
-
         auto favorites = std::make_unique<juce::XmlElement>("favorites");
         if (getConfigFile()->containsKey("favorites")) {
             favorites = getConfigFile()->getXmlValue("favorites");
@@ -201,21 +204,4 @@ private:
 
         return favoriteTree;
     }
-
-    static juce::File getDefaultSampleSetFolder(juce::String productName) {
-#if JUCE_MAC
-		return juce::File::getSpecialLocation(juce::File::commonApplicationDataDirectory)
-			.getChildFile("Application Support")
-			.getChildFile("imagiro").getChildFile(productName)
-			.getChildFile("samples");
-
-#elif JUCE_WINDOWS
-		return juce::File::getSpecialLocation(juce::File::globalApplicationsDirectory)
-			.getChildFile("imagiro").getChildFile(productName)
-			.getChildFile("samples");
-
-#else #error "unsupported OS"
-#endif
-
-	}
 };

@@ -12,7 +12,6 @@
 class Preset {
 public:
     Preset();
-    virtual ~Preset() = default;
 
     virtual choc::value::Value getState() const;
     static Preset fromState(const choc::value::ValueView& state);

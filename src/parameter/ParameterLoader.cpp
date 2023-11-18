@@ -11,12 +11,6 @@ namespace imagiro {
         load(params);
     }
 
-    ParameterLoader::ParameterLoader(Processor& processor, const juce::File& yamlFile)
-            : processor(processor) {
-        auto params = YAML::Load(yamlFile.loadFileAsString().toStdString());
-        load(params);
-    }
-
     void ParameterLoader::load(const YAML::Node& config) {
         for (const auto& kv : config) {
             juce::String uid (kv.first.as<std::string>());
@@ -50,23 +44,6 @@ namespace imagiro {
         return (n[k] ? n[k].as<bool>() : defaultValue);
     }
 
-    juce::NormalisableRange<float> ParameterLoader::getScaleRange(float min, float max, juce::String scaleID) {
-        auto p = &processor;
-        return {
-                min, max,
-                [&](float start, float end, float val) -> float {
-                    return val * (end - start) + start;
-                },
-                [&](float start, float end, float val) -> float {
-                    return (val - start) / (end - start);
-                },
-                [&, p, scaleID](float start, float end, float val) -> float {
-                    auto snapped = p->getScale(scaleID)->getQuantized(val);
-                    return snapped;
-                }
-        };
-    }
-
     juce::NormalisableRange<float> ParameterLoader::getRange(juce::String parameterID, YAML::Node n) {
         auto type = getString(n, "type", "normal");
 
@@ -85,11 +62,6 @@ namespace imagiro {
 
         if (type == "sync")
             return getTempoSyncRange(min, max, inverse);
-
-        if (type == "scale") {
-            processor.setScale(parameterID, Scale({0}).getState());
-            return getScaleRange(min, max, parameterID);
-        }
 
         return {min, max, step,
                 skew, symmetricSkew};
@@ -152,7 +124,7 @@ namespace imagiro {
         } else if (type == "sync") {
             config.textFunction = DisplayFunctions::syncDisplay;
             config.valueFunction = DisplayFunctions::syncInput;
-            config.conversionFunction = [&, syncType](float proportion) {
+            config.processorConversionFunction = [&, syncType](float proportion) {
                 auto v = (processor.getSyncTimeSeconds(proportion));
                 return (syncType == "inverse") ? 1.f / v : v;
             };
@@ -165,7 +137,7 @@ namespace imagiro {
                            frac.replace("d", "", true));
             };
 
-            config.conversionFunction = [&, syncType](float proportion) {
+            config.processorConversionFunction = [&, syncType](float proportion) {
                 auto v = (processor.getSyncTimeSeconds(proportion) * (3.f/2.f));
                 return (syncType == "inverse") ? 1.f / v : v;
             };
@@ -177,7 +149,7 @@ namespace imagiro {
                 return DisplayFunctions::syncInput(p,
                                frac.replace("t", "", true));
             };
-            config.conversionFunction = [&, syncType](float proportion) {
+            config.processorConversionFunction = [&, syncType](float proportion) {
                 auto v = (processor.getSyncTimeSeconds(proportion) * (2.f/3.f));
                 return (syncType == "inverse") ? 1.f / v : v;
             };
@@ -217,8 +189,8 @@ namespace imagiro {
                 return ratio[0].getFloatValue() / ratio[1].getFloatValue();
             };
 
-            config.conversionFunction = [&, ratioParam](float v) {
-                return ratioParam->getModVal() * v;
+            config.processorConversionFunction = [&, ratioParam](float v) {
+                return ratioParam->getValue() * v;
             };
         }
 
@@ -230,18 +202,18 @@ namespace imagiro {
         auto name = namePrefix + str(p["name"]);
         auto internal = getBool(p, "internal", false);
 
-        // Multi-mode
-        if (p["modes"]) {
+        // Multi-configs
+        if (p["configs"]) {
             std::vector<ParameterConfig> configs;
-            for (auto mode : p["modes"]) {
-                juce::String configName = mode.first.as<std::string>();
-                configs.push_back(loadConfig(uid, configName, mode.second, index));
+            for (auto config : p["configs"]) {
+                juce::String configName = config.first.as<std::string>();
+                configs.push_back(loadConfig(uid, configName, config.second, index));
             }
 
             return std::make_unique<Parameter>(uid, name, configs, internal);
         }
 
-        // Single-mode
+        // Single config
         auto config = loadConfig(uid,"default", p, index);
 
         return std::make_unique<Parameter>(uid, name, config, internal);
