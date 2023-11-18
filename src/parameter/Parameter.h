@@ -78,7 +78,6 @@ namespace imagiro {
         juce::NormalisableRange<float> getUserRange() const;
         float convertTo0to1 (float v) const;
         float convertFrom0to1 (float v) const;
-
         //==============================================================================
 
         void addListener (Listener* listener);

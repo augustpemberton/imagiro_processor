@@ -11,7 +11,11 @@ ProcessorBase::ProcessorBase(const BusesProperties& ioLayouts)
 }
 
 const juce::String ProcessorBase::getName() const {
-    return JucePlugin_Name;
+#ifdef PROJECT_NAME
+    return PROJECT_NAME;
+#else
+    return "myplugin";
+#endif
 }
 
 bool ProcessorBase::acceptsMidi() const

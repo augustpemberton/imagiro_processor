@@ -13,6 +13,10 @@
 #include "../preset/Preset.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 
+#ifndef PROJECT_NAME
+    #define PROJECT_NAME "myplugin"
+#endif
+
 class Resources {
 
 public:
@@ -22,7 +26,7 @@ public:
 #if JUCE_MAC
                 .getChildFile ("Application Support")
 #endif
-                .getChildFile ("imagiro").getChildFile (JucePlugin_Name);
+                .getChildFile ("imagiro").getChildFile (PROJECT_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
@@ -30,7 +34,7 @@ public:
         return dataFolder;
     }
 
-    static juce::File getSampleSetFolder(juce::String productName = JucePlugin_Name) {
+    static juce::File getSampleSetFolder(juce::String productName = PROJECT_NAME) {
         auto prop = getConfigFile();
 
         // Default path
@@ -54,7 +58,7 @@ public:
         return juce::File(getConfigFile()->getValue("samplepath", defaultPath));
     }
 
-    static juce::Array<juce::File> getSampleSetFiles(juce::String productName = JucePlugin_Name) {
+    static juce::Array<juce::File> getSampleSetFiles(juce::String productName = PROJECT_NAME) {
         return getSampleSetFolder(std::move(productName))
             .findChildFiles(juce::File::findFiles, true, "*.imag");
     }

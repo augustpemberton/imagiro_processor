@@ -13,7 +13,6 @@
 #include "config/VersionManager.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 #include "imagiro_processor/src/config/Resources.h"
-#include "version.h"
 #include "BinaryData.h"
 #include "imagiro_processor/src/parameter/ParameterLoader.h"
 
@@ -111,7 +110,7 @@ namespace imagiro {
         VersionManager versionManager;
 
         virtual juce::String getParametersYAMLString() {
-#if JUCE_DEBUG
+#if JUCE_DEBUG && defined(SRCPATH)
             auto file = juce::File(juce::String(SRCPATH) + "/Parameters.yaml");
             return file.loadFileAsString();
 #else
