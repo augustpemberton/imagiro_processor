@@ -5,97 +5,47 @@
 #include "Preset.h"
 #include "../config/Resources.h"
 
+
 Preset::Preset()
-        :   presetTree("preset"),
-            presetFilePath(presetTree, "presetFile", nullptr),
-            name(presetTree, "name", nullptr),
-            author(presetTree, "author", nullptr),
-            favorite(presetTree, "favorite", nullptr),
-            validPreset(false) {
-    presetTree.setProperty(Constants::PresetProperties::name, "init", nullptr);
-    presetTree.appendChild(juce::ValueTree("parameters"), nullptr);
-}
-
-Preset::Preset(juce::ValueTree& tree)
-        :   presetTree(tree),
-            presetFilePath(presetTree, "presetFile", nullptr),
-            name(presetTree, "name", nullptr),
-            author(presetTree, "author", nullptr),
-            favorite(presetTree, "favorite", nullptr),
-            validPreset(true) {
-}
-
-Preset::Preset(const Preset &other)
-        :   presetTree("preset"),
-            presetFilePath(presetTree, "presetFile", nullptr),
-            name(presetTree, "name", nullptr),
-            author(presetTree, "author", nullptr),
-            favorite(presetTree, "favorite", nullptr),
-            validPreset(other.validPreset)
+    : data(choc::value::createObject("PresetData"))
 {
-    presetTree.copyPropertiesAndChildrenFrom(other.presetTree, nullptr);
+
 }
 
-Preset& Preset::operator=(const Preset& other) noexcept {
-    presetTree.copyPropertiesAndChildrenFrom(other.presetTree, nullptr);
-    validPreset = other.isValid();
+choc::value::Value Preset::getState() const {
+    auto state = choc::value::createObject("Preset");
+    state.addMember("name", name);
 
-    return *this;
-}
-
-Preset& Preset::operator=(Preset&& other) noexcept {
-    if (this != &other) {
-        presetTree = other.presetTree;
-        name.referTo(presetTree, "name", nullptr);
-        author.referTo(presetTree, "author", nullptr);
-        favorite.referTo(presetTree, "favorite", nullptr);
-        presetFilePath.referTo(presetTree, "presetFile", nullptr);
-        validPreset = other.validPreset;
-
-        other.presetTree = juce::ValueTree();
-        other.name.referTo(other.presetTree, "name", nullptr);
-        other.author.referTo(other.presetTree, "author", nullptr);
-        other.favorite.referTo(other.presetTree, "favorite", nullptr);
-        other.presetFilePath.referTo(other.presetTree, "presetFile", nullptr);
-        other.validPreset = false;
+    auto paramStatesValue = choc::value::createEmptyArray();
+    for (auto p : paramStates) {
+        paramStatesValue.addArrayElement(p.getState());
     }
 
-    return *this;
+    state.addMember("paramStates", paramStatesValue);
+    state.addMember("data", data);
+
+    return state;
 }
 
-std::optional<Preset> Preset::createFromFile(const juce::File& file) {
-    auto xml = juce::parseXML(file);
-    if (!xml) return {};
-    auto tree = juce::ValueTree::fromXml(*xml);
-    if (!tree.isValid()) return {};
-    auto p = Preset(tree);
-    p.presetFilePath = file.getFullPathName();
-    return {p};
+Preset Preset::fromState(const choc::value::ValueView &state) {
+    Preset p;
+    if (!state.isObject()) return p;
+
+    p.name = state["name"].getWithDefault("init");
+
+    for (auto paramState : state["paramStates"]) {
+        p.paramStates.push_back(imagiro::Parameter::ParamState::fromState(paramState));
+    }
+
+    p.data = state["data"];
+
+    return p;
 }
 
-void Preset::addParamState(imagiro::Parameter::ParamState state) {
-    getParameterTree().appendChild(state.toTree(), nullptr);
+void Preset::addParamState(imagiro::Parameter::ParamState param) {
+    paramStates.push_back(param);
 }
 
 std::vector<imagiro::Parameter::ParamState> Preset::getParamStates() const {
-    std::vector<imagiro::Parameter::ParamState> states;
-    if (!getParameterTree().isValid()) return states;
-    for (auto stateTree : getParameterTree())
-        states.push_back(imagiro::Parameter::ParamState::fromTree(stateTree));
-    return states;
-}
-
-juce::ValueTree Preset::getParameterTree() {
-    return presetTree.getOrCreateChildWithName("parameters", nullptr);
-}
-
-juce::ValueTree Preset::getParameterTree() const {
-    return presetTree.getChildWithName("parameters");
-}
-
-bool Preset::getFavorite() {
-   return Resources::isPresetFavorite(*this);
-}
-void Preset::setFavorite(bool fav) {
-    Resources::setPresetFavorite(*this, fav);
+    return paramStates;
 }

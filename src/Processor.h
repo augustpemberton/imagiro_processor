@@ -4,34 +4,32 @@
 
 #pragma once
 #include <juce_core/juce_core.h>
-#include <imagiro-util/imagiro-util.h>
+#include <imagiro_util/imagiro_util.h>
 #include "ProcessorBase.h"
-#include "./modulation/ModulationMatrix.h"
 #include "parameter/Parameter.h"
-#include "./Scale.h"
+#include "preset/Preset.h"
+#include "config/AuthorizationManager.h"
+#include "config/VersionManager.h"
+#include "imagiro_processor/src/preset/FileBackedPreset.h"
+#include "imagiro_processor/src/config/Resources.h"
+#include "version.h"
+#include "BinaryData.h"
+#include "imagiro_processor/src/parameter/ParameterLoader.h"
 
 class Preset;
 
 namespace imagiro {
-    class SmoothingType {
+    class Processor : public ProcessorBase, public Parameter::Listener {
     public:
-        enum Type {
-            linear, eased
-        };
+        Processor(const juce::String& currentVersion = "1.0.0",
+                  const juce::String& productSlug = "");
+        Processor(const juce::AudioProcessor::BusesProperties& ioLayouts,
+                  const juce::String& currentVersion = "1.0.0",
+                  const juce::String& productSlug = "");
 
-        SmoothingType(float time_ = 0.1f, Type type_ = linear)
-                : time(time_), type(type_) {}
+        ~Processor() override;
 
-        float time;
-        Type type;
-    };
-
-    class Processor : public ProcessorBase {
-    public:
-
-        Processor();
-        Processor(const juce::AudioProcessor::BusesProperties& ioLayouts);
-
+        // =================================================================
         struct BPMListener {
             virtual void bpmChanged(double newBPM) {}
             virtual void sampleRateChanged(double newRate) {}
@@ -41,12 +39,10 @@ namespace imagiro {
         void removeBPMListener(BPMListener* l) { bpmListeners.remove(l); }
 
         // =================================================================
+
         void reset() override;
-        void addPluginParameter (Parameter* parameter);
 
         Parameter* addParam (std::unique_ptr<Parameter> p);
-
-        using AudioProcessor::getParameter;
         Parameter* getParameter (const juce::String& uid);
         const juce::Array<Parameter*>& getPluginParameters();
 
@@ -58,16 +54,22 @@ namespace imagiro {
         void addPresetListener(PresetListener *l);
         void removePresetListener(PresetListener *l);
 
-        virtual void randomizeParameters();
-        void queuePreset(Preset preset, bool loadOnAudioThread = false);
-        virtual Preset createPreset(const juce::String &name, bool isDawPreset = false);
+        void queuePreset(const FileBackedPreset& preset, bool loadOnAudioThread = false);
+        void queuePreset(const Preset& preset, bool loadOnAudioThread = false);
+
+        /*!
+         * Creates a preset from the processor's current settings.
+         * @param name The name of the preset
+         * @param isDAWSaveState Whether or not this preset is used for the daw to save plugin state.
+         * If false, you may wish to add extra properties (preset author, preset name etc).
+         * @return The created preset
+         */
+        virtual Preset createPreset(const juce::String &name, bool isDAWSaveState);
 
         void getStateInformation(juce::MemoryBlock &destData) override;
         void setStateInformation(const void *data, int sizeInBytes) override;
 
-        std::unique_ptr<Preset> lastLoadedPreset;
-        bool showPresets{false};
-        bool showFavoritePresetsOnly {false};
+        std::optional<FileBackedPreset> lastLoadedPreset;
 
         // =================================================================
         double getLastSampleRate() const {return lastSampleRate; }
@@ -75,55 +77,57 @@ namespace imagiro {
         double getSyncTimeSeconds(float proportionOfBeat);
         double getLastBPM() const;
         static double getNoteLengthSamples(double bpm, float proportionOfBeat, double sampleRate);
-        double getNoteLengthSamples(float proportionOfBeat);
+        double getNoteLengthSamples(float proportionOfBeat) const;
         static float getSamplesPerBeat(float bpm, double sampleRate);
-        float getSamplesPerBeat();
+        float getSamplesPerBeat() const;
         float getNotes(float seconds);
         float getNotesFromSamples(float samples);
-
-        void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
-
-        // =================================================================
-        imagiro::ModulationMatrix& getModMatrix() { return modMatrix; }
-
-    public:
-        //juce::SharedResourcePointer<ImagiroLookAndFeel> lf;
-
-        std::map<juce::String, Parameter*> parameterMap;
-        juce::OwnedArray<Parameter> internalParameters;
-
-        juce::ValueTree state;
-
         juce::Optional<juce::AudioPlayHead::PositionInfo>& getPosition() { return posInfo; }
         juce::AudioProcessor::TrackProperties getProperties() { return trackProperties; }
 
-        void setScale(const juce::String& scaleID, juce::BigInteger state);
-        Scale* getScale(juce::String scaleID);
+        void prepareToPlay(double sampleRate, int samplesPerBlock) override;
+        void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
+        virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
+
+        void parameterChanged(imagiro::Parameter *param) override;
+        std::map<juce::String, Parameter*> parameterMap;
+        virtual juce::String getParametersYAMLString();
+
+        AuthorizationManager& getAuthManager() { return authManager; }
+        VersionManager& getVersionManager() { return versionManager; }
+
+        float getCpuLoad();
 
     protected:
-        imagiro::ModulationMatrix modMatrix;
-        double lastSampleRate {44100};
-
-        juce::AudioPlayHead* playhead {nullptr};
-        juce::Optional<juce::AudioPlayHead::PositionInfo> posInfo;
+        AuthorizationManager authManager;
+        VersionManager versionManager;
+        juce::SharedResourcePointer<Resources> resources;
 
         double getBPM();
         std::atomic<double> lastBPM{120};
+        std::atomic<double> lastSampleRate {44100};
         std::atomic<bool> lastPlaying{false};
         juce::ListenerList<BPMListener> bpmListeners;
 
         std::unique_ptr<Preset> nextPreset;
+        virtual void loadPreset(FileBackedPreset preset);
         virtual void loadPreset(Preset preset);
 
         void updateTrackProperties(const juce::AudioProcessor::TrackProperties& newProperties) override;
         juce::AudioProcessor::TrackProperties trackProperties;
         juce::ListenerList<PresetListener> presetListeners;
-
-        std::map<juce::String, Scale> scales;
-        juce::ValueTree getScalesTree();
-        void loadScalesTree(juce::ValueTree t);
+        juce::AudioPlayHead* playhead {nullptr};
+        juce::Optional<juce::AudioPlayHead::PositionInfo> posInfo;
 
         juce::Array<Parameter*> allParameters;
+        juce::OwnedArray<Parameter> internalParameters;
 
+        juce::SmoothedValue<float> bypassGain;
+        juce::AudioSampleBuffer dryBuffer;
+
+        juce::AudioProcessLoadMeasurer measurer;
+        std::atomic<float> cpuLoad;
+
+        ParameterLoader paramLoader;
     };
 }

@@ -3,20 +3,29 @@
 //
 
 #include "Processor.h"
-//#include <gin_dsp/gin_dsp.h>
-//#include <imagiro_gui/imagiro_gui.h>
+#include "choc/text/choc_JSON.h"
 
 namespace imagiro {
 
-    Processor::Processor()
+    Processor::Processor(const juce::String& currentVersion, const juce::String& productSlug)
+            : versionManager(currentVersion, productSlug),
+              paramLoader(*this, getParametersYAMLString())
     {
-        lastLoadedPreset = std::make_unique<Preset>();
+        bypassGain.reset(250);
     }
 
-    Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts)
-            : ProcessorBase(ioLayouts)
+    Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts,
+                         const juce::String& currentVersion, const juce::String& productSlug)
+            : ProcessorBase(ioLayouts),
+              versionManager(currentVersion, productSlug),
+              paramLoader(*this, getParametersYAMLString())
     {
-        lastLoadedPreset = std::make_unique<Preset>();
+        bypassGain.reset(250);
+    }
+
+    Processor::~Processor() {
+        for (auto p : getPluginParameters())
+            if (p->getUID() == "bypass") p->removeListener(this);
     }
 
     void Processor::reset() {
@@ -24,13 +33,9 @@ namespace imagiro {
             p->reset();
     }
 
-    void Processor::addPluginParameter (Parameter* p) {
-        addParameter (p);
-        allParameters.add (p);
-        parameterMap[p->getUID()] = p;
-    }
-
     Parameter* Processor::addParam (std::unique_ptr<Parameter> p) {
+        if (p->getUID() == "bypass") p->addListener(this);
+
         auto rawPtr = p.get();
         allParameters.add (rawPtr);
         parameterMap[p->getUID()] = rawPtr;
@@ -38,7 +43,6 @@ namespace imagiro {
         else addParameter (p.release());
         return rawPtr;
     }
-
 
     Parameter* Processor::getParameter (const juce::String& uid)
     {
@@ -55,34 +59,54 @@ namespace imagiro {
     void Processor::addPresetListener(PresetListener *l) { presetListeners.add(l); }
     void Processor::removePresetListener(PresetListener *l) { presetListeners.remove(l); }
 
-    void Processor::randomizeParameters() {
-        auto rng = juce::Random::getSystemRandom();
-        for (auto param : getPluginParameters()) {
-            param->setValueNotifyingHost(rng.nextFloat());
-        }
+    void Processor::queuePreset(const FileBackedPreset& p, bool waitUntilAudioThread) {
+        lastLoadedPreset = p;
+        queuePreset(p.getPreset(), waitUntilAudioThread);
     }
 
-    void Processor::queuePreset(Preset preset, bool waitUntilAudioThread) {
-        if (waitUntilAudioThread) nextPreset = std::make_unique<Preset>(preset);
-        else loadPreset(preset);
+    void Processor::queuePreset(const Preset& p, bool waitUntilAudioThread) {
+        if (waitUntilAudioThread) nextPreset = std::make_unique<Preset>(p);
+        else loadPreset(p);
     }
 
     void Processor::getStateInformation(juce::MemoryBlock &destData) {
-        copyXmlToBinary(*createPreset(
-                lastLoadedPreset ? lastLoadedPreset->getName() : "init", true)
-                .getTree().createXml(), destData);
+        auto preset = createPreset(lastLoadedPreset ? lastLoadedPreset->getPreset().getName() : "init", true);
+        auto s = preset.getState();
+
+        juce::ValueTree stateTree ("stateTree");
+        stateTree.setProperty("state", juce::String(choc::json::toString(s)), nullptr);
+        auto lastLoadedPath = lastLoadedPreset ? lastLoadedPreset->getPresetRelativePath() : "";
+        stateTree.setProperty("lastLoadedPresetPath", lastLoadedPath, nullptr);
+
+        copyXmlToBinary(*stateTree.createXml(), destData);
     }
 
     void Processor::setStateInformation(const void *data, int sizeInBytes) {
-        std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-        auto presetTree = juce::ValueTree::fromXml(*xmlState);
-        loadPreset(Preset(presetTree));
+        auto xml = getXmlFromBinary(data, sizeInBytes);
+        if (!xml) return;
+        auto stateTree = juce::ValueTree::fromXml(*xml);
+        auto stateString = stateTree.getProperty("state").toString();
+
+        try {
+            auto s = choc::json::parse(stateString.toStdString());
+            loadPreset(Preset::fromState(s));
+        } catch (choc::json::ParseError& e) {
+            DBG("unable to load preset");
+            DBG(e.what());
+        }
+
+        auto lastLoadedPresetPath = resources->getPresetsFolder().getChildFile(
+                stateTree.getProperty("lastLoadedPresetPath").toString());
+
+        if (lastLoadedPresetPath.exists()) {
+            lastLoadedPreset = {FileBackedPreset::createFromFile(lastLoadedPresetPath)};
+        }
     }
 
     double Processor::getBPM() {
         if (posInfo && posInfo->getBpm().hasValue()) {
             auto bpm = *posInfo->getBpm();
-            if (bpm == 0) bpm = 120;
+            if (bpm < 0.01) bpm = 120;
             return bpm;
         }
         return 120;
@@ -109,11 +133,11 @@ namespace imagiro {
         return proportionOfBeat * getSamplesPerBeat(bpm, sampleRate);
     }
 
-    double Processor::getNoteLengthSamples(float proportionOfBeat) {
+    double Processor::getNoteLengthSamples(float proportionOfBeat) const {
         return getNoteLengthSamples(getLastBPM(), proportionOfBeat, getLastSampleRate());
     }
 
-    float Processor::getSamplesPerBeat() {
+    float Processor::getSamplesPerBeat() const {
         return getSamplesPerBeat(getLastBPM(), getLastSampleRate());
     }
 
@@ -133,23 +157,30 @@ namespace imagiro {
     }
 
     void Processor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+#if JucePlugin_IsSynth
+        buffer.clear();
+#endif
+        if (!authManager.isAuthorized()) return;
+
+        for (auto param : getPluginParameters()) {
+            param->generateSmoothedValueBlock(buffer.getNumSamples());
+        }
 
         if (nextPreset) {
             loadPreset(*nextPreset);
             nextPreset = nullptr;
         }
 
-        TRACE_DSP();
-        auto oldSampleRate = lastSampleRate;
+        auto oldSampleRate = lastSampleRate.load();
         lastSampleRate = getSampleRate();
-        if (lastSampleRate != oldSampleRate) {
+        if (!almostEqual(lastSampleRate.load(), oldSampleRate)) {
             bpmListeners.call(&BPMListener::sampleRateChanged, lastSampleRate);
         }
 
         auto oldBPM = lastBPM.load();
         lastBPM = getBPM();
 
-        if (lastBPM != oldBPM) {
+        if (!almostEqual(lastBPM.load(), oldBPM)) {
             bpmListeners.call(&BPMListener::bpmChanged, lastBPM);
         }
 
@@ -163,24 +194,53 @@ namespace imagiro {
                 lastPlaying = playing;
             }
         }
+
+        for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
+            dryBuffer.copyFrom(c, 0,
+                               buffer.getReadPointer(c),
+                               buffer.getNumSamples());
+        }
+
+        {
+            juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
+            process(buffer, midiMessages);
+        }
+
+        cpuLoad.store(static_cast<float>(measurer.getLoadAsProportion()));
+
+        // apply bypass
+        for (auto s=0; s<buffer.getNumSamples(); s++) {
+            auto gain = bypassGain.getNextValue();
+            for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
+                auto v = buffer.getSample(c, s) * (1-gain);
+                v += dryBuffer.getSample(c, s) * gain;
+                buffer.setSample(c, s, v);
+            }
+        }
+    }
+
+    void Processor::parameterChanged(imagiro::Parameter *param) {
+        if (param->getUID() == "bypass") {
+            bypassGain.setTargetValue(param->getValue());
+        }
     }
 
     void Processor::updateTrackProperties(const juce::AudioProcessor::TrackProperties &newProperties) {
         trackProperties = newProperties;
     }
 
-    Preset Processor::createPreset(const juce::String &name, bool isDawPreset) {
+    Preset Processor::createPreset(const juce::String &name, bool isDAWSaveState) {
         Preset p;
-        p.setName(name);
+        p.setName(name.toStdString());
 
         for (auto parameter : getPluginParameters()) {
             p.addParamState(parameter->getState());
         }
 
-        p.getTree().appendChild(modMatrix.getTree(), nullptr);
-        p.getTree().appendChild(getScalesTree(), nullptr);
-
         return p;
+    }
+    void Processor::loadPreset(FileBackedPreset p) {
+        loadPreset(p.getPreset());
     }
 
     void Processor::loadPreset(Preset preset) {
@@ -190,50 +250,27 @@ namespace imagiro {
             }
         }
 
-        loadScalesTree(preset.getTree().getChildWithName("scales"));
-
-        modMatrix.loadFromTree(preset.getTree().getOrCreateChildWithName("modmatrix", nullptr));
-
-        lastLoadedPreset = std::make_unique<Preset>(preset);
         presetListeners.call([&](PresetListener &l) { l.OnPresetChange(preset); });
     }
 
-    void Processor::setScale(const juce::String& scaleID, juce::BigInteger state) {
-        scales[scaleID].setState(state);
+    void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        measurer.reset(sampleRate, samplesPerBlock);
+        dryBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
+        for (auto parameter : getPluginParameters()) {
+            parameter->prepareToPlay(sampleRate, samplesPerBlock);
+        }
     }
 
-    Scale *Processor::getScale(juce::String scaleID) {
-        if (scales.count(scaleID)) return &scales[scaleID];
-        return nullptr;
+    juce::String Processor::getParametersYAMLString() {
+#if JUCE_DEBUG
+        auto file = juce::File(juce::String(SRCPATH) + "/Parameters.yaml");
+        return file.loadFileAsString();
+#else
+        return BinaryData::Parameters_yaml;
+#endif
     }
 
-    juce::ValueTree Processor::getScalesTree() {
-        juce::ValueTree presetScales ("scales");
-        for (auto& scale : scales) {
-            juce::ValueTree scaleTree("scale");
-            scaleTree.setProperty("notes", scale.second.getState().toString(2),
-                                  nullptr);
-            scaleTree.setProperty("id", scale.first, nullptr);
-            presetScales.appendChild(scaleTree, nullptr);
-        }
-        return presetScales;
-    }
-
-    void Processor::loadScalesTree(juce::ValueTree t) {
-        // reset all current scales in case preset doesn't contain any
-        for (const auto& scale : scales) {
-            scales[scale.first].setState(Scale({0}).getState());
-        }
-
-        if (!t.isValid()) return;
-
-        for (auto scaleTree : t) {
-            juce::BigInteger state;
-            if (!scaleTree.hasProperty("notes")) continue;
-            if (!scaleTree.hasProperty("id")) continue;
-
-            state.parseString(scaleTree.getProperty("notes").toString(), 2);
-            setScale(scaleTree.getProperty("id").toString(), state);
-        }
+    float Processor::getCpuLoad() {
+        return cpuLoad.load();
     }
 }

@@ -22,7 +22,6 @@ namespace imagiro {
               name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
-
         startTimerHz(20);
     }
 
@@ -47,32 +46,23 @@ namespace imagiro {
     }
 
     bool Parameter::isToggle() {
-        return getConfig()->range.start == 0 && getConfig()->range.end == getConfig()->range.interval;
-    }
-
-    float Parameter::getModVal(bool useConversion) {
-        if (!modMatrix) {
-            if (useConversion) return getVal();
-            return getUserValue();
-        }
-
-        return modMatrix->getValue(this, useConversion);
-    }
-
-    float Parameter::getVal(int stepsToAdvance) {
-        if (getConfig()->conversionFunction) return getConfig()->conversionFunction(getUserValue());
-        return getUserValue();
+        return almostEqual(getConfig()->range.start, 0.f) &&
+                almostEqual(getConfig()->range.end, getConfig()->range.interval);
     }
 
     float Parameter::getUserValue() const {
-        return convertFrom0to1(value01);
+        auto userValue = convertFrom0to1(value01);
+        return userValue;
     }
 
-    int Parameter::getUserValueInt() const {
-        return (int) getUserValue();
+    float Parameter::getProcessorValue() const {
+        if (getConfig()->processorConversionFunction)
+            return getConfig()->processorConversionFunction(value01);
+        else
+            return getUserValue();
     }
 
-    bool Parameter::getUserValueBool() const {
+    bool Parameter::getBoolValue() const {
         return getUserValue() != 0.f;
     }
 
@@ -89,9 +79,9 @@ namespace imagiro {
         }
     }
 
-    void Parameter::setUserValueNotifingHost (float v, bool force) {
+    void Parameter::setUserValueNotifyingHost (float v, bool force) {
         v = getConfig()->range.snapToLegalValue(getConfig()->range.getRange().clipValue(v));
-        if (! almostEqual (value01, convertTo0to1(v)) || force) {
+        if (! almostEqual (value01.load(), convertTo0to1(v)) || force) {
             value01 = convertTo0to1(v);
             if (!internal)
                 setValueNotifyingHost (getValue());
@@ -111,7 +101,7 @@ namespace imagiro {
             sendUpdateFlag = true;
             valueChanged();
         } else {
-            setUserValueNotifingHost(f);
+            setUserValueNotifyingHost(f);
         }
 
         endUserAction();
@@ -190,18 +180,19 @@ namespace imagiro {
 
         setLocked(state.locked);
 
-        setUserValueNotifingHost(state.value);
+        setUserValueNotifyingHost(state.value);
     }
 
     float Parameter::getValue() const {
-        return juce::jlimit (0.0f, 1.0f,value01);
+        auto v = juce::jlimit(0.f, 1.f, value01.load());
+        return v;
     }
 
     void Parameter::setValue (float valueIn) {
         valueIn = juce::jlimit (0.0f, 1.0f, valueIn);
-        float newValue = getConfig()->range.snapToLegalValue (getConfig()->range.convertFrom0to1 (valueIn));
+        float newValue = convertFrom0to1(valueIn, true);
 
-        if (!almostEqual (value01, convertTo0to1(newValue))) {
+        if (!almostEqual (value01.load(), convertTo0to1(newValue))) {
             value01 = convertTo0to1(newValue);
             sendUpdateFlag = true;
             valueChanged();
@@ -222,7 +213,7 @@ namespace imagiro {
     }
 
     int Parameter::getNumSteps() const {
-        if (getConfig()->range.interval == 0) return 100;
+        if (almostEqual(getConfig()->range.interval, 0.f)) return 100;
         return juce::roundToInt ((getConfig()->range.end -getConfig()->range.start) /getConfig()->range.interval);
     }
 
@@ -257,8 +248,12 @@ namespace imagiro {
         return getConfig()->range.convertTo0to1(
                 getConfig()->range.getRange().clipValue(v));
     }
-    float Parameter::convertFrom0to1 (float v) const {
-        return getConfig()->range.snapToLegalValue(getConfig()->range.convertFrom0to1(v));
+
+    float Parameter::convertFrom0to1 (float v, bool snapToLegalValue) const {
+        v = getConfig()->range.convertFrom0to1(v);
+
+        if (snapToLegalValue) v = getConfig()->range.snapToLegalValue(v);
+        return v;
     }
 
     int Parameter::getConfigIndex() {
@@ -281,7 +276,7 @@ namespace imagiro {
         configIndex = index;
 
         listeners.call(&Listener::rangeChanged, this);
-        setUserValueNotifingHost(uv, true);
+        setUserValueNotifyingHost(uv, true);
     }
 
     void Parameter::setLocked(bool l) {
@@ -290,5 +285,36 @@ namespace imagiro {
 
     bool Parameter::isLocked() const {
         return locked;
+    }
+
+    void Parameter::generateSmoothedValueBlock(int samples) {
+        if (smootherNeedsUpdate) valueSmoother.reset(sampleRate, smoothTimeSeconds);
+
+        auto target = getValue();
+        valueSmoother.setTargetValue(target);
+        for (auto s=0; s<samples; s++) {
+            auto v = valueSmoother.getNextValue();
+            smoothedValueBuffer.setSample(0, s, v);
+        }
+    }
+
+    float Parameter::getSmoothedValue(int blockIndex) {
+        return smoothedValueBuffer.getSample(0, blockIndex);
+    }
+
+    float Parameter::getSmoothedUserValue(int blockIndex) {
+        return convertFrom0to1(getSmoothedValue(blockIndex), false);
+    }
+
+    void Parameter::setSmoothTime(float seconds) {
+        smoothTimeSeconds = seconds;
+        smootherNeedsUpdate = true;
+    }
+
+    void Parameter::prepareToPlay(double sr, int samplesPerBlock) {
+        sampleRate = sr;
+        valueSmoother.reset(sr, smoothTimeSeconds);
+        smoothedValueBuffer.setSize(1, samplesPerBlock);
+        smoothedValueBuffer.clear();
     }
 }

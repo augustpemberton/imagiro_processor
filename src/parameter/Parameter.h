@@ -7,6 +7,7 @@
 
 #include "ParameterConfig.h"
 #include "ParameterHelpers.h"
+#include "choc/containers/choc_Value.h"
 
 namespace imagiro {
     class Processor;
@@ -41,42 +42,51 @@ namespace imagiro {
         juce::String getUID()               { return uid;       }
 
         virtual void reset() {}
-        virtual void prepareToPlay (double /*sampleRate*/, int /*samplesPerBlock*/)    {}
-
-        //==============================================================================
-        void setModIndex (int i)            { modIndex = i;     }
-        int getModIndex() const                   { return modIndex;  }
-        void setModMatrix (ModulationMatrix* m)    { modMatrix = m;    }
-        ModulationMatrix* getModMatrix()           { return modMatrix; }
+        virtual void prepareToPlay (double sampleRate, int samplesPerBlock);
 
         //==============================================================================
         bool isToggle();
 
-        float getModVal(bool useConversion = true);
-        virtual float getVal(int samplesToAdvance = 0);
+        /*!
+         * @return the user value with an optional conversion function applied.
+         * note - does not map back to value01
+         */
+        float getProcessorValue() const;
+
+        /*!
+         * @return the user value - what the user sees
+         */
         float getUserValue() const;
-        int getUserValueInt() const;
-        bool getUserValueBool() const;
+
+        /*!
+         * @return the internal 0-1 value
+         */
+        float getValue() const override;
+        bool getBoolValue() const;
+
+
+        float getDefaultValue() const override;
         float getUserDefaultValue() const;
 
-        virtual void setUserValue (float v);
-        virtual void setUserValueNotifingHost (float f, bool force = false);
+        void setValue (float newValue) override;
+        void setUserValue (float v);
+        void setUserValueNotifyingHost (float f, bool forceUpdate = false);
         void setUserValueAsUserAction (float f);
         juce::String getUserValueText() const;
         juce::String userValueToText (float val);
         DisplayValue getDisplayValue() const;
         DisplayValue getDisplayValueForUserValue(float userValue) const;
 
-        void updateCache() { cachedValue = getModVal(); }
-        float cached() const { return cachedValue; }
+        void updateCachedUserValue() { cachedUserValue = getUserValue(); }
+        float getCachedUserValue() const { return cachedUserValue; }
 
         //==============================================================================
+
         void beginUserAction();
         void endUserAction();
-
         juce::NormalisableRange<float> getUserRange() const;
         float convertTo0to1 (float v) const;
-        float convertFrom0to1 (float v) const;
+        float convertFrom0to1 (float v, bool snapToLegalValue = true) const;
 
         //==============================================================================
 
@@ -90,21 +100,32 @@ namespace imagiro {
             juce::String config {0};
             bool locked;
 
-            juce::ValueTree toTree() {
-                return juce::ValueTree("parameter", {
-                        juce::NamedValueSet::NamedValue("uid", uid),
-                        juce::NamedValueSet::NamedValue("value", value),
-                        juce::NamedValueSet::NamedValue("config", config),
-                        juce::NamedValueSet::NamedValue("locked", locked)
-                });
+            bool operator==(const ParamState& other) const {
+                return uid == other.uid &&
+                       abs(value - other.value) < 0.0001f &&
+                       config == other.config &&
+                       locked == other.locked;
             }
 
-            static ParamState fromTree(juce::ValueTree tree) {
+            bool operator!=(const ParamState& other) const {
+                return !operator==(other);
+            }
+
+            choc::value::Value getState() const {
+                auto state = choc::value::createObject("ParamState");
+                state.addMember("uid", uid.toStdString());
+                state.addMember("value", value);
+                state.addMember("config", config.toStdString());
+                state.addMember("locked", locked);
+                return state;
+            }
+
+            static ParamState fromState(choc::value::ValueView& state) {
                 return {
-                    tree.getProperty("uid"),
-                    tree.getProperty("value"),
-                    tree.getProperty("config"),
-                    tree.getProperty("locked")
+                    state["uid"].getWithDefault(""),
+                    state["value"].getWithDefault(0.f),
+                    state["config"].getWithDefault(""),
+                    state["locked"].getWithDefault(false),
                 };
             }
         };
@@ -114,12 +135,6 @@ namespace imagiro {
 
         //==============================================================================
         juce::String getParameterID() const override    { return uid; }
-
-        float getValue() const override;
-        bool getBoolValue() const                   { return getValue() != 0.0f; }
-
-        void setValue (float newValue) override;
-        float getDefaultValue() const override;
 
         juce::String getName (int maximumStringLength) const override;
         juce::String getLabel() const override;
@@ -145,6 +160,11 @@ namespace imagiro {
         void setLocked(bool locked);
         bool isLocked() const;
 
+        void generateSmoothedValueBlock(int samples);
+        float getSmoothedValue(int blockIndex);
+        float getSmoothedUserValue(int blockIndex);
+        void setSmoothTime(float seconds);
+
     protected:
         bool internal {false};
         ModulationMatrix* modMatrix = nullptr;
@@ -158,14 +178,20 @@ namespace imagiro {
         juce::String name;
         juce::String suffix;
 
-        float value01 {0};
-        float cachedValue {0};
+        std::atomic<float> value01 {0};
+        float cachedUserValue {0};
 
         int currentUserActionsCount = 0;
 
         juce::ListenerList<Listener> listeners;
 
-        bool locked {false};
+        std::atomic<bool> locked {false};
+
+        juce::SmoothedValue<double> valueSmoother;
+        juce::AudioSampleBuffer smoothedValueBuffer;
+        float smoothTimeSeconds {0.01f};
+        double sampleRate;
+        std::atomic<bool> smootherNeedsUpdate {false};
     };
 
 }

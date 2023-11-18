@@ -12,7 +12,7 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_basics/juce_audio_basics.h>
 
-#include "../../util.h"
+#include <imagiro_util/imagiro_util.h>
 
 namespace imagiro {
 
