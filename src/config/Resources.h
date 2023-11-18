@@ -17,6 +17,10 @@
     #define PROJECT_NAME "myplugin"
 #endif
 
+#ifndef COMPANY_NAME
+    #define COMPANY_NAME "mycompany"
+#endif
+
 class Resources {
 
 public:
@@ -26,7 +30,7 @@ public:
 #if JUCE_MAC
                 .getChildFile ("Application Support")
 #endif
-                .getChildFile (JucePlugin_Manufacturer)
+                .getChildFile (COMPANY_NAME)
                         .getChildFile (PROJECT_NAME);
 
         if (!dataFolder.exists())

@@ -46,25 +46,8 @@ namespace imagiro {
     }
 
     bool Parameter::isToggle() {
-<<<<<<< HEAD
-        return getConfig()->range.start == 0 && getConfig()->range.end == getConfig()->range.interval;
-    }
-
-    float Parameter::getModVal(bool useConversion) {
-        // TODO: implement mod matrix
-//        if (modMatrix) return modMatrix->getValue(this, useConversion);
-
-        if (useConversion) return getVal();
-        return getUserValue();
-    }
-
-    float Parameter::getVal(int stepsToAdvance) {
-        if (getConfig()->conversionFunction) return getConfig()->conversionFunction(getUserValue());
-        return getUserValue();
-=======
         return almostEqual(getConfig()->range.start, 0.f) &&
                 almostEqual(getConfig()->range.end, getConfig()->range.interval);
->>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
     }
 
     float Parameter::getUserValue() const {
@@ -305,11 +288,6 @@ namespace imagiro {
     }
 
     void Parameter::generateSmoothedValueBlock(int samples) {
-<<<<<<< HEAD
-        valueSmoother.setTargetValue(getValue());
-        for (auto s=0; s<samples; s++) {
-            smoothedValueBuffer.setSample(0, s, valueSmoother.getNextValue());
-=======
         if (smootherNeedsUpdate) valueSmoother.reset(sampleRate, smoothTimeSeconds);
 
         auto target = getValue();
@@ -317,7 +295,6 @@ namespace imagiro {
         for (auto s=0; s<samples; s++) {
             auto v = valueSmoother.getNextValue();
             smoothedValueBuffer.setSample(0, s, v);
->>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
         }
     }
 
@@ -326,13 +303,6 @@ namespace imagiro {
     }
 
     float Parameter::getSmoothedUserValue(int blockIndex) {
-<<<<<<< HEAD
-        return convertFrom0to1(getSmoothedValue(blockIndex));
-    }
-
-    void Parameter::prepareToPlay(double sampleRate, int samplesPerBlock) {
-        valueSmoother.reset(sampleRate, 0.01);
-=======
         return convertFrom0to1(getSmoothedValue(blockIndex), false);
     }
 
@@ -344,7 +314,6 @@ namespace imagiro {
     void Parameter::prepareToPlay(double sr, int samplesPerBlock) {
         sampleRate = sr;
         valueSmoother.reset(sr, smoothTimeSeconds);
->>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
         smoothedValueBuffer.setSize(1, samplesPerBlock);
         smoothedValueBuffer.clear();
     }
