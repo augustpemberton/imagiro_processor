@@ -26,12 +26,8 @@ public:
 #if JUCE_MAC
                 .getChildFile ("Application Support")
 #endif
-<<<<<<< HEAD
-                .getChildFile ("imagiro").getChildFile (PROJECT_NAME);
-=======
                 .getChildFile (JucePlugin_Manufacturer)
-                        .getChildFile (JucePlugin_Name);
->>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
+                        .getChildFile (PROJECT_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
@@ -39,38 +35,6 @@ public:
         return dataFolder;
     }
 
-<<<<<<< HEAD
-    static juce::File getSampleSetFolder(juce::String productName = PROJECT_NAME) {
-        auto prop = getConfigFile();
-
-        // Default path
-        auto defaultPath = getDefaultSampleSetFolder(productName).getFullPathName();
-        if (!prop->containsKey("samplepath")) {
-            prop->setValue("samplepath", defaultPath);
-            prop->saveIfNeeded();
-        }
-
-        // If installer set a valid custom path, consume and delete
-        auto installerSamplesFile = getDataFolder().getChildFile("samplepath.txt");
-        if (installerSamplesFile.exists()) {
-            auto f = juce::File(installerSamplesFile.loadFileAsString());
-            installerSamplesFile.deleteFile();
-
-            if (f.getNumberOfChildFiles(juce::File::findFiles, "*.imag") > 0)
-                prop->setValue("samplepath", f.getFullPathName());
-        }
-
-        prop->saveIfNeeded();
-        return juce::File(getConfigFile()->getValue("samplepath", defaultPath));
-    }
-
-    static juce::Array<juce::File> getSampleSetFiles(juce::String productName = PROJECT_NAME) {
-        return getSampleSetFolder(std::move(productName))
-            .findChildFiles(juce::File::findFiles, true, "*.imag");
-    }
-
-=======
->>>>>>> f528a9f38af71202b563626d361c1bc2ef2fbe87
     static std::unique_ptr<juce::PropertiesFile> getConfigFile() {
         juce::PropertiesFile::Options options;
         //options.storageFormat = juce::PropertiesFile::storeAsBinary;
