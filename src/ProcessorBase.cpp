@@ -11,8 +11,8 @@ ProcessorBase::ProcessorBase(const BusesProperties& ioLayouts)
 }
 
 const juce::String ProcessorBase::getName() const {
-#ifdef PROJECT_NAME
-    return PROJECT_NAME;
+#ifdef PLUGIN_NAME
+    return PLUGIN_NAME;
 #else
     return "myplugin";
 #endif

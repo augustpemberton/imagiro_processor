@@ -13,11 +13,11 @@
 #include "../preset/Preset.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 
-#ifndef PROJECT_NAME
+#ifndef PLUGIN_NAME
     #ifdef JucePlugin_Name
-        #define PROJECT_NAME JucePlugin_Name
+        #define PLUGIN_NAME JucePlugin_Name
     #else
-        #define PROJECT_NAME "myplugin"
+        #define PLUGIN_NAME "myplugin"
     #endif
 #endif
 
@@ -39,7 +39,7 @@ public:
                 .getChildFile ("Application Support")
 #endif
                 .getChildFile (COMPANY_NAME)
-                        .getChildFile (PROJECT_NAME);
+                        .getChildFile (PLUGIN_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
@@ -54,7 +54,7 @@ public:
                 .getChildFile ("Application Support")
 #endif
                 .getChildFile (COMPANY_NAME)
-                .getChildFile (PROJECT_NAME);
+                .getChildFile (PLUGIN_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();

@@ -3,12 +3,9 @@
 //
 
 #include "VersionManager.h"
-#ifndef PROJECT_NAME
-#define PROJECT_NAME "myplugin"
-#endif
 
 VersionManager::VersionManager(juce::String currentVersion_, juce::String pluginSlug_)
-        : juce::Thread(juce::String(PROJECT_NAME) + " update check"),
+        : juce::Thread("update check"),
           currentVersion(currentVersion_), pluginSlug(pluginSlug_)
 {
     checkForUpdate();
