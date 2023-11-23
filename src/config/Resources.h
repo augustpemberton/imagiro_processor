@@ -107,7 +107,9 @@ public:
         return cachedPresetsMap;
     }
 
-    std::vector<FileBackedPreset> getPresetsList() {
+    std::vector<FileBackedPreset> cachedPresetsList;
+    std::vector<FileBackedPreset> getPresetsList(bool reload = false) {
+        if (!cachedPresetsList.empty() && !reload) return cachedPresetsList;
         std::vector<FileBackedPreset> presetsList;
         auto categories = getPresets();
         for (const auto& category : categories) {
@@ -116,6 +118,7 @@ public:
             }
         }
 
+        cachedPresetsList = presetsList;
         return presetsList;
     }
 

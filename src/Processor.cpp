@@ -163,7 +163,7 @@ namespace imagiro {
         if (!authManager.isAuthorized()) return;
 
         for (auto param : getPluginParameters()) {
-            param->generateSmoothedValueBlock(buffer.getNumSamples());
+            param->generateSmoothedProcessorValueBlock(buffer.getNumSamples());
         }
 
         if (nextPreset) {

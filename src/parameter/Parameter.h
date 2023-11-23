@@ -29,10 +29,12 @@ namespace imagiro {
         using Listener = ParameterListener;
         Parameter(juce::String uid, juce::String name,
                   ParameterConfig config, bool internal = false,
+                  bool isMetaParam = false,
                   bool automatable = true, int versionHint=1);
 
         Parameter(juce::String uid, juce::String name,
                   std::vector<ParameterConfig> config, bool internal = false,
+                  bool isMetaParam = false,
                   bool automatable = true, int versionHint=1);
 
         ~Parameter() override;
@@ -52,6 +54,7 @@ namespace imagiro {
          * note - does not map back to value01
          */
         float getProcessorValue() const;
+        float getProcessorValue(float userValue) const;
 
         /*!
          * @return the user value - what the user sees
@@ -144,7 +147,6 @@ namespace imagiro {
         float getValueForText (const juce::String& text) const override;
 
         bool isOrientationInverted() const override;
-        bool isAutomatable() const override;
         bool isMetaParameter() const override;
 
         const juce::NormalisableRange<float>& getNormalisableRange() const override;
@@ -160,12 +162,13 @@ namespace imagiro {
         void setLocked(bool locked);
         bool isLocked() const;
 
-        void generateSmoothedValueBlock(int samples);
-        float getSmoothedValue(int blockIndex);
-        float getSmoothedUserValue(int blockIndex);
+        void generateSmoothedProcessorValueBlock(int samples);
+        float getSmoothedProcessorValue(int blockIndex);
         void setSmoothTime(float seconds);
+        juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer() { return smoothedValueBuffer; }
 
     protected:
+        bool isMetaParam {false};
         bool internal {false};
         ModulationMatrix* modMatrix = nullptr;
         int modIndex = -1;

@@ -10,13 +10,14 @@
 namespace imagiro {
 
     Parameter::Parameter(juce::String uid, juce::String name,
-                         ParameterConfig config, bool internal,
+                         ParameterConfig config, bool meta, bool internal,
                          bool automatable, int versionHint)
 
             : juce::RangedAudioParameter({uid, versionHint}, name,
                                          juce::AudioProcessorParameterWithIDAttributes()
                                                  .withAutomatable (automatable)),
-              configs({config}),
+              configs({std::move(config)}),
+              isMetaParam(meta),
               internal(internal),
               uid(uid),
               name(name)
@@ -26,13 +27,14 @@ namespace imagiro {
     }
 
     Parameter::Parameter(juce::String uid, juce::String name,
-                         std::vector<ParameterConfig> configs, bool internal,
+                         std::vector<ParameterConfig> configs, bool meta, bool internal,
                          bool automatable, int versionHint)
 
             : juce::RangedAudioParameter({uid, versionHint}, name,
                                          juce::AudioProcessorParameterWithIDAttributes()
                                                  .withAutomatable (automatable)),
               configs(std::move(configs)),
+              isMetaParam(meta),
               internal(internal),
               uid(uid),
               name(name)
@@ -60,6 +62,11 @@ namespace imagiro {
             return getConfig()->processorConversionFunction(value01);
         else
             return getUserValue();
+    }
+
+    float Parameter::getProcessorValue(float userValue) const {
+        if (!getConfig()->processorConversionFunction) return userValue;
+        else return getConfig()->processorConversionFunction(userValue);
     }
 
     bool Parameter::getBoolValue() const {
@@ -233,8 +240,7 @@ namespace imagiro {
     }
 
     bool Parameter::isOrientationInverted() const { return false; }
-    bool Parameter::isAutomatable() const { return true; }
-    bool Parameter::isMetaParameter() const { return false; }
+    bool Parameter::isMetaParameter() const { return isMetaParam; }
 
     const juce::NormalisableRange<float> &Parameter::getNormalisableRange() const {
         return getConfig()->range;
@@ -287,23 +293,20 @@ namespace imagiro {
         return locked;
     }
 
-    void Parameter::generateSmoothedValueBlock(int samples) {
+    void Parameter::generateSmoothedProcessorValueBlock(int samples) {
         if (smootherNeedsUpdate) valueSmoother.reset(sampleRate, smoothTimeSeconds);
 
         auto target = getValue();
         valueSmoother.setTargetValue(target);
         for (auto s=0; s<samples; s++) {
             auto v = valueSmoother.getNextValue();
-            smoothedValueBuffer.setSample(0, s, v);
+            auto processorValue = getProcessorValue(convertFrom0to1(v));
+            smoothedValueBuffer.setSample(0, s, processorValue);
         }
     }
 
-    float Parameter::getSmoothedValue(int blockIndex) {
+    float Parameter::getSmoothedProcessorValue(int blockIndex) {
         return smoothedValueBuffer.getSample(0, blockIndex);
-    }
-
-    float Parameter::getSmoothedUserValue(int blockIndex) {
-        return convertFrom0to1(getSmoothedValue(blockIndex), false);
     }
 
     void Parameter::setSmoothTime(float seconds) {

@@ -97,6 +97,9 @@ namespace imagiro {
         } else if (type == "db") {
             config.textFunction = DisplayFunctions::dbDisplay;
             config.valueFunction = DisplayFunctions::dbInput;
+            config.processorConversionFunction = [](float val) {
+                return juce::Decibels::decibelsToGain(val);
+            };
         } else if (type == "time") {
             config.textFunction = DisplayFunctions::timeDisplay;
             config.valueFunction = DisplayFunctions::timeInput;
@@ -201,6 +204,7 @@ namespace imagiro {
                                                               const juce::String& namePrefix, int index) {
         auto name = namePrefix + str(p["name"]);
         auto internal = getBool(p, "internal", false);
+        auto isMetaParameter = getBool(p, "meta", false);
 
         // Multi-configs
         if (p["configs"]) {
@@ -210,7 +214,7 @@ namespace imagiro {
                 configs.push_back(loadConfig(uid, configName, config.second, index));
             }
 
-            return std::make_unique<Parameter>(uid, name, configs, internal);
+            return std::make_unique<Parameter>(uid, name, configs, isMetaParameter, internal);
         }
 
         // Single config
