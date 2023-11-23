@@ -12,14 +12,21 @@
 
 #include "../preset/Preset.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
-#include <version.h>
 
 #ifndef PROJECT_NAME
-    #define PROJECT_NAME "myplugin"
+    #ifdef JucePlugin_Name
+        #define PROJECT_NAME JucePlugin_Name
+    #else
+        #define PROJECT_NAME "myplugin"
+    #endif
 #endif
 
 #ifndef COMPANY_NAME
-    #define COMPANY_NAME "mycompany"
+#ifdef JucePlugin_Manufacturer
+        #define COMPANY_NAME JucePlugin_Manufacturer
+    #else
+        #define COMPANY_NAME "mycompany"
+    #endif
 #endif
 
 class Resources {
