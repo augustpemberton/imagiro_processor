@@ -12,6 +12,7 @@
 
 #include "../preset/Preset.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
+#include <version.h>
 
 #ifndef PROJECT_NAME
     #define PROJECT_NAME "myplugin"
@@ -32,6 +33,21 @@ public:
 #endif
                 .getChildFile (COMPANY_NAME)
                         .getChildFile (PROJECT_NAME);
+
+        if (!dataFolder.exists())
+            dataFolder.createDirectory();
+
+        return dataFolder;
+    }
+
+    static juce::File getSytemDataFolder() {
+
+        auto dataFolder = juce::File::getSpecialLocation (juce::File::commonApplicationDataDirectory)
+#if JUCE_MAC
+                .getChildFile ("Application Support")
+#endif
+                .getChildFile (COMPANY_NAME)
+                .getChildFile (PROJECT_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
