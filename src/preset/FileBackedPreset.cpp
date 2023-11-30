@@ -10,8 +10,8 @@ FileBackedPreset::FileBackedPreset() {
 
 }
 
-FileBackedPreset::FileBackedPreset(const Preset& p, juce::File f)
-        : preset(p), file(std::move(f))
+FileBackedPreset::FileBackedPreset(Preset  p, juce::File f)
+        : preset(std::move(p)), file(std::move(f))
 {
 }
 
@@ -54,7 +54,7 @@ FileBackedPreset FileBackedPreset::save(Preset p, const std::string& category) {
 
     FileBackedPreset fbp (p, file);
     fbp.save();
-    juce::SharedResourcePointer<Resources>()->reloadPresetsMap();
+    juce::SharedResourcePointer<Resources>()->reloadPresets();
     return fbp;
 }
 

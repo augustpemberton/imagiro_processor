@@ -47,7 +47,7 @@ public:
         return dataFolder;
     }
 
-    static juce::File getSytemDataFolder() {
+    static juce::File getSystemDataFolder() {
 
         auto dataFolder = juce::File::getSpecialLocation (juce::File::commonApplicationDataDirectory)
 #if JUCE_MAC
@@ -76,6 +76,11 @@ public:
         auto folder = getDataFolder().getChildFile("Presets");
         if (!folder.exists()) folder.createDirectory();
         return folder;
+    }
+
+    void reloadPresets() {
+        reloadPresetsList();
+        reloadPresetsMap();
     }
 
     void reloadPresetsMap() {
@@ -108,8 +113,8 @@ public:
     }
 
     std::vector<FileBackedPreset> cachedPresetsList;
-    std::vector<FileBackedPreset> getPresetsList(bool reload = false) {
-        if (!cachedPresetsList.empty() && !reload) return cachedPresetsList;
+
+    void reloadPresetsList() {
         std::vector<FileBackedPreset> presetsList;
         auto categories = getPresets();
         for (const auto& category : categories) {
@@ -119,7 +124,11 @@ public:
         }
 
         cachedPresetsList = presetsList;
-        return presetsList;
+    }
+
+    std::vector<FileBackedPreset> getPresetsList(bool reload = false) {
+        if (cachedPresetsList.empty() || reload) reloadPresetsList();
+        return cachedPresetsList;
     }
 
     FileBackedPreset getNextPreset(juce::File lastLoadedPresetFile) {
