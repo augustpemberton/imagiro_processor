@@ -306,6 +306,10 @@ namespace imagiro {
     }
 
     float Parameter::getSmoothedProcessorValue(int blockIndex) {
+        if (!hasGeneratedSmoothBufferThisBlock) {
+            generateSmoothedProcessorValueBlock(samplesThisBlock);
+            hasGeneratedSmoothBufferThisBlock = true;
+        }
         return smoothedValueBuffer.getSample(0, blockIndex);
     }
 
@@ -319,5 +323,18 @@ namespace imagiro {
         valueSmoother.reset(sr, smoothTimeSeconds);
         smoothedValueBuffer.setSize(1, samplesPerBlock);
         smoothedValueBuffer.clear();
+    }
+
+    void Parameter::startBlock(int samples) {
+        samplesThisBlock = samples;
+        hasGeneratedSmoothBufferThisBlock = false;
+    }
+
+    juce::AudioSampleBuffer &Parameter::getSmoothedProcessorValueBuffer() {
+        if (!hasGeneratedSmoothBufferThisBlock) {
+            generateSmoothedProcessorValueBlock(samplesThisBlock);
+            hasGeneratedSmoothBufferThisBlock = true;
+        }
+        return smoothedValueBuffer;
     }
 }

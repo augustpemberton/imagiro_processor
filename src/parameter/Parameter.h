@@ -162,10 +162,10 @@ namespace imagiro {
         void setLocked(bool locked);
         bool isLocked() const;
 
-        void generateSmoothedProcessorValueBlock(int samples);
+        void startBlock(int samples);
         float getSmoothedProcessorValue(int blockIndex);
         void setSmoothTime(float seconds);
-        juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer() { return smoothedValueBuffer; }
+        juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer();
 
     protected:
         bool isMetaParam {false};
@@ -195,6 +195,9 @@ namespace imagiro {
         float smoothTimeSeconds {0.01f};
         double sampleRate;
         std::atomic<bool> smootherNeedsUpdate {false};
+        int samplesThisBlock {0};
+        bool hasGeneratedSmoothBufferThisBlock {false};
+        void generateSmoothedProcessorValueBlock(int samples);
     };
 
 }
