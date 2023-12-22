@@ -117,7 +117,7 @@ public:
 
     void reloadPresetsList() {
         std::vector<FileBackedPreset> presetsList;
-        auto categories = getPresets();
+        auto categories = cachedPresetsMap;
         for (const auto& category : categories) {
             for (const auto& preset : category.second) {
                 presetsList.push_back(preset);
