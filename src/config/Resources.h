@@ -79,7 +79,6 @@ public:
     }
 
     void reloadPresets() {
-        reloadPresetsList();
         reloadPresetsMap();
     }
 
@@ -103,6 +102,8 @@ public:
             presetsMap[folder.getFileNameWithoutExtension()] = categoryPresets;
         }
         cachedPresetsMap = presetsMap;
+
+        reloadPresetsList();
     }
 
     std::map<juce::String, std::vector<FileBackedPreset>> cachedPresetsMap;
