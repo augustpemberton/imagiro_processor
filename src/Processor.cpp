@@ -4,6 +4,7 @@
 
 #include "Processor.h"
 #include "choc/text/choc_JSON.h"
+#include <version.h>
 
 namespace imagiro {
 
