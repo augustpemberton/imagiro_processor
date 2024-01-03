@@ -12,7 +12,7 @@ VersionManager::VersionManager(juce::String currentVersion_, juce::String plugin
 }
 
 VersionManager::~VersionManager() {
-    stopThread(50);
+    stopThread(500);
 }
 
 std::optional<juce::String> VersionManager::isUpdateAvailable() {
