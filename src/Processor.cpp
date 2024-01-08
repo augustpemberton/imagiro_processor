@@ -35,13 +35,16 @@ namespace imagiro {
     }
 
     Parameter* Processor::addParam (std::unique_ptr<Parameter> p) {
-        if (p->getUID() == "bypass") p->addListener(this);
+        if (p->getUID() == "bypass") {
+            p->addListener(this);
+        }
 
         auto rawPtr = p.get();
         allParameters.add (rawPtr);
         parameterMap[p->getUID()] = rawPtr;
         if (p->isInternal()) internalParameters.add (p.release());
         else addParameter (p.release());
+
         return rawPtr;
     }
 
@@ -220,7 +223,7 @@ namespace imagiro {
         }
     }
 
-    void Processor::parameterChanged(imagiro::Parameter *param) {
+    void Processor::parameterChangedSync(imagiro::Parameter *param) {
         if (param->getUID() == "bypass") {
             bypassGain.setTargetValue(param->getValue());
         }

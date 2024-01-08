@@ -40,6 +40,7 @@ namespace imagiro {
               name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
+        startTimerHz(20);
     }
 
     Parameter::~Parameter() noexcept {
@@ -153,11 +154,11 @@ namespace imagiro {
         }
     }
 
-    void Parameter::addListener (Listener* listener) {
+    void Parameter::addListener (Parameter::Listener* listener) {
         listeners.add (listener);
     }
 
-    void Parameter::removeListener (Listener* listener) {
+    void Parameter::removeListener (Parameter::Listener* listener) {
         listeners.remove (listener);
     }
 
