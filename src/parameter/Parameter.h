@@ -18,7 +18,7 @@ namespace imagiro {
         virtual ~ParameterListener() = default;
         virtual void parameterChanged (Parameter* param) {}
         virtual void parameterChangedSync (Parameter* param) {}
-        virtual void rangeChanged(Parameter* param) {}
+        virtual void configChanged(Parameter* param) {}
         virtual void gestureStarted(Parameter* param) {}
         virtual void gestureEnded(Parameter* param) {}
     };

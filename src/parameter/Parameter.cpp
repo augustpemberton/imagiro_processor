@@ -40,6 +40,7 @@ namespace imagiro {
               name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
+        startTimerHz(20);
     }
 
     Parameter::~Parameter() noexcept {
@@ -281,7 +282,7 @@ namespace imagiro {
 
         configIndex = index;
 
-        listeners.call(&Listener::rangeChanged, this);
+        listeners.call(&Listener::configChanged, this);
         setUserValueNotifyingHost(uv, true);
     }
 
