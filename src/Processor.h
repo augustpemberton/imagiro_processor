@@ -88,7 +88,7 @@ namespace imagiro {
         void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
         virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
 
-        void parameterChanged(imagiro::Parameter *param) override;
+        void parameterChangedSync(imagiro::Parameter *param) override;
         std::map<juce::String, Parameter*> parameterMap;
         virtual juce::String getParametersYAMLString();
 

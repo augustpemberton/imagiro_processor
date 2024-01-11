@@ -154,11 +154,11 @@ namespace imagiro {
         }
     }
 
-    void Parameter::addListener (Listener* listener) {
+    void Parameter::addListener (Parameter::Listener* listener) {
         listeners.add (listener);
     }
 
-    void Parameter::removeListener (Listener* listener) {
+    void Parameter::removeListener (Parameter::Listener* listener) {
         listeners.remove (listener);
     }
 
