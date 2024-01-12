@@ -51,7 +51,7 @@ namespace imagiro {
     }
 
     DisplayValue DisplayFunctions::dbDisplay(const Parameter& p, float db) {
-        if (db <= -60) return {"-inf", "db"};
+        if (db <= -60) return {"-inf", ""};
 
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2) << db;
