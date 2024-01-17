@@ -97,6 +97,9 @@ namespace imagiro {
 
         float getCpuLoad();
 
+        virtual void loadPreset(Preset preset);
+        virtual void loadPreset(FileBackedPreset preset);
+
     protected:
         AuthorizationManager authManager;
         VersionManager versionManager;
@@ -109,8 +112,6 @@ namespace imagiro {
         juce::ListenerList<BPMListener> bpmListeners;
 
         std::unique_ptr<Preset> nextPreset;
-        virtual void loadPreset(FileBackedPreset preset);
-        virtual void loadPreset(Preset preset);
 
         void updateTrackProperties(const juce::AudioProcessor::TrackProperties& newProperties) override;
         juce::AudioProcessor::TrackProperties trackProperties;
