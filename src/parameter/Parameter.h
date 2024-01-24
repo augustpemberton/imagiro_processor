@@ -21,6 +21,7 @@ namespace imagiro {
         virtual void configChanged(Parameter* param) {}
         virtual void gestureStarted(Parameter* param) {}
         virtual void gestureEnded(Parameter* param) {}
+        virtual void lockChanged(Parameter* param) {}
     };
 
     class ModulationMatrix;

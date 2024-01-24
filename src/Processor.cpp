@@ -251,7 +251,9 @@ namespace imagiro {
     void Processor::loadPreset(Preset preset) {
         for (const auto& paramState : preset.getParamStates()) {
             if (auto param = getParameter(paramState.uid)) {
-                param->setUserValueAsUserAction(paramState.value);
+                if (!param->isLocked()) {
+                    param->setUserValueAsUserAction(paramState.value);
+                }
             }
         }
 

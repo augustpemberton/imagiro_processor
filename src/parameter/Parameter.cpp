@@ -288,6 +288,7 @@ namespace imagiro {
 
     void Parameter::setLocked(bool l) {
         locked = l;
+        listeners.call(&Listener::lockChanged, this);
     }
 
     bool Parameter::isLocked() const {
