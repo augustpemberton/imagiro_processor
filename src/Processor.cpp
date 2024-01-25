@@ -234,12 +234,16 @@ namespace imagiro {
     }
 
     Preset Processor::createPreset(const juce::String &name, bool isDAWSaveState) {
-        Preset p;
+        Preset p (isDAWSaveState);
         p.setName(name.toStdString());
 
         for (auto parameter : getPluginParameters()) {
-            if (parameter->getUID() == "bypass") continue;
-            p.addParamState(parameter->getState());
+            if (!isDAWSaveState) {
+                if (parameter->getUID() == "bypass") continue;
+            }
+            auto paramState = parameter->getState();
+            if (!isDAWSaveState) paramState.locked = false;
+            p.addParamState(paramState);
         }
 
         return p;
@@ -251,8 +255,8 @@ namespace imagiro {
     void Processor::loadPreset(Preset preset) {
         for (const auto& paramState : preset.getParamStates()) {
             if (auto param = getParameter(paramState.uid)) {
-                if (!param->isLocked()) {
-                    param->setUserValueAsUserAction(paramState.value);
+                if (!param->isLocked() || preset.isDAWSaveState()) {
+                    param->setState(paramState);
                 }
             }
         }

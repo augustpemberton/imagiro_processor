@@ -11,7 +11,7 @@
 
 class Preset {
 public:
-    Preset();
+    Preset(bool isDAWSaveState = false);
 
     virtual choc::value::Value getState() const;
     static Preset fromState(const choc::value::ValueView& state);
@@ -26,7 +26,10 @@ public:
 
     choc::value::Value& getData() { return data; }
 
+    bool isDAWSaveState() { return dawState; }
+
 protected:
+    bool dawState {false};
     std::string name;
     choc::value::Value data;
 

@@ -179,6 +179,7 @@ namespace imagiro {
 
     void Parameter::setState (const ParamState& state) {
         jassert (state.uid == uid);
+        setUserValueAsUserAction(state.value);
 
         for (auto c=0; c<configs.size(); c++) {
             if (configs[c].name == state.config) {
@@ -187,8 +188,6 @@ namespace imagiro {
         }
 
         setLocked(state.locked);
-
-        setUserValueNotifyingHost(state.value);
     }
 
     float Parameter::getValue() const {

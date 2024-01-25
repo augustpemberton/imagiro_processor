@@ -6,18 +6,18 @@
 #include "../config/Resources.h"
 
 
-Preset::Preset()
-    : data(choc::value::createObject("PresetData"))
-{
-
+Preset::Preset(bool d)
+    : dawState(d),
+      data(choc::value::createObject("PresetData")) {
 }
 
 choc::value::Value Preset::getState() const {
     auto state = choc::value::createObject("Preset");
     state.addMember("name", name);
+    state.addMember("dawState", dawState);
 
     auto paramStatesValue = choc::value::createEmptyArray();
-    for (auto p : paramStates) {
+    for (const auto& p: paramStates) {
         paramStatesValue.addArrayElement(p.getState());
     }
 
@@ -31,9 +31,10 @@ Preset Preset::fromState(const choc::value::ValueView &state) {
     Preset p;
     if (!state.isObject()) return p;
 
+    p.dawState = state["dawState"].getWithDefault(false);
     p.name = state["name"].getWithDefault("init");
 
-    for (auto paramState : state["paramStates"]) {
+    for (auto paramState: state["paramStates"]) {
         p.paramStates.push_back(imagiro::Parameter::ParamState::fromState(paramState));
     }
 
