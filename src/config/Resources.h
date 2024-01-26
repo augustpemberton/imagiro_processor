@@ -13,11 +13,13 @@
 #include "../preset/Preset.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 
-#ifndef PLUGIN_NAME
-    #ifdef JucePlugin_Name
-        #define PLUGIN_NAME JucePlugin_Name
+#ifndef RESOURCE_NAME
+    #ifdef RESOURCE_NAME
+        #define RESOURCE_NAME RESOURCE_NAME
+    #elif defined(JucePlugin_Name)
+        #define RESOURCE_NAME JucePlugin_Name
     #else
-        #define PLUGIN_NAME "myplugin"
+        #define RESOURCE_NAME "myplugin"
     #endif
 #endif
 
@@ -39,7 +41,7 @@ public:
                 .getChildFile ("Application Support")
 #endif
                 .getChildFile (COMPANY_NAME)
-                        .getChildFile (PLUGIN_NAME);
+                        .getChildFile (RESOURCE_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
@@ -54,7 +56,7 @@ public:
                 .getChildFile ("Application Support")
 #endif
                 .getChildFile (COMPANY_NAME)
-                .getChildFile (PLUGIN_NAME);
+                .getChildFile (RESOURCE_NAME);
 
         if (!dataFolder.exists())
             dataFolder.createDirectory();
@@ -82,7 +84,7 @@ public:
         reloadPresetsMap();
     }
 
-    void reloadPresetsMap() {
+    void reloadPresetsMap(imagiro::Processor* validateProcessor = nullptr) {
         std::map<juce::String, std::vector<FileBackedPreset>> presetsMap;
         auto categories = getPresetsFolder().findChildFiles(juce::File::findDirectories, false);
         categories.sort();
@@ -90,7 +92,7 @@ public:
             auto ps = folder.findChildFiles(juce::File::findFiles, false, "*.impreset");
             std::vector<FileBackedPreset> categoryPresets;
             for (const auto& p: ps) {
-                auto preset = FileBackedPreset::createFromFile(p);
+                auto preset = FileBackedPreset::createFromFile(p, validateProcessor);
                 if (preset.has_value())
                     categoryPresets.push_back(*preset);
             }

@@ -14,7 +14,7 @@ public:
     Preset(bool isDAWSaveState = false);
 
     virtual choc::value::Value getState() const;
-    static Preset fromState(const choc::value::ValueView& state);
+    static Preset fromState(const choc::value::ValueView& state, imagiro::Processor* validateProcessor = nullptr);
 
     void addParamState(imagiro::Parameter::ParamState param);
     std::vector<imagiro::Parameter::ParamState> getParamStates() const;
@@ -26,7 +26,8 @@ public:
 
     choc::value::Value& getData() { return data; }
 
-    bool isDAWSaveState() { return dawState; }
+    bool isDAWSaveState() const { return dawState; }
+    bool isAvailable() const { return available; }
 
 protected:
     bool dawState {false};
@@ -36,6 +37,7 @@ protected:
     std::vector<imagiro::Parameter::ParamState> paramStates;
 
     bool validPreset;
+    bool available {true};
 
     JUCE_LEAK_DETECTOR (Preset)
 };

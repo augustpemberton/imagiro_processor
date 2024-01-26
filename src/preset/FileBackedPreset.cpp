@@ -19,19 +19,18 @@ juce::File FileBackedPreset::getFile() const {
     return file;
 }
 
-std::optional<FileBackedPreset> FileBackedPreset::createFromFile(const juce::File &file) {
+std::optional<FileBackedPreset> FileBackedPreset::createFromFile(const juce::File &file, imagiro::Processor* validateProcessor) {
     auto presetString= file.loadFileAsString();
     if (presetString.isEmpty()) return {};
     auto s = choc::json::parse(presetString.toStdString());
 
-    Preset preset = Preset::fromState(s);
+    Preset preset = Preset::fromState(s, validateProcessor);
     return {FileBackedPreset(preset, file)};
 }
 
 choc::value::Value FileBackedPreset::getState() const {
     auto presetState = preset.getState();
     presetState.addMember("path", getPresetRelativePath().toStdString());
-
     presetState.addMember("favorite", Resources::isPresetFavorite(*this));
     return presetState;
 }

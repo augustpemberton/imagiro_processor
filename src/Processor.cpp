@@ -64,13 +64,19 @@ namespace imagiro {
     void Processor::removePresetListener(PresetListener *l) { presetListeners.remove(l); }
 
     void Processor::queuePreset(const FileBackedPreset& p, bool waitUntilAudioThread) {
+        if (!p.getPreset().isAvailable()) return;
         lastLoadedPreset = p;
         queuePreset(p.getPreset(), waitUntilAudioThread);
     }
 
     void Processor::queuePreset(const Preset& p, bool waitUntilAudioThread) {
+        if (!p.isAvailable()) return;
         if (waitUntilAudioThread) nextPreset = std::make_unique<Preset>(p);
         else loadPreset(p);
+    }
+
+    bool Processor::isPresetAvailable(Preset& preset) {
+        return true;
     }
 
     void Processor::getStateInformation(juce::MemoryBlock &destData) {

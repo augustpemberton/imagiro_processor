@@ -23,11 +23,12 @@ choc::value::Value Preset::getState() const {
 
     state.addMember("paramStates", paramStatesValue);
     state.addMember("data", data);
+    state.addMember("available", available);
 
     return state;
 }
 
-Preset Preset::fromState(const choc::value::ValueView &state) {
+Preset Preset::fromState(const choc::value::ValueView &state, imagiro::Processor* validateProcessor) {
     Preset p;
     if (!state.isObject()) return p;
 
@@ -39,6 +40,7 @@ Preset Preset::fromState(const choc::value::ValueView &state) {
     }
 
     p.data = state["data"];
+    if (validateProcessor != nullptr) p.available = validateProcessor->isPresetAvailable(p);
 
     return p;
 }

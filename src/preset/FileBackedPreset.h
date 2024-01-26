@@ -11,7 +11,7 @@ public:
     FileBackedPreset (Preset  p, juce::File file);
     choc::value::Value getState() const;
 
-    static std::optional<FileBackedPreset> createFromFile(const juce::File& file);
+    static std::optional<FileBackedPreset> createFromFile(const juce::File& file, imagiro::Processor* validateProcessor = nullptr);
     void saveToFile(juce::File f);
     void save();
 
