@@ -118,7 +118,9 @@ namespace imagiro {
     DisplayValue DisplayFunctions::semitoneDisplay(const Parameter& p, float st) {
         int semis = static_cast<int>(round(st));
         int cents = static_cast<int>((st - semis) * 100);
-        return {juce::String(semis) + "st " + juce::String(cents) + "ct"};
+
+        std::string centString = (cents >= 0 ? "+" : "-") + std::to_string(abs(cents)) + "ct";
+        return {juce::String(semis) + "st " + centString};
     }
 
     float DisplayFunctions::semitoneInput(const Parameter& p, juce::String input) {
