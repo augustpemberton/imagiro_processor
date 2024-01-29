@@ -8,11 +8,16 @@ VersionManager::VersionManager(juce::String currentVersion_, juce::String plugin
         : juce::Thread("update check"),
           currentVersion(currentVersion_), pluginSlug(pluginSlug_)
 {
-    checkForUpdate();
+    startTimer(2000); // delay update check for VST3 manifest
 }
 
 VersionManager::~VersionManager() {
     stopThread(500);
+}
+
+void VersionManager::timerCallback() {
+    stopTimer();
+    checkForUpdate();
 }
 
 std::optional<juce::String> VersionManager::isUpdateAvailable() {

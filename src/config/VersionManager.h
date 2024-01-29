@@ -4,7 +4,7 @@
 
 #pragma once
 
-class VersionManager : juce::Thread {
+class VersionManager : juce::Thread, juce::Timer {
 public:
     VersionManager(juce::String currentVersion, juce::String pluginSlug);
     ~VersionManager();
@@ -21,6 +21,8 @@ public:
 
     juce::String getCurrentVersion();
     juce::String getUpdateURL();
+
+    void timerCallback() override;
 
 private:
     juce::ListenerList<Listener> listeners;
