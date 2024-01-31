@@ -49,6 +49,13 @@ void Preset::addParamState(imagiro::Parameter::ParamState param) {
     paramStates.push_back(param);
 }
 
+void Preset::removeParamState(juce::String paramID) {
+    paramStates.erase(
+            std::remove_if(paramStates.begin(), paramStates.end(), [&](imagiro::Parameter::ParamState& state){
+                return state.uid == paramID;
+            }), paramStates.end());
+}
+
 std::vector<imagiro::Parameter::ParamState> Preset::getParamStates() const {
     return paramStates;
 }

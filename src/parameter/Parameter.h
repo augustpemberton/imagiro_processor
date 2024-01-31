@@ -144,6 +144,7 @@ namespace imagiro {
         juce::String getLabel() const override;
 
         int getNumSteps() const override;
+        bool isDiscrete() const override;
         juce::String getText (float value, int /*maximumStringLength*/) const override;
         float getValueForText (const juce::String& text) const override;
 

@@ -197,7 +197,7 @@ namespace imagiro {
 
     void Parameter::setValue (float valueIn) {
         valueIn = juce::jlimit (0.0f, 1.0f, valueIn);
-        float newValue = convertFrom0to1(valueIn, true);
+        float newValue = getUserRange().snapToLegalValue(convertFrom0to1(valueIn, true));
 
         if (!almostEqual (value01.load(), convertTo0to1(newValue))) {
             value01 = convertTo0to1(newValue);
@@ -221,7 +221,13 @@ namespace imagiro {
 
     int Parameter::getNumSteps() const {
         if (almostEqual(getConfig()->range.interval, 0.f)) return 100;
-        return juce::roundToInt ((getConfig()->range.end -getConfig()->range.start) /getConfig()->range.interval);
+        auto steps = juce::roundToInt (getConfig()->range.getRange().getLength() / getConfig()->range.interval);
+        return steps;
+    }
+
+    bool Parameter::isDiscrete() const {
+        auto discrete = getConfig()->discrete;
+        return discrete;
     }
 
     juce::String Parameter::getText (float val, int /*maximumStringLength*/) const
@@ -275,10 +281,10 @@ namespace imagiro {
     }
 
     void Parameter::setConfig(int index) {
+        if (index == configIndex) return;
+
         auto uv = getUserValue();
-
         index %= configs.size();
-
         configIndex = index;
 
         listeners.call(&Listener::configChanged, this);

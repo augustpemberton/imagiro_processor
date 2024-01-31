@@ -11,6 +11,7 @@ namespace imagiro {
     class DisplayValue;
     struct ParameterConfig {
         juce::NormalisableRange<float> range {0, 1};
+        bool discrete {false};
         float defaultValue {0};
         std::function<float(float)> processorConversionFunction {nullptr};
         std::function<DisplayValue(const Parameter&, float)> textFunction {nullptr};

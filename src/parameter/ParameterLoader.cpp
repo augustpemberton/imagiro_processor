@@ -73,6 +73,9 @@ namespace imagiro {
         auto range = getRange(parameterID, p["range"]);
         auto reverse = getBool(p, "reverse", false);
 
+        auto numSteps = range.getRange().getLength() / (float)range.interval;
+        auto discrete = numSteps < 100;
+
         float defaultVal = 0;
         if (p["default"].Type() == YAML::NodeType::Scalar)
             defaultVal = getFloat(p, "default", 0);
@@ -81,7 +84,7 @@ namespace imagiro {
             defaultVal = p["default"][std::min(index, (int)size - 1)].as<float>();
         }
 
-        ParameterConfig config {range, defaultVal};
+        ParameterConfig config {range, discrete, defaultVal};
         config.name = std::move(configName);
         config.reverse = reverse;
         config.textFunction = [&] (const Parameter& p, float val) -> DisplayValue { return {juce::String(val)}; };
@@ -118,6 +121,9 @@ namespace imagiro {
             config.valueFunction = DisplayFunctions::degreeInput;
         } else if (type == "toggle") {
             config.range = {0, 1, 1};
+            config.textFunction = [](const Parameter& p, float choice)->DisplayValue {
+                return {p.getBoolValue() ? "on" : "off"};
+            };
         } else if (type == "semitone") {
             config.textFunction = DisplayFunctions::semitoneDisplay;
             config.valueFunction = DisplayFunctions::semitoneInput;

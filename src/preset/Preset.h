@@ -17,6 +17,7 @@ public:
     static Preset fromState(const choc::value::ValueView& state, imagiro::Processor* validateProcessor = nullptr);
 
     void addParamState(imagiro::Parameter::ParamState param);
+    void removeParamState(juce::String paramID);
     std::vector<imagiro::Parameter::ParamState> getParamStates() const;
 
     bool isValid() const { return validPreset; }
