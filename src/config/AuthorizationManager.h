@@ -4,6 +4,7 @@
 
 #pragma once
 #include <juce_data_structures/juce_data_structures.h>
+#include "Resources.h"
 
 class AuthorizationManager {
 public:
@@ -27,5 +28,6 @@ private:
     void saveSerial(juce::String serial);
     std::atomic<bool> isAuthorizedCache {false};
 
-    std::unique_ptr<juce::PropertiesFile> properties;
+    juce::SharedResourcePointer<Resources> resources;
+    std::unique_ptr<juce::PropertiesFile>& getProperties() { return resources->getConfigFile(); }
 };

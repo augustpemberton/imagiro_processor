@@ -5,7 +5,6 @@
 #include "AuthorizationManager.h"
 
 AuthorizationManager::AuthorizationManager()
-: properties(Resources::getConfigFile())
 {
     loadSavedAuth();
 }
@@ -33,12 +32,12 @@ bool AuthorizationManager::tryAuth(juce::String serial) {
 }
 
 void AuthorizationManager::saveSerial(juce::String serial) {
-    properties->reload();
-    properties->setValue("serial", serial);
+    getProperties()->reload();
+    getProperties()->setValue("serial", serial);
 
-    properties->removeValue("demoStarted");
-    properties->removeValue("demoStartTime");
-    properties->save();
+    getProperties()->removeValue("demoStarted");
+    getProperties()->removeValue("demoStartTime");
+    getProperties()->save();
 
     loadSavedAuth();
 }
@@ -51,7 +50,7 @@ void AuthorizationManager::loadSavedAuth() {
         return;
     }
 
-    auto savedSerial = properties->getValue("serial", "");
+    auto savedSerial = getProperties()->getValue("serial", "");
     if (savedSerial == "") return;
     if (!isSerialValid(savedSerial)) return;
 
@@ -67,9 +66,9 @@ bool AuthorizationManager::isSerialValid(juce::String serial) {
 
 void AuthorizationManager::startDemo() {
     if (hasDemoStarted()) return;
-    properties->setValue("demoStarted", true);
-    properties->setValue("demoStartTime", juce::Time::currentTimeMillis());
-    properties->saveIfNeeded();
+    getProperties()->setValue("demoStarted", true);
+    getProperties()->setValue("demoStartTime", juce::Time::currentTimeMillis());
+    getProperties()->saveIfNeeded();
 
     loadSavedAuth();
 }
@@ -80,7 +79,7 @@ bool AuthorizationManager::isDemoActive() {
 }
 
 bool AuthorizationManager::hasDemoStarted() {
-    return properties->getBoolValue("demoStarted", false);
+    return getProperties()->getBoolValue("demoStarted", false);
 }
 
 bool AuthorizationManager::hasDemoFinished() {
@@ -92,7 +91,7 @@ juce::RelativeTime AuthorizationManager::getDemoTimeLeft() {
     if (!hasDemoStarted()) return juce::RelativeTime(0);
 
     const static auto demoLength = juce::RelativeTime(60*60*24*5);
-    auto demoStartTime = juce::Time(properties->getDoubleValue("demoStartTime"));
+    auto demoStartTime = juce::Time(getProperties()->getDoubleValue("demoStartTime"));
     auto demoEndTime = demoStartTime + demoLength;
 
     if (demoEndTime < juce::Time::getCurrentTime()) return juce::RelativeTime(0);

@@ -34,6 +34,11 @@
 class Resources {
 
 public:
+    static juce::SharedResourcePointer<Resources> getInstance() {
+        return juce::SharedResourcePointer<Resources>();
+    }
+
+
     static juce::File getDataFolder() {
 
         auto dataFolder = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
@@ -64,20 +69,29 @@ public:
         return dataFolder;
     }
 
-    static std::unique_ptr<juce::PropertiesFile> getConfigFile() {
-        juce::PropertiesFile::Options options;
-        //options.storageFormat = juce::PropertiesFile::storeAsBinary;
+    std::unique_ptr<juce::PropertiesFile> propertiesFile;
+    std::unique_ptr<juce::PropertiesFile>& getConfigFile() {
+        if (!propertiesFile) {
+            juce::PropertiesFile::Options options;
+            //options.storageFormat = juce::PropertiesFile::storeAsBinary;
 
-        auto configFile = getDataFolder().getChildFile("config");
-        if (configFile.exists()) configFile.create();
+            auto configFile = getDataFolder().getChildFile("config");
+            if (configFile.exists()) configFile.create();
 
-        return std::make_unique<juce::PropertiesFile>(configFile, options);
+            propertiesFile = std::make_unique<juce::PropertiesFile>(configFile, options);
+        }
+
+        return propertiesFile;
     }
 
-    static juce::File getPresetsFolder() {
-        auto folder = getDataFolder().getChildFile("Presets");
-        if (!folder.exists()) folder.createDirectory();
-        return folder;
+    juce::File presetsFolder;
+    juce::File getPresetsFolder() {
+        if (!presetsFolder.exists()) {
+            auto folder = getDataFolder().getChildFile("Presets");
+            if (!folder.exists()) folder.createDirectory();
+            presetsFolder = folder;
+        }
+        return presetsFolder;
     }
 
     void reloadPresets() {
@@ -157,29 +171,32 @@ public:
         return *(it-1);
     }
 
-    static juce::ValueTree getFavoritesTree() {
-        auto favorites = std::make_unique<juce::XmlElement>("favorites");
-        if (getConfigFile()->containsKey("favorites")) {
-            favorites = getConfigFile()->getXmlValue("favorites");
+    std::optional<juce::ValueTree> favoritesTree;
+    juce::ValueTree getFavoritesTree() {
+        if (!favoritesTree.has_value()) {
+            auto favorites = std::make_unique<juce::XmlElement>("favorites");
+            if (getConfigFile()->containsKey("favorites")) {
+                favorites = getConfigFile()->getXmlValue("favorites");
+            }
+
+            favoritesTree = juce::ValueTree::fromXml(*favorites);
         }
-
-        return juce::ValueTree::fromXml(*favorites);
-
+        return favoritesTree.value();
     }
 
-    static bool isPresetFavorite(const FileBackedPreset& p) {
-        auto favoritesTree = getFavoritesTree();
+    bool isPresetFavorite(const FileBackedPreset& p) {
+        auto favTree = getFavoritesTree();
 
         return std::any_of(
-                favoritesTree.begin(),
-                favoritesTree.end(),
+                favTree.begin(),
+                favTree.end(),
                 [&](auto fav) {
                     return getPresetsFolder().getChildFile(
                             fav.getProperty("path", "").toString()) == p.getFile();
         });
     }
 
-    static void setPresetFavorite(FileBackedPreset& p, bool favorite = true) {
+    void setPresetFavorite(FileBackedPreset& p, bool favorite = true) {
         auto favoriteTree = getFavoritesTree();
 
         favoriteTree = (favorite ? addPresetFavorite(favoriteTree, p)
@@ -189,7 +206,7 @@ public:
     }
 
 private:
-    static juce::ValueTree addPresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
+    juce::ValueTree addPresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
         auto path = p.getFile().getRelativePathFrom(getPresetsFolder());
         auto newTree = juce::ValueTree("favorite")
                 .setProperty( "path", path, nullptr);
@@ -198,7 +215,7 @@ private:
         return favoriteTree;
     }
 
-    static juce::ValueTree removePresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
+    juce::ValueTree removePresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
         auto path = p.getFile().getRelativePathFrom(getPresetsFolder());
 
         for (auto i=0; i<favoriteTree.getNumChildren(); i++) {

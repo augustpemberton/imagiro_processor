@@ -31,7 +31,7 @@ std::optional<FileBackedPreset> FileBackedPreset::createFromFile(const juce::Fil
 choc::value::Value FileBackedPreset::getState() const {
     auto presetState = preset.getState();
     presetState.addMember("path", getPresetRelativePath().toStdString());
-    presetState.addMember("favorite", Resources::isPresetFavorite(*this));
+    presetState.addMember("favorite", Resources::getInstance()->isPresetFavorite(*this));
     return presetState;
 }
 
@@ -46,7 +46,8 @@ void FileBackedPreset::save() {
 }
 
 FileBackedPreset FileBackedPreset::save(Preset p, const std::string& category) {
-    auto categoryFolder = Resources::getPresetsFolder().getChildFile(category);
+    juce::SharedResourcePointer<Resources> resources;
+    auto categoryFolder = resources->getPresetsFolder().getChildFile(category);
     if (!categoryFolder.exists()) categoryFolder.createDirectory();
     auto file = categoryFolder.getChildFile(p.getName() + juce::String(PRESET_EXT).toStdString());
     file.create();
@@ -57,11 +58,9 @@ FileBackedPreset FileBackedPreset::save(Preset p, const std::string& category) {
     return fbp;
 }
 
-bool FileBackedPreset::getFavorite() { return Resources::isPresetFavorite(*this); }
-void FileBackedPreset::setFavorite(bool fav) { Resources::setPresetFavorite(*this, fav); }
+bool FileBackedPreset::getFavorite() { return Resources::getInstance()->isPresetFavorite(*this); }
+void FileBackedPreset::setFavorite(bool fav) { Resources::getInstance()->setPresetFavorite(*this, fav); }
 
 juce::String FileBackedPreset::getPresetRelativePath() const {
-    return file.getRelativePathFrom(Resources::getPresetsFolder()).toStdString();
+    return file.getRelativePathFrom(Resources::getInstance()->getPresetsFolder()).toStdString();
 }
-
-

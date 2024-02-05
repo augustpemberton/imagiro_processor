@@ -4,6 +4,7 @@
 
 #pragma once
 #include "Preset.h"
+#include "imagiro_processor/src/config/Resources.h"
 
 class FileBackedPreset {
 public:
@@ -28,6 +29,8 @@ public:
 private:
     Preset preset;
     juce::File file;
+
+//    juce::SharedResourcePointer<Resources> resources;
 };
 
 
