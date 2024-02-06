@@ -165,7 +165,7 @@ namespace imagiro {
         bool isLocked() const;
 
         void startBlock(int samples);
-        float getSmoothedProcessorValue(int blockIndex);
+        float getSmoothedValue(int blockIndex);
         void setSmoothTime(float seconds);
         juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer();
 
@@ -192,14 +192,14 @@ namespace imagiro {
 
         std::atomic<bool> locked {false};
 
-        juce::SmoothedValue<double> valueSmoother;
+        juce::SmoothedValue<float> valueSmoother;
         juce::AudioSampleBuffer smoothedValueBuffer;
         float smoothTimeSeconds {0.01f};
         double sampleRate;
         std::atomic<bool> smootherNeedsUpdate {false};
         int samplesThisBlock {0};
         bool hasGeneratedSmoothBufferThisBlock {false};
-        void generateSmoothedProcessorValueBlock(int samples);
+        void generateSmoothedValueBuffer(int samples);
     };
 
 }

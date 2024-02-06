@@ -12,13 +12,13 @@ AuthorizationManager::AuthorizationManager()
 // ============================ Authorization
 
 bool AuthorizationManager::isAuthorized() {
-#if JUCE_DEBUG
-    return true;
-#endif
+//#if JUCE_DEBUG
+//    return true;
+//#endif
 
-#ifdef SKIP_AUTH
-    return true;
-#endif
+//#ifdef SKIP_AUTH
+//    return true;
+//#endif
     return isAuthorizedCache;
 }
 
@@ -58,8 +58,21 @@ void AuthorizationManager::loadSavedAuth() {
 }
 
 bool AuthorizationManager::isSerialValid(juce::String serial) {
-    // implement your own logic here!
-    return true;
+    if (serial.length() != 16) return false;
+
+    auto n = 0;
+    n += serial[0] - '0';
+    n += serial[2] - '0';
+    n += serial[7] - '0';
+    n += serial[15] - '0';
+    n %= serial[12] - '0';
+
+    auto serialRemainder = 2;
+#ifdef SERIAL_REMAINDER
+    serialRemainder = SERIAL_REMAINDER;
+#endif
+
+    return n == serialRemainder;
 }
 
 // ============================ Demo
@@ -96,6 +109,10 @@ juce::RelativeTime AuthorizationManager::getDemoTimeLeft() {
 
     if (demoEndTime < juce::Time::getCurrentTime()) return juce::RelativeTime(0);
     return demoEndTime - juce::Time::getCurrentTime();
+}
+
+juce::String AuthorizationManager::getSerial() {
+    return getProperties()->getValue("serial", "");
 }
 
 

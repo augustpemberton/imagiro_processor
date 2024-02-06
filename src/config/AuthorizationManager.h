@@ -21,6 +21,8 @@ public:
     bool isDemoActive();
     juce::RelativeTime getDemoTimeLeft();
 
+    juce::String getSerial();
+
 private:
     void loadSavedAuth();
 

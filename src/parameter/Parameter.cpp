@@ -300,21 +300,27 @@ namespace imagiro {
         return locked;
     }
 
-    void Parameter::generateSmoothedProcessorValueBlock(int samples) {
+    void Parameter::generateSmoothedValueBuffer(int samples) {
         if (smootherNeedsUpdate) valueSmoother.reset(sampleRate, smoothTimeSeconds);
 
         auto target = getValue();
         valueSmoother.setTargetValue(target);
+
+        auto blockStart = valueSmoother.getCurrentValue();
+        valueSmoother.skip(samples);
+        auto blockEnd = valueSmoother.getCurrentValue();
+        auto blockInc = (blockEnd - blockStart) / samples;
+
+        auto val = blockStart;
         for (auto s=0; s<samples; s++) {
-            auto v = valueSmoother.getNextValue();
-            auto processorValue = getProcessorValue(convertFrom0to1(v));
-            smoothedValueBuffer.setSample(0, s, processorValue);
+            smoothedValueBuffer.setSample(0, s, val);
+            val += blockInc;
         }
     }
 
-    float Parameter::getSmoothedProcessorValue(int blockIndex) {
+    float Parameter::getSmoothedValue(int blockIndex) {
         if (!hasGeneratedSmoothBufferThisBlock) {
-            generateSmoothedProcessorValueBlock(samplesThisBlock);
+            generateSmoothedValueBuffer(samplesThisBlock);
             hasGeneratedSmoothBufferThisBlock = true;
         }
         return smoothedValueBuffer.getSample(0, blockIndex);
@@ -339,7 +345,7 @@ namespace imagiro {
 
     juce::AudioSampleBuffer &Parameter::getSmoothedProcessorValueBuffer() {
         if (!hasGeneratedSmoothBufferThisBlock) {
-            generateSmoothedProcessorValueBlock(samplesThisBlock);
+            generateSmoothedValueBuffer(samplesThisBlock);
             hasGeneratedSmoothBufferThisBlock = true;
         }
         return smoothedValueBuffer;
