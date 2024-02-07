@@ -14,6 +14,7 @@ Preset::Preset(bool d)
 choc::value::Value Preset::getState() const {
     auto state = choc::value::createObject("Preset");
     state.addMember("name", name);
+    state.addMember("description", description);
     state.addMember("dawState", dawState);
 
     auto paramStatesValue = choc::value::createEmptyArray();
@@ -34,6 +35,7 @@ Preset Preset::fromState(const choc::value::ValueView &state, imagiro::Processor
 
     p.dawState = state["dawState"].getWithDefault(false);
     p.name = state["name"].getWithDefault("init");
+    p.description = state["description"].getWithDefault("");
 
     for (auto paramState: state["paramStates"]) {
         p.paramStates.push_back(imagiro::Parameter::ParamState::fromState(paramState));

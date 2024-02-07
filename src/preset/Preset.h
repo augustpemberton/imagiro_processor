@@ -23,7 +23,9 @@ public:
     bool isValid() const { return validPreset; }
 
     std::string getName() const { return name; }
+    std::string getDescription() const { return description; }
     void setName(const std::string& name) {this->name = name;}
+    void setDescription(const std::string& description) {this->description = description;}
 
     choc::value::Value& getData() { return data; }
 
@@ -33,6 +35,7 @@ public:
 protected:
     bool dawState {false};
     std::string name;
+    std::string description;
     choc::value::Value data;
 
     std::vector<imagiro::Parameter::ParamState> paramStates;
