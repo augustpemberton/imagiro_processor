@@ -16,9 +16,9 @@ bool AuthorizationManager::isAuthorized() {
 //    return true;
 //#endif
 
-//#ifdef SKIP_AUTH
-//    return true;
-//#endif
+#ifdef SKIP_AUTH
+    return true;
+#endif
     return isAuthorizedCache;
 }
 
