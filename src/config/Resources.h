@@ -94,8 +94,8 @@ public:
         return presetsFolder;
     }
 
-    void reloadPresets() {
-        reloadPresetsMap();
+    void reloadPresets(imagiro::Processor* validateProcessor = nullptr) {
+        reloadPresetsMap(validateProcessor);
     }
 
     void reloadPresetsMap(imagiro::Processor* validateProcessor = nullptr) {

@@ -4,6 +4,7 @@
 
 #pragma once
 #include "ParameterHelpers.h"
+#include <imagiro_util/imagiro_util.h>
 
 namespace imagiro {
 
@@ -165,10 +166,10 @@ namespace imagiro {
 
         long gcd = findGCD(round(frac * precision), precision);
 
-        long n2 = precision / gcd;
-        long n1 = round(frac * precision) / gcd + n2 * integral;
+        float n2 = precision / gcd;
+        float n1 = round(frac * precision) / gcd + n2 * integral;
 
-        if (n1 == trunc(n1) && n2 == trunc(n2))
+        if (almostEqual(n1, trunc(n1)) && almostEqual(n2, trunc(n2)))
             s = n2 > 1 ? juce::String(n1) + "/" + juce::String(n2)
                        : juce::String(n1);
         else

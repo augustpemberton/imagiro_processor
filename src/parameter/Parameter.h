@@ -154,7 +154,7 @@ namespace imagiro {
         const juce::NormalisableRange<float>& getNormalisableRange() const override;
 
         std::vector<ParameterConfig> configs;
-        int configIndex {0};
+        unsigned int configIndex {0};
         const ParameterConfig* getConfig() const;
         ParameterConfig* getConfig();
 
