@@ -115,16 +115,39 @@ namespace imagiro {
                 return !operator==(other);
             }
 
-            choc::value::Value getState() const {
+            [[nodiscard]] choc::value::Value getStateCompressed(bool isDAWSaveState = false) const {
+                auto state = choc::value::createEmptyArray();
+                state.addArrayElement(uid.toStdString());
+                state.addArrayElement(value);
+                state.addArrayElement(config.toStdString());
+                if (isDAWSaveState) state.addArrayElement(locked);
+                return state;
+            }
+
+            static ParamState fromStateCompressed(choc::value::ValueView& state) {
+                auto s = ParamState {
+                        state[0].getWithDefault(""),
+                        state[1].getWithDefault(0.f),
+                        state[2].getWithDefault(""),
+                };
+
+                if (state.size() > 3) {
+                    s.locked = state[3].getWithDefault(false);
+                }
+                return s;
+            }
+
+            [[nodiscard]] choc::value::Value getState(bool isDAWSaveState = false) const {
                 auto state = choc::value::createObject("ParamState");
                 state.addMember("uid", uid.toStdString());
                 state.addMember("value", value);
                 state.addMember("config", config.toStdString());
-                state.addMember("locked", locked);
+                if (isDAWSaveState) state.addMember("locked", locked);
                 return state;
             }
 
             static ParamState fromState(choc::value::ValueView& state) {
+                if (state.isArray()) return fromStateCompressed(state);
                 return {
                     state["uid"].getWithDefault(""),
                     state["value"].getWithDefault(0.f),

@@ -15,17 +15,31 @@ choc::value::Value Preset::getState() const {
     auto state = choc::value::createObject("Preset");
     state.addMember("name", name);
     state.addMember("description", description);
-    state.addMember("dawState", dawState);
+    state.addMember("data", data);
 
     auto paramStatesValue = choc::value::createEmptyArray();
     for (const auto& p: paramStates) {
-        paramStatesValue.addArrayElement(p.getState());
+        paramStatesValue.addArrayElement(p.getStateCompressed(isDAWSaveState()));
     }
-
     state.addMember("paramStates", paramStatesValue);
-    state.addMember("data", data);
-    state.addMember("available", available);
 
+    return state;
+}
+
+choc::value::Value Preset::getUIState() const {
+    auto state = choc::value::createObject("Preset");
+    state.addMember("name", name);
+    state.addMember("description", description);
+    state.addMember("data", data);
+
+    auto paramStatesValue = choc::value::createEmptyArray();
+    for (const auto& p: paramStates) {
+        paramStatesValue.addArrayElement(p.getState(isDAWSaveState()));
+    }
+    state.addMember("paramStates", paramStatesValue);
+
+    state.addMember("available", available);
+    state.addMember("dawState", dawState);
     return state;
 }
 

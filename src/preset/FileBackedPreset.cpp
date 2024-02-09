@@ -30,6 +30,11 @@ std::optional<FileBackedPreset> FileBackedPreset::createFromFile(const juce::Fil
 
 choc::value::Value FileBackedPreset::getState() const {
     auto presetState = preset.getState();
+    return presetState;
+}
+
+choc::value::Value FileBackedPreset::getUIState() const {
+    auto presetState = preset.getUIState();
     presetState.addMember("path", getPresetRelativePath().toStdString());
     presetState.addMember("favorite", Resources::getInstance()->isPresetFavorite(*this));
     return presetState;
