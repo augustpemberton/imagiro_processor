@@ -12,7 +12,6 @@
 #include "config/VersionManager.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 #include "imagiro_processor/src/config/Resources.h"
-#include "BinaryData.h"
 #include "imagiro_processor/src/parameter/ParameterLoader.h"
 
 class Preset;
@@ -20,9 +19,11 @@ class Preset;
 namespace imagiro {
     class Processor : public ProcessorBase, public Parameter::Listener {
     public:
-        Processor(const juce::String& currentVersion = "1.0.0",
+        Processor(std::function<juce::String()> getParametersYAMLString,
+                  const juce::String& currentVersion = "1.0.0",
                   const juce::String& productSlug = "");
         Processor(const juce::AudioProcessor::BusesProperties& ioLayouts,
+                  std::function<juce::String()> getParametersYAMLString,
                   const juce::String& currentVersion = "1.0.0",
                   const juce::String& productSlug = "");
 
@@ -94,7 +95,6 @@ namespace imagiro {
 
         void parameterChangedSync(imagiro::Parameter *param) override;
         std::map<juce::String, Parameter*> parameterMap;
-        virtual juce::String getParametersYAMLString();
 
         AuthorizationManager& getAuthManager() { return authManager; }
         VersionManager& getVersionManager() { return versionManager; }
