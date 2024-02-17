@@ -10,42 +10,26 @@
 namespace imagiro {
 
     Parameter::Parameter(juce::String uid, juce::String name,
-                         ParameterConfig config, bool meta, bool internal,
-                         bool automatable, int versionHint)
-
-            : juce::RangedAudioParameter({uid, versionHint}, name,
-                                         juce::AudioProcessorParameterWithIDAttributes()
-                                                 .withAutomatable (automatable)),
-              configs({std::move(config)}),
-              isMetaParam(meta),
-              internal(internal),
-              uid(uid),
-              name(name)
-    {
-        this->value01 = convertTo0to1(this->getConfig()->defaultValue);
-        startTimerHz(20);
-    }
-
-    Parameter::Parameter(juce::String uid, juce::String name,
                          std::vector<ParameterConfig> configs, bool meta, bool internal,
                          bool automatable, int versionHint)
 
             : juce::RangedAudioParameter({uid, versionHint}, name,
                                          juce::AudioProcessorParameterWithIDAttributes()
-                                                 .withAutomatable (automatable)),
+                                                 .withAutomatable (automatable)
+                                                 .withMeta(meta)),
               configs(std::move(configs)),
-              isMetaParam(meta),
               internal(internal),
               uid(uid),
               name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
-        startTimerHz(20);
+        juce::RangedAudioParameter::addListener(this);
     }
 
     Parameter::~Parameter() noexcept {
         // sync param will be created after, therefore destroyed first
         // so cannot remove listener as it will already be destroyed at this point
+        juce::RangedAudioParameter::removeListener(this);
     }
 
     bool Parameter::isToggle() {
@@ -54,15 +38,14 @@ namespace imagiro {
     }
 
     float Parameter::getUserValue() const {
-        auto userValue = convertFrom0to1(value01);
-        return userValue;
+        return convertFrom0to1(value01);
     }
 
     float Parameter::getProcessorValue() const {
-        if (getConfig()->processorConversionFunction)
-            return getConfig()->processorConversionFunction(value01);
-        else
-            return getUserValue();
+        if (auto conversionFunction = getConfig()->processorConversionFunction)
+            return conversionFunction(value01);
+
+        return getUserValue();
     }
 
     float Parameter::getProcessorValue(float userValue) const {
@@ -78,21 +61,40 @@ namespace imagiro {
         return getConfig()->range.getRange().clipValue(getConfig()->defaultValue);
     }
 
+    void Parameter::setValue (float valueIn) {
+        valueIn = juce::jlimit (0.0f, 1.0f, valueIn);
+        float newValue = getNormalisableRange().snapToLegalValue(convertFrom0to1(valueIn, true));
+
+        if (almostEqual (value01.load(), convertTo0to1(newValue))) return;
+
+        value01 = convertTo0to1(newValue);
+        sendUpdateFlag = true;
+        valueChanged();
+    }
+
     void Parameter::setUserValue(float v) {
         v = getConfig()->range.snapToLegalValue(getConfig()->range.getRange().clipValue(v));
-        if (!almostEqual(convertFrom0to1(value01), v)) {
-            value01 = convertTo0to1(v);
-            sendUpdateFlag = true;
-            valueChanged();
+
+        if (almostEqual(getUserValue(), v)) return;
+
+        value01 = convertTo0to1(v);
+        sendUpdateFlag = true;
+        valueChanged();
+    }
+
+    void Parameter::setValueAndNotifyHost (float v, bool force) {
+        if (! almostEqual (value01.load(), v) || force) {
+            if (!internal)
+                juce::RangedAudioParameter::setValueNotifyingHost (v);
         }
     }
 
-    void Parameter::setUserValueNotifyingHost (float v, bool force) {
+    void Parameter::setUserValueAndNotifyHost (float v, bool force) {
         v = getConfig()->range.snapToLegalValue(getConfig()->range.getRange().clipValue(v));
         if (! almostEqual (value01.load(), convertTo0to1(v)) || force) {
             value01 = convertTo0to1(v);
             if (!internal)
-                setValueNotifyingHost (getValue());
+                juce::RangedAudioParameter::setValueNotifyingHost (getValue());
 
             sendUpdateFlag = true;
             valueChanged();
@@ -109,7 +111,7 @@ namespace imagiro {
             sendUpdateFlag = true;
             valueChanged();
         } else {
-            setUserValueNotifyingHost(f);
+            juce::RangedAudioParameter::setValueNotifyingHost(f);
         }
 
         endUserAction();
@@ -135,23 +137,15 @@ namespace imagiro {
     }
 
     void Parameter::beginUserAction() {
-        if (!internal) {
-            currentUserActionsCount++;
-            if (currentUserActionsCount == 1) {
-                //beginChangeGesture();
-                listeners.call(&Parameter::Listener::gestureStarted, this);
-            }
-        }
+        if (internal) return;
+        juce::RangedAudioParameter::beginChangeGesture();
+        listeners.call(&Parameter::Listener::gestureStartedSync, this);
     }
 
     void Parameter::endUserAction() {
-        if (!internal) {
-            currentUserActionsCount--;
-            if (currentUserActionsCount == 0) {
-                //endChangeGesture();
-                listeners.call(&Parameter::Listener::gestureEnded, this);
-            }
-        }
+        if (internal) return;
+        juce::RangedAudioParameter::endChangeGesture();
+        listeners.call(&Parameter::Listener::gestureEndedSync, this);
     }
 
     void Parameter::addListener (Parameter::Listener* listener) {
@@ -162,11 +156,23 @@ namespace imagiro {
         listeners.remove (listener);
     }
 
-    void Parameter::timerCallback() {
-        if (sendUpdateFlag) {
-            listeners.call (&Listener::parameterChanged, this);
-            sendUpdateFlag = false;
-        }
+    /*
+        Asynchronous parameter value listener
+    */
+    void Parameter::parameterValueChanged(int, float) {
+        if (!sendUpdateFlag) return;
+        listeners.call (&Listener::parameterChanged, this);
+        sendUpdateFlag = false;
+    }
+
+    /*
+        Asynchronous gesture listener
+    */
+    void Parameter::parameterGestureChanged (int, bool gestureIsStarting) {
+        if (gestureIsStarting)
+            return listeners.call (&Listener::gestureStarted, this);
+
+        listeners.call (&Listener::gestureEnded, this);
     }
 
     void Parameter::valueChanged() {
@@ -191,20 +197,7 @@ namespace imagiro {
     }
 
     float Parameter::getValue() const {
-        auto v = juce::jlimit(0.f, 1.f, value01.load());
-        return v;
-    }
-
-    void Parameter::setValue (float valueIn) {
-        valueIn = juce::jlimit (0.0f, 1.0f, valueIn);
-        float newValue = getUserRange().snapToLegalValue(convertFrom0to1(valueIn, true));
-
-        if (!almostEqual (value01.load(), convertTo0to1(newValue))) {
-            value01 = convertTo0to1(newValue);
-            sendUpdateFlag = true;
-            valueChanged();
-        }
-
+        return juce::jlimit(0.f, 1.f, value01.load());
     }
 
     float Parameter::getDefaultValue() const {
@@ -226,8 +219,7 @@ namespace imagiro {
     }
 
     bool Parameter::isDiscrete() const {
-        auto discrete = getConfig()->discrete;
-        return discrete;
+        return getConfig()->discrete;
     }
 
     juce::String Parameter::getText (float val, int /*maximumStringLength*/) const
@@ -246,13 +238,8 @@ namespace imagiro {
     }
 
     bool Parameter::isOrientationInverted() const { return false; }
-    bool Parameter::isMetaParameter() const { return isMetaParam; }
 
     const juce::NormalisableRange<float> &Parameter::getNormalisableRange() const {
-        return getConfig()->range;
-    }
-
-    juce::NormalisableRange<float> Parameter::getUserRange() const {
         return getConfig()->range;
     }
 
@@ -288,7 +275,7 @@ namespace imagiro {
         configIndex = index;
 
         listeners.call(&Listener::configChanged, this);
-        setUserValueNotifyingHost(uv, true);
+        setUserValueAndNotifyHost(uv, true);
     }
 
     void Parameter::setLocked(bool l) {
