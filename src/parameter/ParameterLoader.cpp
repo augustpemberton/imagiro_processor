@@ -171,6 +171,7 @@ namespace imagiro {
                 return std::find(choices.begin(), choices.end(), choice) - choices.begin();
             };
             config.range = {0, (float)choices.size()-1, 1};
+            config.choices = choices;
         } else if (type == "ratio") {
             auto ratioParams = p["ratio"];
             juce::String ratioParamName = ratioParams["name"].as<std::string>();
