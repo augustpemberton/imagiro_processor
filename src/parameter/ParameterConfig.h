@@ -18,5 +18,6 @@ namespace imagiro {
         std::function<float(const Parameter&, juce::String)> valueFunction {nullptr};
         juce::String name {"default"};
         bool reverse {false};
+        std::vector<std::string> choices;
     };
 }
