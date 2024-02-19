@@ -7,19 +7,19 @@
 
 namespace imagiro {
 
-    Processor::Processor(std::function<juce::String()> getParametersYAMLString, const juce::String& currentVersion, const juce::String& productSlug)
+    Processor::Processor(juce::String parametersYAMLString, const juce::String& currentVersion, const juce::String& productSlug)
             : versionManager(currentVersion, productSlug),
-              paramLoader(*this, getParametersYAMLString())
+              paramLoader(*this, parametersYAMLString)
     {
         bypassGain.reset(250);
     }
 
     Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts,
-                         std::function<juce::String()> getParametersYAMLString,
+                         juce::String parametersYAMLString,
                          const juce::String& currentVersion, const juce::String& productSlug)
             : ProcessorBase(ioLayouts),
               versionManager(currentVersion, productSlug),
-              paramLoader(*this, getParametersYAMLString())
+              paramLoader(*this, parametersYAMLString)
     {
         bypassGain.reset(250);
     }

@@ -19,11 +19,11 @@ class Preset;
 namespace imagiro {
     class Processor : public ProcessorBase, public Parameter::Listener {
     public:
-        Processor(std::function<juce::String()> getParametersYAMLString,
+        Processor(juce::String parametersYAMLString,
                   const juce::String& currentVersion = "1.0.0",
                   const juce::String& productSlug = "");
         Processor(const juce::AudioProcessor::BusesProperties& ioLayouts,
-                  std::function<juce::String()> getParametersYAMLString,
+                  juce::String parametersYAMLString,
                   const juce::String& currentVersion = "1.0.0",
                   const juce::String& productSlug = "");
 
