@@ -20,25 +20,24 @@ namespace imagiro {
         virtual void parameterChangedSync (Parameter* param) {}
         virtual void configChanged(Parameter* param) {}
         virtual void gestureStarted(Parameter* param) {}
+        virtual void gestureStartedSync(Parameter* param) {}
         virtual void gestureEnded(Parameter* param) {}
+        virtual void gestureEndedSync(Parameter* param) {}
         virtual void lockChanged(Parameter* param) {}
     };
 
     class ModulationMatrix;
-    class Parameter : public juce::RangedAudioParameter, protected juce::Timer {
+    class Parameter : private juce::RangedAudioParameter, private juce::AudioProcessorParameter::Listener {
     public:
         using Listener = ParameterListener;
-        Parameter(juce::String uid, juce::String name,
-                  ParameterConfig config, bool internal = false,
-                  bool isMetaParam = false,
-                  bool automatable = true, int versionHint=1);
-
         Parameter(juce::String uid, juce::String name,
                   std::vector<ParameterConfig> config, bool internal = false,
                   bool isMetaParam = false,
                   bool automatable = true, int versionHint=1);
 
         ~Parameter() override;
+
+        juce::RangedAudioParameter* asJUCEParameter() { return this; }
 
         void setInternal (bool i)           { internal = i;     }
         bool isInternal() const             { return internal;  }
@@ -74,7 +73,8 @@ namespace imagiro {
 
         void setValue (float newValue) override;
         void setUserValue (float v);
-        void setUserValueNotifyingHost (float f, bool forceUpdate = false);
+        void setValueAndNotifyHost (float f, bool forceUpdate = false);
+        void setUserValueAndNotifyHost (float f, bool forceUpdate = false);
         void setUserValueAsUserAction (float f);
         juce::String getUserValueText() const;
         juce::String userValueToText (float val);
@@ -88,7 +88,6 @@ namespace imagiro {
 
         void beginUserAction();
         void endUserAction();
-        juce::NormalisableRange<float> getUserRange() const;
         float convertTo0to1 (float v) const;
         float convertFrom0to1 (float v, bool snapToLegalValue = true) const;
 
@@ -172,7 +171,6 @@ namespace imagiro {
         float getValueForText (const juce::String& text) const override;
 
         bool isOrientationInverted() const override;
-        bool isMetaParameter() const override;
 
         const juce::NormalisableRange<float>& getNormalisableRange() const override;
 
@@ -193,14 +191,15 @@ namespace imagiro {
         juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer();
 
     protected:
-        bool isMetaParam {false};
         bool internal {false};
         ModulationMatrix* modMatrix = nullptr;
         int modIndex = -1;
 
         std::atomic<bool> sendUpdateFlag {false};
-        void timerCallback() override;
         virtual void valueChanged();
+
+        void parameterValueChanged(int, float newValue) override;
+        void parameterGestureChanged (int, bool gestureIsStarting) override;
 
         juce::String uid;
         juce::String name;
@@ -208,8 +207,6 @@ namespace imagiro {
 
         std::atomic<float> value01 {0};
         float cachedUserValue {0};
-
-        int currentUserActionsCount = 0;
 
         juce::ListenerList<Listener> listeners;
 
@@ -226,4 +223,3 @@ namespace imagiro {
     };
 
 }
-

@@ -43,7 +43,7 @@ namespace imagiro {
         allParameters.add (rawPtr);
         parameterMap[p->getUID()] = rawPtr;
         if (p->isInternal()) internalParameters.add (p.release());
-        else addParameter (p.release());
+        else addParameter (p.release()->asJUCEParameter());
 
         return rawPtr;
     }
