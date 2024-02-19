@@ -7,7 +7,7 @@
 
 namespace imagiro {
 
-    Processor::Processor(const juce::String& currentVersion, const juce::String& productSlug)
+    Processor::Processor(std::function<juce::String()> getParametersYAMLString, const juce::String& currentVersion, const juce::String& productSlug)
             : versionManager(currentVersion, productSlug),
               paramLoader(*this, getParametersYAMLString())
     {
@@ -15,6 +15,7 @@ namespace imagiro {
     }
 
     Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts,
+                         std::function<juce::String()> getParametersYAMLString,
                          const juce::String& currentVersion, const juce::String& productSlug)
             : ProcessorBase(ioLayouts),
               versionManager(currentVersion, productSlug),
@@ -42,7 +43,7 @@ namespace imagiro {
         allParameters.add (rawPtr);
         parameterMap[p->getUID()] = rawPtr;
         if (p->isInternal()) internalParameters.add (p.release());
-        else addParameter (p.release());
+        else addParameter (p.release()->asJUCEParameter());
 
         return rawPtr;
     }
@@ -275,15 +276,6 @@ namespace imagiro {
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);
         }
-    }
-
-    juce::String Processor::getParametersYAMLString() {
-#if JUCE_DEBUG && defined(SRCPATH)
-        auto file = juce::File(juce::String(SRCPATH) + "/Parameters.yaml");
-        return file.loadFileAsString();
-#else
-        return BinaryData::Parameters_yaml;
-#endif
     }
 
     float Processor::getCpuLoad() {

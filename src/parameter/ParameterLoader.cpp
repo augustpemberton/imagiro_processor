@@ -47,6 +47,10 @@ namespace imagiro {
     juce::NormalisableRange<float> ParameterLoader::getRange(juce::String parameterID, YAML::Node n) {
         auto type = getString(n, "type", "normal");
 
+        if (type == "freq") {
+            return getNormalisableRangeExp(20, 20000);
+        }
+
         auto min = getFloat(n, "min", 0);
         auto max = getFloat(n, "max", 1);
         auto step = getFloat(n, "step", 0);
@@ -57,14 +61,10 @@ namespace imagiro {
         if (type == "exp")
             return getNormalisableRangeExp(min, max, step);
 
-        if (type == "freq")
-            return getNormalisableRangeExp(20, 20000);
-
         if (type == "sync")
             return getTempoSyncRange(min, max, inverse);
 
-        return {min, max, step,
-                skew, symmetricSkew};
+        return {min, max, step, skew, symmetricSkew};
     }
 
 
@@ -210,23 +210,20 @@ namespace imagiro {
     std::unique_ptr<Parameter> ParameterLoader::loadParameter(const juce::String& uid, YAML::Node p,
                                                               const juce::String& namePrefix, int index) {
         auto name = namePrefix + str(p["name"]);
-        auto internal = getBool(p, "internal", false);
-        auto isMetaParameter = getBool(p, "meta", false);
+        auto isInternal = getBool(p, "internal", false);
+        auto isMeta = getBool(p, "meta", false);
+        auto isAutomatable = getBool(p, "automatable", true);
+        std::vector<ParameterConfig> configs;
 
         // Multi-configs
         if (p["configs"]) {
-            std::vector<ParameterConfig> configs;
-            for (auto config : p["configs"]) {
-                juce::String configName = config.first.as<std::string>();
-                configs.push_back(loadConfig(uid, configName, config.second, index));
-            }
-
-            return std::make_unique<Parameter>(uid, name, configs, isMetaParameter, internal);
+            for (auto config : p["configs"])
+                configs.push_back(loadConfig(uid, config.first.as<std::string>(), config.second, index));
+        } else {
+            // Single config
+            configs.push_back(loadConfig(uid, "default", p, index));
         }
 
-        // Single config
-        auto config = loadConfig(uid,"default", p, index);
-
-        return std::make_unique<Parameter>(uid, name, config, internal);
+        return std::make_unique<Parameter>(uid, name, configs, isMeta, isInternal, isAutomatable);
     }
 }
