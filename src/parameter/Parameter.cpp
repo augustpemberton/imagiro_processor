@@ -61,59 +61,38 @@ namespace imagiro {
         return getConfig()->range.getRange().clipValue(getConfig()->defaultValue);
     }
 
-    void Parameter::setValue (float valueIn) {
-        valueIn = juce::jlimit (0.0f, 1.0f, valueIn);
-        float newValue = getNormalisableRange().snapToLegalValue(convertFrom0to1(valueIn, true));
+    void Parameter::setValue (float newValue01) {
+        jassert(newValue01 >= 0.f && newValue01<= 1.f);
 
-        if (almostEqual (value01.load(), convertTo0to1(newValue))) return;
+        auto userValueValidated = convertFrom0to1(newValue01, true);
+        auto val01Validated = convertTo0to1(userValueValidated);
 
-        value01 = convertTo0to1(newValue);
+        if (almostEqual (value01.load(), val01Validated)) return;
+
+        value01 = val01Validated;
         sendUpdateFlag = true;
         valueChanged();
     }
 
-    void Parameter::setUserValue(float v) {
-        v = getConfig()->range.snapToLegalValue(getConfig()->range.getRange().clipValue(v));
-
-        if (almostEqual(getUserValue(), v)) return;
-
-        value01 = convertTo0to1(v);
-        sendUpdateFlag = true;
-        valueChanged();
+    void Parameter::setUserValue(float userValue) {
+        setValue(convertTo0to1(userValue));
     }
 
-    void Parameter::setValueAndNotifyHost (float v, bool force) {
-        if (! almostEqual (value01.load(), v) || force) {
-            if (!internal)
-                juce::RangedAudioParameter::setValueNotifyingHost (v);
+    void Parameter::setValueAndNotifyHost (float val01, bool force) {
+        if (almostEqual (value01.load(), val01) && !force) return;
+        setValue(val01);
+        if (!internal) {
+            juce::RangedAudioParameter::sendValueChangedMessageToListeners(value01.load());
         }
     }
 
-    void Parameter::setUserValueAndNotifyHost (float v, bool force) {
-        v = getConfig()->range.snapToLegalValue(getConfig()->range.getRange().clipValue(v));
-        if (! almostEqual (value01.load(), convertTo0to1(v)) || force) {
-            value01 = convertTo0to1(v);
-            if (!internal)
-                juce::RangedAudioParameter::setValueNotifyingHost (getValue());
-
-            sendUpdateFlag = true;
-            valueChanged();
-        }
+    void Parameter::setUserValueAndNotifyHost (float userValue, bool force) {
+        setValueAndNotifyHost(convertTo0to1(userValue), force);
     }
 
-    void Parameter::setUserValueAsUserAction (float f) {
+    void Parameter::setUserValueAsUserAction (float userValue) {
         beginUserAction();
-
-        if (internal) {
-            auto v = getConfig()->range.snapToLegalValue(getConfig()->range.getRange().clipValue(f));
-            value01 = convertTo0to1(v);
-            setValue(f);
-            sendUpdateFlag = true;
-            valueChanged();
-        } else {
-            juce::RangedAudioParameter::setValueNotifyingHost(f);
-        }
-
+        setUserValueAndNotifyHost(userValue);
         endUserAction();
     }
 
@@ -121,8 +100,8 @@ namespace imagiro {
         return getText (getValue(), 1000) + suffix;
     }
 
-    juce::String Parameter::userValueToText (float val) {
-        return getText (getConfig()->range.convertTo0to1 (val), 1000) + suffix;
+    juce::String Parameter::userValueToText (float userValue) {
+        return getText (getConfig()->range.convertTo0to1 (userValue), 1000) + suffix;
     }
 
     DisplayValue Parameter::getDisplayValue() const {
