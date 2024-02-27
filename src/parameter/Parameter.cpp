@@ -203,11 +203,15 @@ namespace imagiro {
 
     juce::String Parameter::getText (float val, int /*maximumStringLength*/) const
     {
-        if (getConfig()->textFunction)
-            return getConfig()->textFunction (*this,getConfig()->range.convertFrom0to1 (val)).withSuffix();
+        if (getConfig()->textFunction) {
+            auto userValueValidated = convertFrom0to1(val, true);
+            auto val01Validated = convertTo0to1(userValueValidated);
+            auto displayVal = getConfig()->textFunction (*this, getConfig()->range.convertFrom0to1 (val01Validated));
+            return displayVal.withSuffix();
+        }
 
-        auto uv =getConfig()->range.snapToLegalValue (getConfig()->range.convertFrom0to1 (val));
-        return formatNumber (uv);
+        auto userValueValidated = convertFrom0to1(val, true);
+        return formatNumber(userValueValidated);
     }
 
     float Parameter::getValueForText (const juce::String& text) const {

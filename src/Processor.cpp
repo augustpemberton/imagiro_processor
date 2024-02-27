@@ -235,6 +235,11 @@ namespace imagiro {
         }
     }
 
+    void Processor::configChanged(imagiro::Parameter *param) {
+        auto changeDetails = ChangeDetails::getDefaultFlags().withParameterInfoChanged(true);
+        updateHostDisplay(changeDetails);
+    }
+
     void Processor::updateTrackProperties(const juce::AudioProcessor::TrackProperties &newProperties) {
         trackProperties = newProperties;
     }

@@ -94,6 +94,7 @@ namespace imagiro {
         virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
 
         void parameterChangedSync(imagiro::Parameter *param) override;
+        void configChanged(imagiro::Parameter *param) override;
         std::map<juce::String, Parameter*> parameterMap;
 
         AuthorizationManager& getAuthManager() { return authManager; }

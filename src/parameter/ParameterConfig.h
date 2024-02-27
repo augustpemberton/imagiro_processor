@@ -8,7 +8,7 @@
 
 namespace imagiro {
     class Parameter;
-    class DisplayValue;
+    struct DisplayValue;
     struct ParameterConfig {
         juce::NormalisableRange<float> range {0, 1};
         bool discrete {false};

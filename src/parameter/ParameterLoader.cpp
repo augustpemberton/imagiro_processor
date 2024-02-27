@@ -164,8 +164,8 @@ namespace imagiro {
             };
         } else if (type == "choice") {
             auto choices = p["choices"].as<std::vector<std::string>>();
-            config.textFunction = [choices](const Parameter& p, float choice)->DisplayValue {
-                return {choices[choice]};
+            config.textFunction = [choices](const Parameter& /*p*/, float choice)->DisplayValue {
+                return {choices[(unsigned int)std::round(choice)]};
             };
             config.valueFunction = [choices](const Parameter& p, juce::String choice) {
                 return std::find(choices.begin(), choices.end(), choice) - choices.begin();
