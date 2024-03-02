@@ -127,7 +127,7 @@ namespace imagiro {
 
     void Processor::getStateInformation(juce::MemoryBlock &destData) {
         auto preset = createPreset(lastLoadedPreset ? lastLoadedPreset->getPreset().getName() : "init", true);
-        auto s = preset.getState();
+        auto s = preset.getUIState();
 
         juce::ValueTree stateTree ("stateTree");
         stateTree.setProperty("state", juce::String(choc::json::toString(s)), nullptr);
