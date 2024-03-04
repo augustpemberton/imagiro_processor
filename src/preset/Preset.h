@@ -15,7 +15,9 @@ public:
 
     virtual choc::value::Value getState() const;
     virtual choc::value::Value getUIState() const;
-    static Preset fromState(const choc::value::ValueView& state, imagiro::Processor* validateProcessor = nullptr);
+    static Preset fromState(const choc::value::ValueView& state,
+                            bool isDAWState = false,
+                            imagiro::Processor* validateProcessor = nullptr);
 
     void addParamState(imagiro::Parameter::ParamState param);
     void removeParamState(juce::String paramID);

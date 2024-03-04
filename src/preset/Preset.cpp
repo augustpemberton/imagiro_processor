@@ -43,8 +43,10 @@ choc::value::Value Preset::getUIState() const {
     return state;
 }
 
-Preset Preset::fromState(const choc::value::ValueView &state, imagiro::Processor* validateProcessor) {
-    Preset p;
+Preset Preset::fromState(const choc::value::ValueView &state,
+                         bool isDAWState,
+                         imagiro::Processor* validateProcessor) {
+    Preset p (isDAWState);
     if (!state.isObject()) return p;
 
     p.dawState = state["dawState"].getWithDefault(false);
