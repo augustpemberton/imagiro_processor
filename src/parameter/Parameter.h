@@ -27,7 +27,8 @@ namespace imagiro {
     };
 
     class ModulationMatrix;
-    class Parameter : private juce::RangedAudioParameter, private juce::AudioProcessorParameter::Listener {
+    class Parameter : private juce::RangedAudioParameter, private juce::AudioProcessorParameter::Listener,
+        private juce::Timer {
     public:
         using Listener = ParameterListener;
         Parameter(juce::String uid, juce::String name,
@@ -195,11 +196,11 @@ namespace imagiro {
         ModulationMatrix* modMatrix = nullptr;
         int modIndex = -1;
 
-        std::atomic<bool> sendUpdateFlag {false};
         virtual void valueChanged();
 
         void parameterValueChanged(int, float newValue) override;
         void parameterGestureChanged (int, bool gestureIsStarting) override;
+        void timerCallback() override;
 
         juce::String uid;
         juce::String name;
@@ -220,6 +221,10 @@ namespace imagiro {
         int samplesThisBlock {0};
         bool hasGeneratedSmoothBufferThisBlock {false};
         void generateSmoothedValueBuffer(int samples);
+
+        std::atomic<bool> asyncValueUpdateFlag;
+        std::atomic<bool> asyncGestureStartUpdateFlag;
+        std::atomic<bool> asyncGestureEndUpdateFlag;
     };
 
 }
