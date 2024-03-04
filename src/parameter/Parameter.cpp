@@ -24,6 +24,7 @@ namespace imagiro {
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         juce::RangedAudioParameter::addListener(this);
+        startTimerHz(30);
     }
 
     Parameter::~Parameter() noexcept {
@@ -70,7 +71,6 @@ namespace imagiro {
         if (almostEqual (value01.load(), val01Validated)) return;
 
         value01 = val01Validated;
-        sendUpdateFlag = true;
         valueChanged();
     }
 
@@ -135,23 +135,28 @@ namespace imagiro {
         listeners.remove (listener);
     }
 
-    /*
-        Asynchronous parameter value listener
-    */
+    /* Asynchronous parameter value listener */
     void Parameter::parameterValueChanged(int, float) {
-        if (!sendUpdateFlag) return;
-        listeners.call (&Listener::parameterChanged, this);
-        sendUpdateFlag = false;
+        asyncValueUpdateFlag = true;
     }
 
-    /*
-        Asynchronous gesture listener
-    */
+    /* Asynchronous gesture listener */
     void Parameter::parameterGestureChanged (int, bool gestureIsStarting) {
-        if (gestureIsStarting)
-            return listeners.call (&Listener::gestureStarted, this);
+        (gestureIsStarting ? asyncGestureStartUpdateFlag : asyncGestureEndUpdateFlag) = true;
+    }
 
-        listeners.call (&Listener::gestureEnded, this);
+    void Parameter::timerCallback() {
+        if (asyncValueUpdateFlag) {
+            listeners.call (&Listener::parameterChanged, this);
+        }
+
+        if (asyncGestureStartUpdateFlag) {
+            listeners.call (&Listener::gestureStarted, this);
+        }
+
+        if (asyncGestureEndUpdateFlag) {
+            listeners.call (&Listener::gestureEnded, this);
+        }
     }
 
     void Parameter::valueChanged() {
