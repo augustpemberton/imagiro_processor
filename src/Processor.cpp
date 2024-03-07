@@ -229,7 +229,7 @@ namespace imagiro {
         }
     }
 
-    void Processor::parameterChangedSync(imagiro::Parameter *param) {
+    void Processor::parameterChanged(imagiro::Parameter *param) {
         if (param->getUID() == "bypass") {
             bypassGain.setTargetValue(param->getValue());
         }
