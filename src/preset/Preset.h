@@ -12,6 +12,8 @@
 class Preset {
 public:
     Preset(bool isDAWSaveState = false);
+    virtual ~Preset() = default;
+    Preset(const Preset& other) = default;
 
     virtual choc::value::Value getState() const;
     virtual choc::value::Value getUIState() const;
