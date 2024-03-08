@@ -27,7 +27,7 @@ namespace imagiro {
     };
 
     class ModulationMatrix;
-    class Parameter : private juce::RangedAudioParameter, private juce::AudioProcessorParameter::Listener,
+    class Parameter : private juce::RangedAudioParameter,
         private juce::Timer {
     public:
         using Listener = ParameterListener;
@@ -198,8 +198,6 @@ namespace imagiro {
 
         virtual void valueChanged();
 
-        void parameterValueChanged(int, float newValue) override;
-        void parameterGestureChanged (int, bool gestureIsStarting) override;
         void timerCallback() override;
 
         juce::String uid;
