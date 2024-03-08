@@ -124,7 +124,7 @@ namespace imagiro {
         if (internal) return;
         juce::RangedAudioParameter::endChangeGesture();
         listeners.call(&Parameter::Listener::gestureEndedSync, this);
-        asyncGestureStartUpdateFlag = false;
+        asyncGestureEndUpdateFlag = false;
     }
 
     void Parameter::addListener (Parameter::Listener* listener) {
