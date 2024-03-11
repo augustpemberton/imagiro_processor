@@ -292,7 +292,7 @@ namespace imagiro {
             generateSmoothedValueBuffer(samplesThisBlock);
             hasGeneratedSmoothBufferThisBlock = true;
         }
-        return smoothedValueBuffer.getSample(0, blockIndex);
+        return juce::jlimit(0.f, 1.f, smoothedValueBuffer.getSample(0, blockIndex));
     }
 
     void Parameter::setSmoothTime(float seconds) {
