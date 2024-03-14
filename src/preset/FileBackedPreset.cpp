@@ -24,7 +24,7 @@ std::optional<FileBackedPreset> FileBackedPreset::createFromFile(const juce::Fil
     if (presetString.isEmpty()) return {};
     auto s = choc::json::parse(presetString.toStdString());
 
-    Preset preset = Preset::fromState(s, validateProcessor);
+    Preset preset = Preset::fromState(s, false, validateProcessor);
     return {FileBackedPreset(preset, file)};
 }
 
