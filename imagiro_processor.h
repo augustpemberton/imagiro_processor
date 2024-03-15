@@ -6,3 +6,4 @@
 #include "src/config/VersionManager.h"
 #include "src/parameter/ParameterLoader.h"
 #include "src/preset/FileBackedPreset.h"
+#include "src/dsp/filter/StateVariableTPTFilter.h"

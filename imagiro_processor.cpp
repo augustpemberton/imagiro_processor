@@ -7,3 +7,4 @@
 #include "src/config/AuthorizationManager.cpp"
 #include "src/config/VersionManager.cpp"
 #include "src/preset/FileBackedPreset.cpp"
+#include "src/dsp/filter/StateVariableTPTFilter.cpp"
