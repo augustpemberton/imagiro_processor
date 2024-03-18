@@ -38,7 +38,7 @@ std::optional<juce::String> VersionManager::fetchLatestVersion() {
     auto updateURL = juce::URL(updateBaseURL + "/api/products/version/" + pluginSlug);
     auto productInfo = updateURL.readEntireTextStream();
     if (productInfo == "") return {};
-    auto productJSON = juce::JSON::fromString(updateURL.readEntireTextStream());
+    auto productJSON = juce::JSON::fromString(productInfo);
 
     auto versionKey = "version";
 #if BETA

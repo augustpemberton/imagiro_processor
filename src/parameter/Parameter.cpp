@@ -23,14 +23,12 @@ namespace imagiro {
               name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
-        juce::RangedAudioParameter::addListener(this);
         startTimerHz(30);
     }
 
     Parameter::~Parameter() noexcept {
         // sync param will be created after, therefore destroyed first
         // so cannot remove listener as it will already be destroyed at this point
-        juce::RangedAudioParameter::removeListener(this);
     }
 
     bool Parameter::isToggle() {
@@ -119,12 +117,14 @@ namespace imagiro {
         if (internal) return;
         juce::RangedAudioParameter::beginChangeGesture();
         listeners.call(&Parameter::Listener::gestureStartedSync, this);
+        asyncGestureStartUpdateFlag = true;
     }
 
     void Parameter::endUserAction() {
         if (internal) return;
         juce::RangedAudioParameter::endChangeGesture();
         listeners.call(&Parameter::Listener::gestureEndedSync, this);
+        asyncGestureEndUpdateFlag = false;
     }
 
     void Parameter::addListener (Parameter::Listener* listener) {
@@ -135,32 +135,26 @@ namespace imagiro {
         listeners.remove (listener);
     }
 
-    /* Asynchronous parameter value listener */
-    void Parameter::parameterValueChanged(int, float) {
-        asyncValueUpdateFlag = true;
-    }
-
-    /* Asynchronous gesture listener */
-    void Parameter::parameterGestureChanged (int, bool gestureIsStarting) {
-        (gestureIsStarting ? asyncGestureStartUpdateFlag : asyncGestureEndUpdateFlag) = true;
-    }
-
     void Parameter::timerCallback() {
         if (asyncValueUpdateFlag) {
+            asyncValueUpdateFlag = false;
             listeners.call (&Listener::parameterChanged, this);
         }
 
         if (asyncGestureStartUpdateFlag) {
+            asyncGestureStartUpdateFlag = false;
             listeners.call (&Listener::gestureStarted, this);
         }
 
         if (asyncGestureEndUpdateFlag) {
+            asyncGestureEndUpdateFlag = false;
             listeners.call (&Listener::gestureEnded, this);
         }
     }
 
     void Parameter::valueChanged() {
-        listeners.call (&Listener::parameterChangedSync, this);
+        asyncValueUpdateFlag = true;
+//        listeners.call (&Listener::parameterChangedSync, this);
     }
 
     Parameter::ParamState Parameter::getState() {
@@ -298,7 +292,7 @@ namespace imagiro {
             generateSmoothedValueBuffer(samplesThisBlock);
             hasGeneratedSmoothBufferThisBlock = true;
         }
-        return smoothedValueBuffer.getSample(0, blockIndex);
+        return juce::jlimit(0.f, 1.f, smoothedValueBuffer.getSample(0, blockIndex));
     }
 
     void Parameter::setSmoothTime(float seconds) {
