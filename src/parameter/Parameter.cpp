@@ -154,7 +154,7 @@ namespace imagiro {
 
     void Parameter::valueChanged() {
         asyncValueUpdateFlag = true;
-//        listeners.call (&Listener::parameterChangedSync, this);
+        listeners.call (&Listener::parameterChangedSync, this);
     }
 
     Parameter::ParamState Parameter::getState() {
