@@ -11,10 +11,16 @@ AuthorizationManager::AuthorizationManager()
 
 // ============================ Authorization
 
-bool AuthorizationManager::isAuthorized() {
+bool AuthorizationManager::isAuthorized(bool ignoreDemo) {
 //#if JUCE_DEBUG
 //    return true;
 //#endif
+
+    if (ignoreDemo) {
+        auto savedSerial = getProperties()->getValue("serial", "");
+        if (isSerialValid(savedSerial)) return true;
+        else return false;
+    }
 
 #ifdef SKIP_AUTH
     return true;
@@ -116,7 +122,7 @@ juce::String AuthorizationManager::getSerial() {
     return getProperties()->getValue("serial", "");
 }
 
-
-
-
-
+void AuthorizationManager::logout() {
+    getProperties()->removeValue("serial");
+    isAuthorizedCache = false;
+}

@@ -18,7 +18,7 @@ public:
     void removeListener(Listener* l) { listeners.remove(l); }
 
     // Auth
-    bool isAuthorized();
+    bool isAuthorized(bool ignoreDemo = false);
     bool tryAuth(juce::String serial);
 
     // Demo
@@ -29,6 +29,8 @@ public:
     juce::RelativeTime getDemoTimeLeft();
 
     juce::String getSerial();
+
+    void logout();
 
 private:
     juce::ListenerList<Listener> listeners;
