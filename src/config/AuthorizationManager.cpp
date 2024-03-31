@@ -25,6 +25,7 @@ bool AuthorizationManager::isAuthorized() {
 bool AuthorizationManager::tryAuth(juce::String serial) {
     if (isSerialValid(serial)) {
         saveSerial(serial);
+        listeners.call(&Listener::onAuthSuccess);
         return true;
     }
 

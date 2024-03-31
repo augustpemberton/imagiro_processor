@@ -75,8 +75,8 @@ namespace imagiro {
         else loadPreset(p);
     }
 
-    bool Processor::isPresetAvailable(Preset& preset) {
-        return true;
+    std::optional<std::string> Processor::isPresetAvailable(Preset& preset) {
+        return {};
     }
 
     void Processor::getStateInformation(juce::MemoryBlock &destData) {

@@ -39,6 +39,7 @@ choc::value::Value Preset::getUIState() const {
     state.addMember("paramStates", paramStatesValue);
 
     state.addMember("available", available);
+    state.addMember("errorString", errorString);
     state.addMember("dawState", dawState);
     return state;
 }
@@ -58,7 +59,16 @@ Preset Preset::fromState(const choc::value::ValueView &state,
     }
 
     p.data = state["data"];
-    if (validateProcessor != nullptr) p.available = validateProcessor->isPresetAvailable(p);
+    if (validateProcessor != nullptr) {
+        auto error = validateProcessor->isPresetAvailable(p);
+        if (!error.has_value()) {
+            p.available = true;
+            p.errorString = "";
+        } else {
+            p.available = false;
+            p.errorString = error.value();
+        }
+    }
 
     return p;
 }

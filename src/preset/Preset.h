@@ -47,6 +47,7 @@ protected:
 
     bool validPreset;
     bool available {true};
+    std::string errorString;
 
     JUCE_LEAK_DETECTOR (Preset)
 };

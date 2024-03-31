@@ -10,6 +10,13 @@ class AuthorizationManager {
 public:
     AuthorizationManager();
 
+    struct Listener {
+        virtual void onAuthSuccess() {}
+    };
+
+    void addListener(Listener* l) { listeners.add(l); }
+    void removeListener(Listener* l) { listeners.remove(l); }
+
     // Auth
     bool isAuthorized();
     bool tryAuth(juce::String serial);
@@ -24,6 +31,7 @@ public:
     juce::String getSerial();
 
 private:
+    juce::ListenerList<Listener> listeners;
     void loadSavedAuth();
 
     bool isSerialValid(juce::String serial);

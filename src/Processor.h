@@ -68,7 +68,7 @@ namespace imagiro {
         virtual void loadPreset(Preset preset);
         virtual void loadPreset(FileBackedPreset preset);
 
-        virtual bool isPresetAvailable(Preset& preset);
+        virtual std::optional<std::string> isPresetAvailable(Preset& preset);
 
         void getStateInformation(juce::MemoryBlock &destData) override;
         void setStateInformation(const void *data, int sizeInBytes) override;
