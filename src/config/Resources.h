@@ -136,7 +136,7 @@ public:
         auto categories = cachedPresetsMap;
         for (const auto& category : categories) {
             for (const auto& preset : category.second) {
-                presetsList.push_back(preset);
+                if (preset.getPreset().isAvailable()) presetsList.push_back(preset);
             }
         }
 
