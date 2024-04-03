@@ -9,7 +9,6 @@
 #include "parameter/Parameter.h"
 #include "preset/Preset.h"
 #include "config/AuthorizationManager.h"
-#include "config/VersionManager.h"
 #include "imagiro_processor/src/preset/FileBackedPreset.h"
 #include "imagiro_processor/src/config/Resources.h"
 #include "imagiro_processor/src/parameter/ParameterLoader.h"
@@ -98,14 +97,16 @@ namespace imagiro {
         std::map<juce::String, Parameter*> parameterMap;
 
         AuthorizationManager& getAuthManager() { return authManager; }
-        VersionManager& getVersionManager() { return versionManager; }
 
         float getCpuLoad();
 
+        juce::String& getCurrentVersion() { return currentVersion; }
+
     protected:
         AuthorizationManager authManager;
-        VersionManager versionManager;
         juce::SharedResourcePointer<Resources> resources;
+
+        juce::String currentVersion;
 
         double getBPM();
         std::atomic<double> lastBPM{120};

@@ -8,7 +8,7 @@
 namespace imagiro {
 
     Processor::Processor(juce::String parametersYAMLString, const juce::String& currentVersion, const juce::String& productSlug)
-            : versionManager(currentVersion, productSlug),
+            : currentVersion(currentVersion),
               paramLoader(*this, parametersYAMLString)
     {
         bypassGain.reset(250);
@@ -18,7 +18,7 @@ namespace imagiro {
                          juce::String parametersYAMLString,
                          const juce::String& currentVersion, const juce::String& productSlug)
             : ProcessorBase(ioLayouts),
-              versionManager(currentVersion, productSlug),
+              currentVersion(currentVersion),
               paramLoader(*this, parametersYAMLString)
     {
         bypassGain.reset(250);

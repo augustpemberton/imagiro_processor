@@ -86,8 +86,10 @@ bool AuthorizationManager::isSerialValid(juce::String serial) {
 
 void AuthorizationManager::startDemo() {
     if (hasDemoStarted()) return;
+    if (!getProperties()->containsKey("demoStarted")) {
+        getProperties()->setValue("demoStartTime", juce::Time::currentTimeMillis());
+    }
     getProperties()->setValue("demoStarted", true);
-    getProperties()->setValue("demoStartTime", juce::Time::currentTimeMillis());
     getProperties()->saveIfNeeded();
 
     loadSavedAuth();
