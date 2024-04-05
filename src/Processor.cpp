@@ -25,8 +25,10 @@ namespace imagiro {
     }
 
     Processor::~Processor() {
-        for (auto p : getPluginParameters())
+        for (auto p : getPluginParameters()) {
             if (p->getUID() == "bypass") p->removeListener(this);
+        }
+
     }
 
     void Processor::reset() {

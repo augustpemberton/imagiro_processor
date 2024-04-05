@@ -38,6 +38,19 @@ public:
         return juce::SharedResourcePointer<Resources>();
     }
 
+    juce::int64 lastOpened;
+
+    Resources() {
+        lastOpened = juce::Time::currentTimeMillis();
+    }
+
+    ~Resources() {
+        auto timeOpened = juce::Time::currentTimeMillis() - lastOpened;
+
+        auto configTimeOpened = getConfigFile()->getIntValue("timeOpened", 0);
+        getConfigFile()->setValue("timeOpened", timeOpened + configTimeOpened);
+        getConfigFile()->save();
+    }
 
     static juce::File getDataFolder() {
 
