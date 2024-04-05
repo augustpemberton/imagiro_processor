@@ -99,7 +99,7 @@ namespace imagiro {
 
         try {
             auto s = choc::json::parse(stateString.toStdString());
-            loadPreset(Preset::fromState(s, true));
+            queuePreset(Preset::fromState(s, true), false);
         } catch (choc::json::ParseError& e) {
             DBG("unable to load preset");
             DBG(e.what());
