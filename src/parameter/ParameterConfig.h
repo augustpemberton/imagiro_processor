@@ -16,7 +16,7 @@ namespace imagiro {
         std::function<float(float)> processorConversionFunction {nullptr};
         std::function<DisplayValue(const Parameter&, float)> textFunction {nullptr};
         std::function<float(const Parameter&, juce::String)> valueFunction {nullptr};
-        juce::String name {"default"};
+        std::string name {"default"};
         bool reverse {false};
         std::vector<std::string> choices;
     };

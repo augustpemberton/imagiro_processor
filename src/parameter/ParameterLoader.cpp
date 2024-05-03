@@ -85,7 +85,7 @@ namespace imagiro {
         }
 
         ParameterConfig config {range, discrete, defaultVal};
-        config.name = std::move(configName);
+        config.name = configName.toStdString();
         config.reverse = reverse;
         config.textFunction = [&] (const Parameter& p, float val) -> DisplayValue { return {juce::String(val)}; };
         config.valueFunction = [&] (const Parameter& p, const juce::String& s) -> float { return s.getFloatValue(); };
@@ -224,6 +224,7 @@ namespace imagiro {
             configs.push_back(loadConfig(uid, "default", p, index));
         }
 
-        return std::make_unique<Parameter>(uid, name, configs, isMeta, isInternal, isAutomatable);
+        return std::make_unique<Parameter>(uid.toStdString(), name.toStdString(), configs,
+                                           isMeta, isInternal, isAutomatable);
     }
 }

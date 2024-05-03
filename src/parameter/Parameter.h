@@ -31,7 +31,7 @@ namespace imagiro {
         private juce::Timer {
     public:
         using Listener = ParameterListener;
-        Parameter(juce::String uid, juce::String name,
+        Parameter(std::string uid, std::string name,
                   std::vector<ParameterConfig> config, bool internal = false,
                   bool isMetaParam = false,
                   bool automatable = true, int versionHint=1);
@@ -42,7 +42,7 @@ namespace imagiro {
 
         void setInternal (bool i)           { internal = i;     }
         bool isInternal() const             { return internal;  }
-        juce::String getUID()               { return uid;       }
+        std::string getUID()               { return uid;       }
 
         virtual void reset() {}
         virtual void prepareToPlay (double sampleRate, int samplesPerBlock);
@@ -77,8 +77,8 @@ namespace imagiro {
         void setValueAndNotifyHost (float f, bool forceUpdate = false);
         void setUserValueAndNotifyHost (float f, bool forceUpdate = false);
         void setUserValueAsUserAction (float f);
-        juce::String getUserValueText() const;
-        juce::String userValueToText (float val);
+        std::string getUserValueText() const;
+        std::string userValueToText (float val);
         DisplayValue getDisplayValue() const;
         DisplayValue getDisplayValueForUserValue(float userValue) const;
 
@@ -99,9 +99,9 @@ namespace imagiro {
 
         //==============================================================================
         struct ParamState {
-            juce::String uid;
+            std::string uid;
             float value;
-            juce::String config {0};
+            std::string config;
             bool locked;
 
             bool operator==(const ParamState& other) const {
@@ -117,9 +117,9 @@ namespace imagiro {
 
             [[nodiscard]] choc::value::Value getStateCompressed(bool isDAWSaveState = false) const {
                 auto state = choc::value::createEmptyArray();
-                state.addArrayElement(uid.toStdString());
+                state.addArrayElement(uid);
                 state.addArrayElement(value);
-                state.addArrayElement(config.toStdString());
+                state.addArrayElement(config);
                 if (isDAWSaveState) state.addArrayElement(locked);
                 return state;
             }
@@ -139,9 +139,9 @@ namespace imagiro {
 
             [[nodiscard]] choc::value::Value getState(bool isDAWSaveState = false) const {
                 auto state = choc::value::createObject("ParamState");
-                state.addMember("uid", uid.toStdString());
+                state.addMember("uid", uid);
                 state.addMember("value", value);
-                state.addMember("config", config.toStdString());
+                state.addMember("config", config);
                 if (isDAWSaveState) state.addMember("locked", locked);
                 return state;
             }
@@ -200,9 +200,9 @@ namespace imagiro {
 
         void timerCallback() override;
 
-        juce::String uid;
-        juce::String name;
-        juce::String suffix;
+        std::string uid;
+        std::string name;
+        std::string suffix;
 
         std::atomic<float> value01 {0};
         float cachedUserValue {0};

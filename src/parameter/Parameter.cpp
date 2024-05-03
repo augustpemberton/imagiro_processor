@@ -9,7 +9,7 @@
 
 namespace imagiro {
 
-    Parameter::Parameter(juce::String uid, juce::String name,
+    Parameter::Parameter(std::string uid, std::string name,
                          std::vector<ParameterConfig> configs, bool meta, bool internal,
                          bool automatable, int versionHint)
 
@@ -94,12 +94,12 @@ namespace imagiro {
         endUserAction();
     }
 
-    juce::String Parameter::getUserValueText() const {
-        return getText (getValue(), 1000) + suffix;
+    std::string Parameter::getUserValueText() const {
+        return (getText (getValue(), 1000) + suffix).toStdString();
     }
 
-    juce::String Parameter::userValueToText (float userValue) {
-        return getText (getConfig()->range.convertTo0to1 (userValue), 1000) + suffix;
+    std::string Parameter::userValueToText (float userValue) {
+        return (getText (getConfig()->range.convertTo0to1 (userValue), 1000) + suffix).toStdString();
     }
 
     DisplayValue Parameter::getDisplayValue() const {
@@ -183,7 +183,7 @@ namespace imagiro {
     }
 
     juce::String Parameter::getName (int maximumStringLength) const {
-        return name.substring (0, maximumStringLength);
+        return juce::String(name).substring (0, maximumStringLength);
     }
 
     juce::String Parameter::getLabel() const {
