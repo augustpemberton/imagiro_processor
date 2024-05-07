@@ -11,7 +11,7 @@ public:
     AuthorizationManager();
 
     struct Listener {
-        virtual void onAuthSuccess() {}
+        virtual void onAuthStateChanged(bool authorized) {}
     };
 
     void addListener(Listener* l) { listeners.add(l); }
@@ -19,7 +19,8 @@ public:
 
     // Auth
     bool isAuthorized(bool ignoreDemo = false);
-    bool tryAuth(juce::String serial);
+    bool tryAuth(const juce::String& serial);
+    void cancelAuth();
 
     // Demo
     void startDemo();
@@ -37,7 +38,7 @@ private:
     void loadSavedAuth();
 
     bool isSerialValid(juce::String serial);
-    void saveSerial(juce::String serial);
+    void saveSerial(const juce::String& serial);
     std::atomic<bool> isAuthorizedCache {false};
 
     juce::SharedResourcePointer<Resources> resources;

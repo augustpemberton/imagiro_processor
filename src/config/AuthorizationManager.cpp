@@ -28,17 +28,25 @@ bool AuthorizationManager::isAuthorized(bool ignoreDemo) {
     return isAuthorizedCache;
 }
 
-bool AuthorizationManager::tryAuth(juce::String serial) {
+bool AuthorizationManager::tryAuth(const juce::String& serial) {
     if (isSerialValid(serial)) {
         saveSerial(serial);
-        listeners.call(&Listener::onAuthSuccess);
+        listeners.call(&Listener::onAuthStateChanged, true);
         return true;
+    } else {
+        listeners.call(&Listener::onAuthStateChanged, false);
     }
 
     return false;
 }
 
-void AuthorizationManager::saveSerial(juce::String serial) {
+void AuthorizationManager::cancelAuth() {
+    isAuthorizedCache = false;
+    saveSerial("");
+    tryAuth("");
+}
+
+void AuthorizationManager::saveSerial(const juce::String& serial) {
     getProperties()->reload();
     getProperties()->setValue("serial", serial);
 
