@@ -253,8 +253,7 @@ namespace imagiro {
         if (index == configIndex) return;
 
         auto uv = getUserValue();
-        index %= configs.size();
-        configIndex = index;
+        configIndex = index % configs.size();
 
         listeners.call(&Listener::configChanged, this);
         setUserValueAndNotifyHost(uv, true);
