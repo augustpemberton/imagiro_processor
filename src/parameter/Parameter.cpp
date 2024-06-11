@@ -275,7 +275,7 @@ namespace imagiro {
             smootherNeedsUpdate = false;
         }
 
-        auto target = getValue();
+        auto target = getUserValue();
         valueSmoother.setTargetValue(target);
 
         auto blockStart = valueSmoother.getCurrentValue();
@@ -295,7 +295,7 @@ namespace imagiro {
             generateSmoothedValueBuffer(samplesThisBlock);
             hasGeneratedSmoothBufferThisBlock = true;
         }
-        return juce::jlimit(0.f, 1.f, smoothedValueBuffer.getSample(0, blockIndex));
+        return smoothedValueBuffer.getSample(0, blockIndex);
     }
 
     void Parameter::setSmoothTime(float seconds) {
