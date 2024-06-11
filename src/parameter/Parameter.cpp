@@ -270,7 +270,10 @@ namespace imagiro {
     }
 
     void Parameter::generateSmoothedValueBuffer(int samples) {
-        if (smootherNeedsUpdate) valueSmoother.reset(sampleRate, smoothTimeSeconds);
+        if (smootherNeedsUpdate) {
+            valueSmoother.reset(sampleRate, smoothTimeSeconds);
+            smootherNeedsUpdate = false;
+        }
 
         auto target = getValue();
         valueSmoother.setTargetValue(target);
