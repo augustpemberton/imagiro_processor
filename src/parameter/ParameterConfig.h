@@ -19,5 +19,6 @@ namespace imagiro {
         std::string name {"default"};
         bool reverse {false};
         std::vector<std::string> choices;
+        bool processorValueChangesWithBPM = false;
     };
 }

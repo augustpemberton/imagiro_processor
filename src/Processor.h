@@ -34,8 +34,11 @@ namespace imagiro {
             virtual void sampleRateChanged(double newRate) {}
             virtual void playChanged(bool isPlaying) {}
         };
+
         void addBPMListener(BPMListener* l) { bpmListeners.add(l); }
         void removeBPMListener(BPMListener* l) { bpmListeners.remove(l); }
+        void setDefaultBPM(double bpm) {defaultBPM = bpm;}
+        double getDefaultBPM() {return defaultBPM;}
 
         // =================================================================
 
@@ -109,6 +112,7 @@ namespace imagiro {
         juce::String currentVersion;
 
         double getBPM();
+        std::atomic<double> defaultBPM {120};
         std::atomic<double> lastBPM{120};
         std::atomic<double> lastSampleRate {44100};
         std::atomic<bool> lastPlaying{false};

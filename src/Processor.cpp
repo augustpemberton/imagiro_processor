@@ -118,10 +118,10 @@ namespace imagiro {
     double Processor::getBPM() {
         if (posInfo && posInfo->getBpm().hasValue()) {
             auto bpm = *posInfo->getBpm();
-            if (bpm < 0.01) bpm = 120;
+            if (bpm < 0.01) return defaultBPM;
             return bpm;
         }
-        return 120;
+        return defaultBPM;
     }
 
     double Processor::getSyncTimeSeconds(float proportionOfBeat) {
@@ -194,6 +194,11 @@ namespace imagiro {
 
         if (!almostEqual(lastBPM.load(), oldBPM)) {
             bpmListeners.call(&BPMListener::bpmChanged, lastBPM);
+            for (auto& parameter : allParameters) {
+                if (parameter->getConfig()->processorValueChangesWithBPM) {
+                    parameter->callValueChangedListeners();
+                }
+            }
         }
 
         playhead = getPlayHead();

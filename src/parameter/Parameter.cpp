@@ -42,7 +42,7 @@ namespace imagiro {
 
     float Parameter::getProcessorValue() const {
         if (auto conversionFunction = getConfig()->processorConversionFunction)
-            return conversionFunction(value01);
+            return conversionFunction(getUserValue());
 
         return getUserValue();
     }
@@ -320,5 +320,9 @@ namespace imagiro {
             hasGeneratedSmoothBufferThisBlock = true;
         }
         return smoothedValueBuffer;
+    }
+
+    void Parameter::callValueChangedListeners() {
+        valueChanged();
     }
 }

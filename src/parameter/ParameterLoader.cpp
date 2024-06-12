@@ -133,6 +133,7 @@ namespace imagiro {
         } else if (type == "sync") {
             config.textFunction = DisplayFunctions::syncDisplay;
             config.valueFunction = DisplayFunctions::syncInput;
+            config.processorValueChangesWithBPM = true;
             config.processorConversionFunction = [&, syncType](float proportion) {
                 auto v = (processor.getSyncTimeSeconds(proportion));
                 return (syncType == "inverse") ? 1.f / v : v;
@@ -146,6 +147,7 @@ namespace imagiro {
                            frac.replace("d", "", true));
             };
 
+            config.processorValueChangesWithBPM = true;
             config.processorConversionFunction = [&, syncType](float proportion) {
                 auto v = (processor.getSyncTimeSeconds(proportion) * (3.f/2.f));
                 return (syncType == "inverse") ? 1.f / v : v;
@@ -158,6 +160,8 @@ namespace imagiro {
                 return DisplayFunctions::syncInput(p,
                                frac.replace("t", "", true));
             };
+
+            config.processorValueChangesWithBPM = true;
             config.processorConversionFunction = [&, syncType](float proportion) {
                 auto v = (processor.getSyncTimeSeconds(proportion) * (2.f/3.f));
                 return (syncType == "inverse") ? 1.f / v : v;

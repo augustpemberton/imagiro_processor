@@ -1,5 +1,4 @@
-//
-// Created by August Pemberton on 12/09/2022.
+// // Created by August Pemberton on 12/09/2022.
 //
 
 #pragma once
@@ -27,8 +26,7 @@ namespace imagiro {
     };
 
     class ModulationMatrix;
-    class Parameter : private juce::RangedAudioParameter,
-        private juce::Timer {
+    class Parameter : private juce::RangedAudioParameter, private juce::Timer {
     public:
         using Listener = ParameterListener;
         Parameter(std::string uid, std::string name,
@@ -84,6 +82,8 @@ namespace imagiro {
 
         void updateCachedUserValue() { cachedUserValue = getUserValue(); }
         float getCachedUserValue() const { return cachedUserValue; }
+
+        void callValueChangedListeners();
 
         //==============================================================================
 
