@@ -274,7 +274,7 @@ namespace imagiro {
             smootherNeedsUpdate = false;
         }
 
-        auto target = getUserValue();
+        auto target = getProcessorValue();
         valueSmoother.setTargetValue(target);
 
         auto blockStart = valueSmoother.getCurrentValue();
