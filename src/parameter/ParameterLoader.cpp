@@ -46,14 +46,16 @@ namespace imagiro {
 
     juce::NormalisableRange<float> ParameterLoader::getRange(juce::String parameterID, YAML::Node n) {
         auto type = getString(n, "type", "normal");
+        auto step = getFloat(n, "step", 0);
 
         if (type == "freq") {
-            return getNormalisableRangeExp(20, 20000);
+            auto min = getFloat(n, "min", 20);
+            auto max = getFloat(n, "max", 20000);
+            return getNormalisableRangeExp(min, max, step);
         }
 
         auto min = getFloat(n, "min", 0);
         auto max = getFloat(n, "max", 1);
-        auto step = getFloat(n, "step", 0);
         auto skew = getFloat(n, "skew", 1);
         auto inverse = getBool(n, "inverse", false);
         auto symmetricSkew = getBool(n, "symmetricSkew", false);
