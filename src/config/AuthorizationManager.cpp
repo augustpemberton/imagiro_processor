@@ -49,9 +49,6 @@ void AuthorizationManager::cancelAuth() {
 void AuthorizationManager::saveSerial(const juce::String& serial) {
     getProperties()->reload();
     getProperties()->setValue("serial", serial);
-
-    getProperties()->removeValue("demoStarted");
-    getProperties()->removeValue("demoStartTime");
     getProperties()->save();
 
     loadSavedAuth();
@@ -94,7 +91,7 @@ bool AuthorizationManager::isSerialValid(juce::String serial) {
 
 void AuthorizationManager::startDemo() {
     if (hasDemoStarted()) return;
-    if (!getProperties()->containsKey("demoStarted")) {
+    if (!getProperties()->containsKey("demoStartTime")) {
         getProperties()->setValue("demoStartTime", juce::Time::currentTimeMillis());
     }
     getProperties()->setValue("demoStarted", true);
