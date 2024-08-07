@@ -110,6 +110,9 @@ bool AuthorizationManager::hasDemoStarted() {
 }
 
 bool AuthorizationManager::hasDemoFinished() {
+    auto savedSerial = getProperties()->getValue("serial", "");
+    if (savedSerial != "" && isSerialValid(savedSerial)) return true;
+
     if (!hasDemoStarted()) return false;
     return getDemoTimeLeft() <= juce::RelativeTime(0);
 }
