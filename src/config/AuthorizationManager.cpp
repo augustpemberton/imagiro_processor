@@ -120,7 +120,7 @@ bool AuthorizationManager::hasDemoFinished() {
 juce::RelativeTime AuthorizationManager::getDemoTimeLeft() {
     if (!hasDemoStarted()) return juce::RelativeTime(0);
 
-    const static auto demoLength = juce::RelativeTime(60*60*24*5);
+    const static auto demoLength = juce::RelativeTime(60*60*24*14);
     auto demoStartTime = juce::Time(getProperties()->getDoubleValue("demoStartTime"));
     auto demoEndTime = demoStartTime + demoLength;
 
