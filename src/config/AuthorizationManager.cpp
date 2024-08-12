@@ -70,6 +70,7 @@ void AuthorizationManager::loadSavedAuth() {
 }
 
 bool AuthorizationManager::isSerialValid(juce::String serial) {
+    serial = serial.trimCharactersAtEnd("b"); // handle legacy bitbird collab serials
     if (serial.length() != 16) return false;
 
     auto n = 0;
