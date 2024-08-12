@@ -67,7 +67,7 @@ namespace imagiro {
     };
 
     static juce::NormalisableRange<float> getTempoSyncRange(int minPower, int maxPower, bool inverse) {
-        return {
+        auto range = juce::NormalisableRange<float>{
                 powf(2, minPower),
                 powf(2, maxPower),
                 [=](auto rangeStart, auto rangeEnd, auto valueToRemap) {  // to real world from 01
@@ -88,6 +88,9 @@ namespace imagiro {
                 [](auto rangeStart, auto rangeEnd, auto valueToRemap) { // real world to valid real world
                     auto s = pow(2, prevPowerOfTwo(valueToRemap));
                     return juce::jlimit((float)rangeStart, (float)rangeEnd, (float)s);
-                }};
+                }
+        };
+
+        return range;
     }
 }
