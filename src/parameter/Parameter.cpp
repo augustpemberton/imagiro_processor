@@ -27,6 +27,7 @@ namespace imagiro {
     }
 
     Parameter::~Parameter() noexcept {
+        stopTimer();
         // sync param will be created after, therefore destroyed first
         // so cannot remove listener as it will already be destroyed at this point
     }
