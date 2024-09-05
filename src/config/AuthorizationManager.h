@@ -6,6 +6,7 @@
 #include <juce_data_structures/juce_data_structures.h>
 #include "Resources.h"
 
+#ifndef IMAGIRO_SKIP_AUTH
 class AuthorizationManager {
 public:
     AuthorizationManager();
@@ -44,3 +45,4 @@ private:
     juce::SharedResourcePointer<Resources> resources;
     std::unique_ptr<juce::PropertiesFile>& getProperties() { return resources->getConfigFile(); }
 };
+#endif

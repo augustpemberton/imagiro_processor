@@ -172,7 +172,9 @@ namespace imagiro {
 #if JucePlugin_IsSynth
         buffer.clear();
 #endif
+#ifndef IMAGIRO_SKIP_AUTH
         if (!authManager.isAuthorized()) return;
+#endif
 
         for (auto param : getPluginParameters()) {
             param->startBlock(buffer.getNumSamples());

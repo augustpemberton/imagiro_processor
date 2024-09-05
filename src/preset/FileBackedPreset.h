@@ -33,5 +33,3 @@ private:
 
 //    juce::SharedResourcePointer<Resources> resources;
 };
-
-

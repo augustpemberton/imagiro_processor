@@ -98,15 +98,17 @@ namespace imagiro {
         void parameterChanged(imagiro::Parameter *param) override;
         void configChanged(imagiro::Parameter *param) override;
         std::map<juce::String, Parameter*> parameterMap;
-
+#ifndef IMAGIRO_SKIP_AUTH
         AuthorizationManager& getAuthManager() { return authManager; }
-
+#endif
         float getCpuLoad();
 
         juce::String& getCurrentVersion() { return currentVersion; }
 
     protected:
+    #ifndef IMAGIRO_SKIP_AUTH
         AuthorizationManager authManager;
+    #endif
         juce::SharedResourcePointer<Resources> resources;
 
         juce::String currentVersion;

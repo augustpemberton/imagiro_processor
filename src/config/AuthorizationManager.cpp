@@ -4,6 +4,7 @@
 
 #include "AuthorizationManager.h"
 
+#ifndef IMAGIRO_SKIP_AUTH
 AuthorizationManager::AuthorizationManager()
 {
     loadSavedAuth();
@@ -22,10 +23,11 @@ bool AuthorizationManager::isAuthorized(bool ignoreDemo) {
         else return false;
     }
 
-#ifdef SKIP_AUTH
+#ifdef IMAGIRO_BYPASS_AUTH
     return true;
-#endif
+#else
     return isAuthorizedCache;
+#endif
 }
 
 bool AuthorizationManager::tryAuth(const juce::String& serial) {
@@ -137,3 +139,4 @@ void AuthorizationManager::logout() {
     getProperties()->removeValue("serial");
     isAuthorizedCache = false;
 }
+#endif
