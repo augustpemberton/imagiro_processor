@@ -101,6 +101,7 @@ namespace imagiro {
         std::map<juce::String, Parameter*> parameterMap;
 
         float getCpuLoad();
+        juce::AudioProcessorParameter* getBypassParameter() const override;
 
         juce::String& getCurrentVersion() { return currentVersion; }
 

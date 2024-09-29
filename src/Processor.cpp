@@ -312,4 +312,11 @@ namespace imagiro {
         }
     }
     void Processor::audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) {}
+
+    juce::AudioProcessorParameter* Processor::getBypassParameter() const {
+        if (const std::string bypassUID = "bypass"; parameterMap.contains (bypassUID))
+            return parameterMap.at(bypassUID)->asJUCEParameter();
+
+        return nullptr;
+    }
 }
