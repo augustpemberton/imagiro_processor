@@ -4,6 +4,7 @@
 
 #pragma once
 #include <juce_core/juce_core.h>
+#include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 #include "ProcessorBase.h"
 #include "parameter/Parameter.h"
@@ -16,7 +17,7 @@
 class Preset;
 
 namespace imagiro {
-    class Processor : public ProcessorBase, public Parameter::Listener {
+    class Processor : public ProcessorBase, public Parameter::Listener, private juce::AudioProcessorListener {
     public:
         Processor(juce::String parametersYAMLString,
                   const juce::String& currentVersion = "1.0.0",
@@ -128,10 +129,16 @@ namespace imagiro {
 
         juce::SmoothedValue<float> bypassGain;
         juce::AudioSampleBuffer dryBuffer;
+        const int MAX_DELAY_LINES_SAMPLES_DURATION = 48000 * 4;
+        juce::dsp::DelayLine<float> dryBufferLatencyCompensationLine { MAX_DELAY_LINES_SAMPLES_DURATION };
 
         juce::AudioProcessLoadMeasurer measurer;
         std::atomic<float> cpuLoad;
 
         ParameterLoader paramLoader;
+
+    private:
+        void audioProcessorChanged(AudioProcessor *processor, const ChangeDetails &details) override;
+        void audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) override;
     };
 }
