@@ -22,16 +22,18 @@ namespace imagiro {
               paramLoader(*this, parametersYAMLString)
     {
         bypassGain.reset(250);
+        juce::AudioProcessor::addListener(this);
     }
 
     Processor::~Processor() {
         for (auto p : getPluginParameters()) {
             if (p->getUID() == "bypass") p->removeListener(this);
         }
-
+        juce::AudioProcessor::removeListener(this);
     }
 
     void Processor::reset() {
+        dryBufferLatencyCompensationLine.reset();
         for (auto p : getPluginParameters())
             p->reset();
     }
@@ -217,6 +219,11 @@ namespace imagiro {
                                buffer.getNumSamples());
         }
 
+        juce::dsp::AudioBlock<float> dryBlock { dryBuffer };
+        const juce::dsp::ProcessContextReplacing context { dryBlock };
+
+        dryBufferLatencyCompensationLine.process(context);
+
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
             process(buffer, midiMessages);
@@ -284,6 +291,10 @@ namespace imagiro {
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         measurer.reset(sampleRate, samplesPerBlock);
         dryBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
+        dryBufferLatencyCompensationLine.prepare({
+            sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())
+        });
+
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);
         }
@@ -292,4 +303,13 @@ namespace imagiro {
     float Processor::getCpuLoad() {
         return cpuLoad.load();
     }
+
+    void Processor::audioProcessorChanged(AudioProcessor *processor, const ChangeDetails &details) {
+        if(details.latencyChanged) {
+            const auto newLatencyInSamples = getLatencySamples();
+            dryBufferLatencyCompensationLine.setMaximumDelayInSamples(std::max(MAX_DELAY_LINES_SAMPLES_DURATION, newLatencyInSamples));
+            dryBufferLatencyCompensationLine.setDelay(newLatencyInSamples);
+        }
+    }
+    void Processor::audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) {}
 }
