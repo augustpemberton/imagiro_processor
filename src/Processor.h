@@ -139,7 +139,7 @@ namespace imagiro {
         ParameterLoader paramLoader;
 
     private:
-        void audioProcessorChanged(AudioProcessor *processor, const ChangeDetails &details) override;
+        void audioProcessorChanged(AudioProcessor *processor, const juce::AudioProcessorListener::ChangeDetails &details) override;
         void audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) override;
     };
 }

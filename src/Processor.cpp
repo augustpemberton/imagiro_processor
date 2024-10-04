@@ -304,7 +304,7 @@ namespace imagiro {
         return cpuLoad.load();
     }
 
-    void Processor::audioProcessorChanged(AudioProcessor *processor, const ChangeDetails &details) {
+    void Processor::audioProcessorChanged(AudioProcessor *processor, const juce::AudioProcessorListener::ChangeDetails &details) {
         if(details.latencyChanged) {
             const auto newLatencyInSamples = getLatencySamples();
             dryBufferLatencyCompensationLine.setMaximumDelayInSamples(std::max(MAX_DELAY_LINES_SAMPLES_DURATION, newLatencyInSamples));
