@@ -213,7 +213,7 @@ namespace imagiro {
             }
         }
 
-        for (auto c=0; c<buffer.getNumChannels(); c++)
+        for (auto c=0; c < getTotalNumOutputChannels(); c++)
             for(auto s=0; s<buffer.getNumSamples(); s++)
                 dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
@@ -228,7 +228,7 @@ namespace imagiro {
         // apply bypass
         for (auto s=0; s<buffer.getNumSamples(); s++) {
             auto gain = bypassGain.getNextValue();
-            for (auto c=0; c<buffer.getNumChannels(); c++) {
+            for (auto c=0; c<getTotalNumOutputChannels(); c++) {
                 auto v = buffer.getSample(c, s) * (1-gain);
                 v += dryBufferLatencyCompensationLine.popSample(c) * gain;
                 buffer.setSample(c, s, v);
