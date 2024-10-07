@@ -213,16 +213,10 @@ namespace imagiro {
             }
         }
 
-        for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
-            dryBuffer.copyFrom(c, 0,
-                               buffer.getReadPointer(c),
-                               buffer.getNumSamples());
-        }
+        for (auto c=0; c < getTotalNumOutputChannels(); c++)
+            for(auto s=0; s<buffer.getNumSamples(); s++)
+                dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
-        juce::dsp::AudioBlock<float> dryBlock { dryBuffer };
-        const juce::dsp::ProcessContextReplacing context { dryBlock };
-
-        dryBufferLatencyCompensationLine.process(context);
 
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
@@ -234,9 +228,9 @@ namespace imagiro {
         // apply bypass
         for (auto s=0; s<buffer.getNumSamples(); s++) {
             auto gain = bypassGain.getNextValue();
-            for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
+            for (auto c=0; c<getTotalNumOutputChannels(); c++) {
                 auto v = buffer.getSample(c, s) * (1-gain);
-                v += dryBuffer.getSample(c, s) * gain;
+                v += dryBufferLatencyCompensationLine.popSample(c) * gain;
                 buffer.setSample(c, s, v);
             }
         }
@@ -290,10 +284,10 @@ namespace imagiro {
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         measurer.reset(sampleRate, samplesPerBlock);
-        dryBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
         dryBufferLatencyCompensationLine.prepare({
             sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())
         });
+        dryBufferLatencyCompensationLine.setDelay(getLatencySamples());
 
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);
