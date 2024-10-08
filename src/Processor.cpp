@@ -22,16 +22,18 @@ namespace imagiro {
               paramLoader(*this, parametersYAMLString)
     {
         bypassGain.reset(250);
+        juce::AudioProcessor::addListener(this);
     }
 
     Processor::~Processor() {
         for (auto p : getPluginParameters()) {
             if (p->getUID() == "bypass") p->removeListener(this);
         }
-
+        juce::AudioProcessor::removeListener(this);
     }
 
     void Processor::reset() {
+        dryBufferLatencyCompensationLine.reset();
         for (auto p : getPluginParameters())
             p->reset();
     }
@@ -211,11 +213,10 @@ namespace imagiro {
             }
         }
 
-        for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
-            dryBuffer.copyFrom(c, 0,
-                               buffer.getReadPointer(c),
-                               buffer.getNumSamples());
-        }
+        for (auto c=0; c < getTotalNumOutputChannels(); c++)
+            for(auto s=0; s<buffer.getNumSamples(); s++)
+                dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
+
 
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
@@ -227,9 +228,9 @@ namespace imagiro {
         // apply bypass
         for (auto s=0; s<buffer.getNumSamples(); s++) {
             auto gain = bypassGain.getNextValue();
-            for (auto c=0; c<dryBuffer.getNumChannels(); c++) {
+            for (auto c=0; c<getTotalNumOutputChannels(); c++) {
                 auto v = buffer.getSample(c, s) * (1-gain);
-                v += dryBuffer.getSample(c, s) * gain;
+                v += dryBufferLatencyCompensationLine.popSample(c) * gain;
                 buffer.setSample(c, s, v);
             }
         }
@@ -283,7 +284,11 @@ namespace imagiro {
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         measurer.reset(sampleRate, samplesPerBlock);
-        dryBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
+        dryBufferLatencyCompensationLine.prepare({
+            sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())
+        });
+        dryBufferLatencyCompensationLine.setDelay(getLatencySamples());
+
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);
         }
@@ -291,5 +296,21 @@ namespace imagiro {
 
     float Processor::getCpuLoad() {
         return cpuLoad.load();
+    }
+
+    void Processor::audioProcessorChanged(AudioProcessor *processor, const juce::AudioProcessorListener::ChangeDetails &details) {
+        if(details.latencyChanged) {
+            const auto newLatencyInSamples = getLatencySamples();
+            dryBufferLatencyCompensationLine.setMaximumDelayInSamples(std::max(MAX_DELAY_LINES_SAMPLES_DURATION, newLatencyInSamples));
+            dryBufferLatencyCompensationLine.setDelay(newLatencyInSamples);
+        }
+    }
+    void Processor::audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) {}
+
+    juce::AudioProcessorParameter* Processor::getBypassParameter() const {
+        if (const std::string bypassUID = "bypass"; parameterMap.contains (bypassUID))
+            return parameterMap.at(bypassUID)->asJUCEParameter();
+
+        return nullptr;
     }
 }
