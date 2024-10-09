@@ -193,7 +193,7 @@ namespace imagiro {
     int Parameter::getNumSteps() const {
         if (almostEqual(getConfig()->range.interval, 0.f)) return 100;
         auto steps = juce::roundToInt (getConfig()->range.getRange().getLength() / getConfig()->range.interval);
-        return steps;
+        return steps+1;
     }
 
     bool Parameter::isDiscrete() const {
