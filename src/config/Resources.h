@@ -40,7 +40,9 @@ public:
 
     juce::int64 lastOpened;
 
-    Resources() {
+    Resources()
+        : errorLogger(getDataFolder().getChildFile("error-log.txt"), "======= log started ========")
+    {
         lastOpened = juce::Time::currentTimeMillis();
     }
 
@@ -50,6 +52,10 @@ public:
         auto configTimeOpened = getConfigFile()->getIntValue("timeOpened", 0);
         getConfigFile()->setValue("timeOpened", timeOpened + configTimeOpened);
         getConfigFile()->save();
+    }
+
+    juce::FileLogger& getErrorLogger() {
+        return errorLogger;
     }
 
     static juce::File getDataFolder() {
@@ -240,4 +246,6 @@ private:
 
         return favoriteTree;
     }
+
+    juce::FileLogger errorLogger;
 };
