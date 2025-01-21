@@ -9,3 +9,5 @@
 #include "src/dsp/EnvelopeFollower.h"
 #include "src/dsp/interpolation.h"
 #include "src/note/ScaledMPENote.h"
+#include "src/envelope/Envelope.h"
+#include "src/BufferFileLoader.h"

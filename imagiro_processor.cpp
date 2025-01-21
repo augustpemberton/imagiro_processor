@@ -9,3 +9,4 @@
 #include "src/dsp/filter/StateVariableTPTFilter.cpp"
 #include "src/note/env-shape/Segment.cpp"
 #include "src/note/env-shape/SegmentCurve.cpp"
+#include "src/envelope/adsr/ADSR.cpp"
