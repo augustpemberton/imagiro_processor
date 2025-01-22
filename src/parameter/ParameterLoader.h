@@ -8,16 +8,19 @@
 
 namespace imagiro {
     struct ParameterLoader {
-        ParameterLoader(Processor& processor, const juce::String& YAMLString);
+        /*
+         * Create parameters from a YAML string.
+         * a processor is needed for tempo-sync parameters
+         */
+        std::vector<std::unique_ptr<Parameter>> loadParameters(const juce::String& YAMLString, Processor& processor) const;
 
-        imagiro::ParameterConfig loadConfig(juce::String parameterName, juce::String name, YAML::Node p, int index = 0);
+    protected:
+        virtual std::vector<std::unique_ptr<imagiro::Parameter>> loadParametersFromNode(const juce::String& uid, YAML::Node p, Processor& processor) const ;
+        virtual imagiro::ParameterConfig loadConfig(const juce::String& name, YAML::Node p, Processor& processor) const;
 
-    private:
-        std::unique_ptr<imagiro::Parameter> loadParameter(
-                const juce::String& uid, YAML::Node paramNode, const juce::String& namePrefix = "", int index = 0);
-        juce::NormalisableRange<float> getRange(juce::String parameterName, YAML::Node n);
-        void load(const YAML::Node& config);
-
-        Processor& processor;
+        static juce::String getString(const YAML::Node& n, const juce::String& key, juce::String defaultValue = "");
+        static float getFloat(const YAML::Node& n, const juce::String& key, float defaultValue = 0);
+        static bool getBool(const YAML::Node& n, const juce::String& key, bool defaultValue = false);
+        static juce::NormalisableRange<float> getRange(const YAML::Node& n);
     };
 }

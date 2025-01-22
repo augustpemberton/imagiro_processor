@@ -15,10 +15,10 @@ namespace imagiro {
         float defaultValue {0};
         std::function<float(float)> processorConversionFunction {nullptr};
         std::function<DisplayValue(const Parameter&, float)> textFunction {nullptr};
-        std::function<float(const Parameter&, juce::String)> valueFunction {nullptr};
+        std::function<float(const Parameter&, const juce::String&)> valueFunction {nullptr};
         std::string name {"default"};
         bool reverse {false};
-        std::vector<std::string> choices;
+        std::vector<std::string> choices = {};
         bool processorValueChangesWithBPM = false;
     };
 }

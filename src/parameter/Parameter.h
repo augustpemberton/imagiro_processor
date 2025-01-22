@@ -38,8 +38,10 @@ namespace imagiro {
 
         juce::RangedAudioParameter* asJUCEParameter() { return this; }
 
-        void setInternal (bool i)           { internal = i;     }
-        bool isInternal() const             { return internal;  }
+        void setInternal (bool i)          { internal = i;     }
+        bool isInternal() const            { return internal;  }
+        bool isMeta() const                { return juce::RangedAudioParameter::isMetaParameter();  }
+        bool isAutomatable() const         { return juce::RangedAudioParameter::isAutomatable();  }
         std::string getUID()               { return uid;       }
 
         virtual void reset() {}

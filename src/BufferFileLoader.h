@@ -46,6 +46,7 @@ private:
     double targetSampleRate;
 
     void run() override {
+        DBG("loading file " + fileToLoad.getFullPathName());
         auto reader = std::unique_ptr<juce::AudioFormatReader>(afm.createReaderFor(fileToLoad));
 
         if (!reader) {

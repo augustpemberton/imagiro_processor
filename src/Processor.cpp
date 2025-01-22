@@ -3,26 +3,20 @@
 //
 
 #include "Processor.h"
+
+#include <utility>
 #include "choc/text/choc_JSON.h"
 
 namespace imagiro {
 
-    Processor::Processor(juce::String parametersYAMLString, const juce::String& currentVersion, const juce::String& productSlug)
-            : currentVersion(currentVersion),
-              paramLoader(*this, parametersYAMLString)
-    {
-        bypassGain.reset(250);
-    }
-
-    Processor::Processor(const juce::AudioProcessor::BusesProperties &ioLayouts,
-                         juce::String parametersYAMLString,
-                         const juce::String& currentVersion, const juce::String& productSlug)
-            : ProcessorBase(ioLayouts),
-              currentVersion(currentVersion),
-              paramLoader(*this, parametersYAMLString)
+    Processor::Processor(juce::String parametersYAMLString, const ParameterLoader& loader, const juce::AudioProcessor::BusesProperties &ioLayouts)
+            : ProcessorBase(ioLayouts)
     {
         bypassGain.reset(250);
         juce::AudioProcessor::addListener(this);
+
+        auto parameters = loader.loadParameters(parametersYAMLString, *this);
+        for (auto& param : parameters) this->addParam(std::move(param));
     }
 
     Processor::~Processor() {

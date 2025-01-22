@@ -4,9 +4,14 @@
 
 #pragma once
 
+#define INTERP_PRE_SAMPLES 1
+#define INTERP_POST_SAMPLES 2
 
 namespace imagiro {
     static float interpolateHQ(juce::AudioSampleBuffer& b, int channel, float index) {
+
+        // expensive assert in debug mode so commenting for now
+//        jassert(b.getNumSamples() > index + 2);
 
         auto in = b.getReadPointer(channel);
 

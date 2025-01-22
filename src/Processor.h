@@ -20,12 +20,8 @@ namespace imagiro {
     class Processor : public ProcessorBase, public Parameter::Listener, private juce::AudioProcessorListener {
     public:
         Processor(juce::String parametersYAMLString,
-                  const juce::String& currentVersion = "1.0.0",
-                  const juce::String& productSlug = "");
-        Processor(const juce::AudioProcessor::BusesProperties& ioLayouts,
-                  juce::String parametersYAMLString,
-                  const juce::String& currentVersion = "1.0.0",
-                  const juce::String& productSlug = "");
+                  const ParameterLoader& loader = ParameterLoader(),
+                  const juce::AudioProcessor::BusesProperties& ioLayout = getDefaultProperties());
 
         ~Processor() override;
 
@@ -103,12 +99,8 @@ namespace imagiro {
         float getCpuLoad();
         juce::AudioProcessorParameter* getBypassParameter() const override;
 
-        juce::String& getCurrentVersion() { return currentVersion; }
-
     protected:
         juce::SharedResourcePointer<Resources> resources;
-
-        juce::String currentVersion;
 
         double getBPM();
         std::atomic<double> defaultBPM {120};
@@ -134,8 +126,6 @@ namespace imagiro {
 
         juce::AudioProcessLoadMeasurer measurer;
         std::atomic<float> cpuLoad;
-
-        ParameterLoader paramLoader;
 
     private:
         void audioProcessorChanged(AudioProcessor *processor, const juce::AudioProcessorListener::ChangeDetails &details) override;
