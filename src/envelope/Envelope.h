@@ -50,16 +50,26 @@ public:
     }
 
     float getNextSample() {
-        float newLevel = quickfading ? (outputLevel - quickfadeRate) : adsr.process();
+        downsampleCounter += downsampleInv;
 
-        if (newLevel < 0.f && quickfading) {
-            quickfading = false;
-            adsr.reset();
-            return 0.f;
+        if (downsampleCounter >= 1) {
+            downsampleCounter = 0;
+
+            float newLevel = quickfading ? (outputLevel - quickfadeRate) : adsr.process();
+
+            if (newLevel < 0.f && quickfading) {
+                quickfading = false;
+                adsr.reset();
+                return 0.f;
+            }
+
+            lastTargetLevel = targetLevel;
+            targetLevel = newLevel;
         }
 
-        outputLevel = newLevel;
-        return newLevel;
+        auto newOutput = imagiro::lerp(lastTargetLevel, targetLevel, downsampleCounter);
+        outputLevel = newOutput;
+        return outputLevel;
     }
 
     bool isActive() const {
@@ -76,7 +86,7 @@ public:
 
         // Generate envelope values
         for (auto s = 0; s < numSamples; s++) {
-            if (downsampleCounter == 0) {
+            if (imagiro::almostEqual(downsampleCounter, 0.f)) {
                 prevEnv = nextEnv;
                 nextEnv = getNextSample();
             }
@@ -106,7 +116,11 @@ private:
     juce::AudioSampleBuffer envTempBuffer;
     ADSR adsr;
     ADSRParameters params;
+
+    float lastTargetLevel {0};
     float outputLevel {0};
+    float targetLevel {0};
+
     double sampleRate {0};
 
     const float quickfadeSeconds {0.01f};
