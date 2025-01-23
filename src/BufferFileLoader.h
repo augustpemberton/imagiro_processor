@@ -30,7 +30,7 @@ public:
 
     struct Listener {
         virtual void OnFileLoadProgress(float progress) {}
-        virtual void OnFileLoadComplete() {}
+        virtual void OnFileLoadComplete(float maxMagnitude) {}
         virtual void OnFileLoadError(juce::String error) {}
     };
 
@@ -53,6 +53,8 @@ private:
             listeners.call(&Listener::OnFileLoadError, "Unable to create reader");
             return;
         }
+
+        float magnitude = 0;
 
         auto ratio = targetSampleRate / reader->sampleRate;
         int nInterpSamples = (int)(ratio * (int)reader->lengthInSamples);
@@ -99,6 +101,7 @@ private:
                     buffer->copyFrom(c, outN, tempInterpBuffer.getReadPointer(c, outN),
                                     numOutputSamples);
                 }
+                magnitude = std::max(magnitude, tempInterpBuffer.getMagnitude(outN, numOutputSamples));
             }
 
             outN += numOutputSamples;
@@ -106,7 +109,7 @@ private:
             listeners.call(&Listener::OnFileLoadProgress, outN / (float) nInterpSamples);
         }
 
-        listeners.call(&Listener::OnFileLoadComplete);
+        listeners.call(&Listener::OnFileLoadComplete, magnitude);
     }
 
 };
