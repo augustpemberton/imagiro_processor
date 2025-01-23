@@ -57,6 +57,7 @@ private:
         auto ratio = targetSampleRate / reader->sampleRate;
         int nInterpSamples = (int)(ratio * (int)reader->lengthInSamples);
 
+        buffer->clear();
         buffer->setSize((int)reader->numChannels, nInterpSamples);
 
         juce::AudioSampleBuffer tempLoadBuffer ( reader->numChannels, reader->lengthInSamples);
@@ -74,7 +75,7 @@ private:
         const int chunkSize = reader->sampleRate;
         int outN = 0;
 
-        auto samplesToRead = std::min(tempLoadBuffer.getNumSamples(), (int)(buffer->getNumSamples() * ratio));
+        auto samplesToRead = (int)reader->lengthInSamples;
 
         for (auto n=0; n<samplesToRead; n+=std::min(samplesToRead - n, chunkSize)) {
             if (threadShouldExit()) {

@@ -113,7 +113,7 @@ namespace imagiro {
             };
         } else if (type == "sync-dotted") {
             config.textFunction = [](const Parameter& param, float t) -> DisplayValue {
-                return {DisplayFunctions::syncDisplay(param, t).value, "d"};
+                return {DisplayFunctions::syncDisplay(param, t).value, "dotted"};
             };
             config.valueFunction = [](const Parameter& param, const juce::String& frac) {
                 return DisplayFunctions::syncInput(param, frac.replace("d", "", true));
@@ -126,7 +126,7 @@ namespace imagiro {
             };
         } else if (type == "sync-triplet") {
             config.textFunction = [](const Parameter& param, float t) -> DisplayValue {
-                return {DisplayFunctions::syncDisplay(param, t).value, "t"};
+                return {DisplayFunctions::syncDisplay(param, t).value, "triplet"};
             };
             config.valueFunction = [](const Parameter& param, const juce::String& frac) {
                 return DisplayFunctions::syncInput(param, frac.replace("t", "", true));

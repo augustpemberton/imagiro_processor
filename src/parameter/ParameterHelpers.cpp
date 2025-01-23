@@ -190,7 +190,7 @@ namespace imagiro {
 
     DisplayValue DisplayFunctions::syncDisplay(const Parameter &p, float val) {
         auto f = fractionString(val);
-        return {f};
+        return {f, "note"};
     }
     float DisplayFunctions::syncInput(const Parameter& p, juce::String frac) {
         if (!frac.contains("/")) return frac.getFloatValue();
