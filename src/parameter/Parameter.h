@@ -197,6 +197,8 @@ namespace imagiro {
         void setSmoothTime(float seconds);
         juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer();
 
+        ModTarget& getModTarget() { return modTarget; }
+
     protected:
         bool internal {false};
         int modIndex = -1;

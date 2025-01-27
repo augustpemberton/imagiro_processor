@@ -127,6 +127,8 @@ namespace imagiro {
         juce::AudioProcessLoadMeasurer measurer;
         std::atomic<float> cpuLoad;
 
+        ModMatrix modMatrix;
+
     private:
         void audioProcessorChanged(AudioProcessor *processor, const juce::AudioProcessorListener::ChangeDetails &details) override;
         void audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) override;

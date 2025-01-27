@@ -28,6 +28,8 @@ namespace imagiro {
         void setSourceValue(SourceID sourceID, float value);
         void setSourceValue(SourceID sourceID, size_t voiceIndex, float value);
 
+        int getNumModSources(TargetID targetID);
+
     private:
         static std::variant<float, std::array<float, MAX_VOICES>> getDefaultVariantValue(ModulationType type) {
             if (type == ModulationType::Global) return 0.f;
@@ -51,5 +53,6 @@ namespace imagiro {
 
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};
+        std::unordered_map<TargetID, int> numModSources {};
     };
 }

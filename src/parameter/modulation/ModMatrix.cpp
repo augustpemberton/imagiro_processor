@@ -37,6 +37,10 @@ namespace imagiro {
             }
         }
 
+        for (auto& [targetID, numSources] : numModSources) {
+            numSources = 0;
+        }
+
         // TODO clamp 0-1 ?
         for (const auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
@@ -46,6 +50,8 @@ namespace imagiro {
 
             auto sourceType = sourceValues[sourceID].type;
             auto targetType = targetValues[targetID].type;
+
+            numModSources[targetID]++;
 
             if (sourceType == ModulationType::Global && targetType == ModulationType::Global) {
                 auto& sourceValue = std::get<float>(sourceValues[sourceID].value);
@@ -100,5 +106,9 @@ namespace imagiro {
         TargetValue tv {type, value};
         targetValues.insert({id, tv});
         return id;
+    }
+
+    int ModMatrix::getNumModSources(imagiro::TargetID targetID) {
+        return numModSources[targetID];
     }
 }

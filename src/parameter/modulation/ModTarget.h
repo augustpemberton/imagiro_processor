@@ -53,6 +53,15 @@ namespace imagiro {
             return *id;
         }
 
+        int getNumModSources() {
+            if (!matrix || !id) {
+                jassertfalse;
+                return 0;
+            }
+
+            return matrix->getNumModSources(*id);
+        }
+
     private:
         std::optional<TargetID> id;
         ModMatrix* matrix;

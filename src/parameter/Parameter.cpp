@@ -50,7 +50,7 @@ namespace imagiro {
     }
 
     float Parameter::getModValue() const {
-        if (!modMatrix) jassertfalse;
+        if (!modMatrix) return getValue();
         return modTarget.getModulatedValue(getValue());
     }
 
@@ -60,9 +60,9 @@ namespace imagiro {
 
     float Parameter::getProcessorValue() const {
         if (auto conversionFunction = getConfig()->processorConversionFunction)
-            return conversionFunction(getUserValue());
+            return conversionFunction(getModUserValue());
 
-        return getUserValue();
+        return getModUserValue();
     }
 
     float Parameter::getProcessorValue(float userValue) const {

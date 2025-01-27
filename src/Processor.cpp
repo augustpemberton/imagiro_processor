@@ -37,6 +37,8 @@ namespace imagiro {
             p->addListener(this);
         }
 
+        p->setModMatrix(modMatrix);
+
         auto rawPtr = p.get();
         allParameters.add (rawPtr);
         parameterMap[p->getUID()] = rawPtr;
