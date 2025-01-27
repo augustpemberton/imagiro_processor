@@ -10,7 +10,9 @@
 namespace imagiro {
 
     Parameter::Parameter(std::string uid, std::string name,
-                         std::vector<ParameterConfig> configs, bool meta, bool internal,
+                         std::vector<ParameterConfig> configs,
+                         ModMatrix::ModulationType modType,
+                         bool meta, bool internal,
                          bool automatable, int versionHint)
 
             : juce::RangedAudioParameter({uid, versionHint}, name,
@@ -20,7 +22,8 @@ namespace imagiro {
               configs(std::move(configs)),
               internal(internal),
               uid(uid),
-              name(name)
+              name(name),
+              modTarget(modType)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         startTimerHz(30);
@@ -32,6 +35,11 @@ namespace imagiro {
         // so cannot remove listener as it will already be destroyed at this point
     }
 
+    void Parameter::setModMatrix(imagiro::ModMatrix &m) {
+        modTarget.setModMatrix(m);
+        modMatrix = &m;
+    }
+
     bool Parameter::isToggle() {
         return almostEqual(getConfig()->range.start, 0.f) &&
                 almostEqual(getConfig()->range.end, getConfig()->range.interval);
@@ -39,6 +47,15 @@ namespace imagiro {
 
     float Parameter::getUserValue() const {
         return convertFrom0to1(value01);
+    }
+
+    float Parameter::getModValue() const {
+        if (!modMatrix) jassertfalse;
+        return modTarget.getModulatedValue(getValue());
+    }
+
+    float Parameter::getModUserValue() const {
+        return convertFrom0to1(getModValue());
     }
 
     float Parameter::getProcessorValue() const {
@@ -109,7 +126,7 @@ namespace imagiro {
 
     DisplayValue Parameter::getDisplayValueForUserValue(float userValue) const {
         if (getConfig()->textFunction) {
-            return getConfig()->textFunction (*this, userValue);
+            return getConfig()->textFunction (userValue);
         }
         return {getUserValueText()};
     }
@@ -206,7 +223,7 @@ namespace imagiro {
         if (getConfig()->textFunction) {
             auto userValueValidated = convertFrom0to1(val, true);
             auto val01Validated = convertTo0to1(userValueValidated);
-            auto displayVal = getConfig()->textFunction (*this, getConfig()->range.convertFrom0to1 (val01Validated));
+            auto displayVal = getConfig()->textFunction (getConfig()->range.convertFrom0to1 (val01Validated));
             return displayVal.withSuffix();
         }
 
@@ -215,7 +232,7 @@ namespace imagiro {
     }
 
     float Parameter::getValueForText (const juce::String& text) const {
-        if (getConfig()->valueFunction) return getConfig()->valueFunction(*this, text);
+        if (getConfig()->valueFunction) return getConfig()->valueFunction(text);
         return getConfig()->range.convertTo0to1 (text.getFloatValue());
 
     }

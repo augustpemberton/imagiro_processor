@@ -8,18 +8,57 @@
 namespace imagiro {
     class ModSource {
     public:
-        ModSource(ModMatrix &m)
-                : matrix(m) {
-            id = matrix.registerSource();
+        ModSource(ModMatrix::ModulationType type, ModMatrix* m) : matrix(m), modulationType(type) {
+            if (m) setModMatrix(*m);
         }
 
+        void setModMatrix(ModMatrix& m) {
+            matrix = &m;
+            id = matrix->registerSource(modulationType);
+        }
+
+        // global
         void setValue(float v) {
-            matrix.setSourceValue(id, v);
+            if (!matrix || !id) {
+                jassertfalse;
+                return;
+            }
+
+            jassert (modulationType == ModMatrix::ModulationType::Global);
+            matrix->setSourceValue(*id, v);
         }
 
-        SourceID& getID() { return id; }
+        // per-voice
+        void setValue(float v, size_t voiceIndex) {
+            if (!matrix || !id) {
+                jassertfalse;
+                return;
+            }
+
+            jassert (modulationType == ModMatrix::ModulationType::PerVoice);
+            matrix->setSourceValue(*id, voiceIndex, v);
+        }
+
+        void connectTo(TargetID targetID, ModMatrix::ConnectionInfo connection) {
+            if (!matrix || !id) {
+                jassertfalse;
+                return;
+            }
+
+            matrix->setConnectionInfo(*id, targetID, connection);
+        }
+
+        ModMatrix::ModulationType getModulationType() const { return modulationType; }
+
+        SourceID getID() {
+            jassert(id);
+            return *id;
+        }
+
     private:
-        SourceID id;
-        ModMatrix &matrix;
+        std::optional<SourceID> id;
+        ModMatrix* matrix;
+
+        ModMatrix::ModulationType modulationType;
     };
 }

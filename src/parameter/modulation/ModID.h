@@ -5,17 +5,22 @@
 #pragma once
 
 namespace imagiro {
+
     struct SourceID {
-        uint value;
+        uint value {0};
+        uint voiceID {0}; // 0 = global
+
         bool operator==(const SourceID& other) const {
-            return value == other.value;
+            return value == other.value && voiceID == other.voiceID;
         }
     };
 
     struct TargetID {
-        uint value;
+        uint value {0};
+        uint voiceID {0}; // 0 = global
+
         bool operator==(const TargetID& other) const {
-            return value == other.value;
+            return value == other.value && voiceID == other.voiceID;
         }
     };
 }
@@ -24,14 +29,18 @@ namespace std {
     template<>
     struct hash<imagiro::SourceID> {
         size_t operator()(const imagiro::SourceID &p) const {
-            return std::hash<uint>{}(p.value);
+            auto h1 = std::hash<uint>{}(p.value);
+            auto h2 = std::hash<uint>{}(p.voiceID);
+            return h1 ^ (h2 << 1); // Simple hash combine
         }
     };
 
     template<>
     struct hash<imagiro::TargetID> {
         size_t operator()(const imagiro::TargetID&p) const {
-            return std::hash<uint>{}(p.value);
+            auto h1 = std::hash<uint>{}(p.value);
+            auto h2 = std::hash<uint>{}(p.voiceID);
+            return h1 ^ (h2 << 1); // Simple hash combine
         }
     };
 

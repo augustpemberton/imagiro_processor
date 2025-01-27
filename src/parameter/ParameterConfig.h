@@ -7,15 +7,14 @@
 
 
 namespace imagiro {
-    class Parameter;
     struct DisplayValue;
     struct ParameterConfig {
         juce::NormalisableRange<float> range {0, 1};
         bool discrete {false};
         float defaultValue {0};
         std::function<float(float)> processorConversionFunction {nullptr};
-        std::function<DisplayValue(const Parameter&, float)> textFunction {nullptr};
-        std::function<float(const Parameter&, const juce::String&)> valueFunction {nullptr};
+        std::function<DisplayValue(float)> textFunction {nullptr};
+        std::function<float(const juce::String&)> valueFunction {nullptr};
         std::string name {"default"};
         bool reverse {false};
         std::vector<std::string> choices = {};

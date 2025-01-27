@@ -16,8 +16,6 @@
 
 namespace imagiro {
 
-    class Parameter;
-
     struct DisplayValue {
         juce::String value;
         juce::String suffix {""};
@@ -31,39 +29,39 @@ namespace imagiro {
         static DisplayValue midiChannelDisplay(float channel);
         static int midiChannelInput(juce::String input);
 
-        static DisplayValue degreeDisplay(const Parameter& p, float deg);
-        static float degreeInput(const Parameter& p, juce::String freq);
+        static DisplayValue degreeDisplay(float deg);
+        static float degreeInput( juce::String freq);
 
-        static DisplayValue timeDisplay(const Parameter& p, float seconds);
-        static float timeInput(const Parameter& p, juce::String time);
+        static DisplayValue timeDisplay(float seconds);
+        static float timeInput(juce::String time);
 
-        static DisplayValue freqDisplay(const Parameter& p, float db);
-        static float freqInput(const Parameter& p, juce::String freq);
+        static DisplayValue freqDisplay(float db);
+        static float freqInput(juce::String freq);
 
-        static DisplayValue dbDisplay(const Parameter& p, float db);
-        static float dbInput(const Parameter& p, juce::String db);
-        static DisplayValue gainToDbDisplay(const Parameter& p, float gain);
+        static DisplayValue dbDisplay(float db);
+        static float dbInput(juce::String db);
+        static DisplayValue gainToDbDisplay(float gain);
 
-        static DisplayValue midiNumberDisplay(const Parameter& p, float note);
+        static DisplayValue midiNumberDisplay(float note);
         static float midiNumberInput(juce::String note);
 
-        static DisplayValue centDisplay(const Parameter& p, float cents);
-        static float centInput(const Parameter& p, juce::String input);
+        static DisplayValue centDisplay(float cents);
+        static float centInput(juce::String input);
 
-        static DisplayValue semitoneDisplay(const Parameter& p, float semitones);
-        static float semitoneInput(const Parameter& p, juce::String input);
+        static DisplayValue semitoneDisplay(float semitones);
+        static float semitoneInput(juce::String input);
 
-        static DisplayValue percentDisplay(const Parameter& p, float pct);
-        static DisplayValue percentDisplayFrac(const Parameter& p, float pct);
-        static float percentInput(const Parameter& p, juce::String t);
+        static DisplayValue percentDisplay(float pct);
+        static DisplayValue percentDisplayFrac(float pct);
+        static float percentInput(juce::String t);
 
         static long findGCD(long a, long b);
         static juce::String fractionString(float t);
 
-        static DisplayValue syncDisplay(const Parameter& p, float val);
-        static float syncInput(const Parameter& p, juce::String time);
+        static DisplayValue syncDisplay(float val);
+        static float syncInput(juce::String time);
 
-        static DisplayValue noteDisplay(const Parameter& p, float val);
+        static DisplayValue noteDisplay(float val);
     };
 
     static juce::NormalisableRange<float> getTempoSyncRange(int minPower, int maxPower, bool inverse) {

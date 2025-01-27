@@ -29,6 +29,8 @@ namespace imagiro {
         auto isInternal = getBool(p, "internal", false);
         auto isMeta = getBool(p, "meta", false);
         auto isAutomatable = getBool(p, "automatable", true);
+        auto modType = getString(p, "modType", "global");
+        auto voiceModType = modType == "perVoice" ? ModMatrix::ModulationType::PerVoice : ModMatrix::ModulationType::Global;
         std::vector<ParameterConfig> configs;
 
         // Multi-configs
@@ -42,7 +44,7 @@ namespace imagiro {
 
         std::vector<std::unique_ptr<Parameter>> params;
         params.push_back( std::make_unique<Parameter>(uid.toStdString(), name.toStdString(), configs,
-                                            isMeta, isInternal, isAutomatable));
+                                            voiceModType, isMeta, isInternal, isAutomatable));
         return params;
     }
 
@@ -60,8 +62,8 @@ namespace imagiro {
         ParameterConfig config {range, discrete, defaultVal};
         config.name = configName.toStdString();
         config.reverse = reverse;
-        config.textFunction = [&] (const Parameter&, float val) -> DisplayValue { return {juce::String(val)}; };
-        config.valueFunction = [&] (const Parameter&, const juce::String& s) -> float { return s.getFloatValue(); };
+        config.textFunction = [&] (float val) -> DisplayValue { return {juce::String(val)}; };
+        config.valueFunction = [&] (const juce::String& s) -> float { return s.getFloatValue(); };
 
         auto syncType = getString(p, "sync", "normal");
 
@@ -80,11 +82,11 @@ namespace imagiro {
             config.textFunction = DisplayFunctions::timeDisplay;
             config.valueFunction = DisplayFunctions::timeInput;
         } else if (type == "samples") {
-            config.textFunction = [&] (const Parameter& param, float samples) -> DisplayValue {
-                return DisplayFunctions::timeDisplay(param, samples/(float)processor.getLastSampleRate());
+            config.textFunction = [&] (float samples) -> DisplayValue {
+                return DisplayFunctions::timeDisplay(samples/(float)processor.getLastSampleRate());
             };
-            config.valueFunction = [&] (const Parameter& param, const juce::String& s) -> float {
-                return DisplayFunctions::timeInput(param, s) * (float)processor.getLastSampleRate();
+            config.valueFunction = [&] (const juce::String& s) -> float {
+                return DisplayFunctions::timeInput(s) * (float)processor.getLastSampleRate();
             };
         } else if (type == "freq") {
             config.textFunction = DisplayFunctions::freqDisplay;
@@ -94,7 +96,7 @@ namespace imagiro {
             config.valueFunction = DisplayFunctions::degreeInput;
         } else if (type == "toggle") {
             config.range = {0, 1, 1};
-            config.textFunction = [](const Parameter&, float choice) -> DisplayValue {
+            config.textFunction = [](float choice) -> DisplayValue {
                 return {choice != 0.f ? "on" : "off"};
             };
         } else if (type == "semitone") {
@@ -112,11 +114,11 @@ namespace imagiro {
                 return (syncType == "inverse") ? 1.f / v : v;
             };
         } else if (type == "sync-dotted") {
-            config.textFunction = [](const Parameter& param, float t) -> DisplayValue {
-                return {DisplayFunctions::syncDisplay(param, t).value, "dotted"};
+            config.textFunction = [](float t) -> DisplayValue {
+                return {DisplayFunctions::syncDisplay(t).value, "dotted"};
             };
-            config.valueFunction = [](const Parameter& param, const juce::String& frac) {
-                return DisplayFunctions::syncInput(param, frac.replace("d", "", true));
+            config.valueFunction = [](const juce::String& frac) {
+                return DisplayFunctions::syncInput(frac.replace("d", "", true));
             };
 
             config.processorValueChangesWithBPM = true;
@@ -125,11 +127,11 @@ namespace imagiro {
                 return (syncType == "inverse") ? 1.f / v : v;
             };
         } else if (type == "sync-triplet") {
-            config.textFunction = [](const Parameter& param, float t) -> DisplayValue {
-                return {DisplayFunctions::syncDisplay(param, t).value, "triplet"};
+            config.textFunction = [](float t) -> DisplayValue {
+                return {DisplayFunctions::syncDisplay(t).value, "triplet"};
             };
-            config.valueFunction = [](const Parameter& param, const juce::String& frac) {
-                return DisplayFunctions::syncInput(param, frac.replace("t", "", true));
+            config.valueFunction = [](const juce::String& frac) {
+                return DisplayFunctions::syncInput(frac.replace("t", "", true));
             };
 
             config.processorValueChangesWithBPM = true;
@@ -139,10 +141,10 @@ namespace imagiro {
             };
         } else if (type == "choice") {
             auto choices = p["choices"].as<std::vector<std::string>>();
-            config.textFunction = [choices](const Parameter& /*p*/, float choice)->DisplayValue {
+            config.textFunction = [choices](float choice)->DisplayValue {
                 return {choices[(unsigned int)std::round(choice)]};
             };
-            config.valueFunction = [choices](const Parameter& /*p*/, const juce::String& choice) {
+            config.valueFunction = [choices](const juce::String& choice) {
                 return std::find(choices.begin(), choices.end(), choice) - choices.begin();
             };
             config.range = {0, (float)choices.size()-1, 1};
@@ -157,12 +159,12 @@ namespace imagiro {
             juce::String ratioParamDisplayName = getString(ratioParams, "display",
                                                            ratioParam->getName(100));
 
-            config.textFunction = [&, ratioParamDisplayName](const Parameter& /*p*/, float v) -> DisplayValue {
+            config.textFunction = [&, ratioParamDisplayName](float v) -> DisplayValue {
                 if (v > 1) return {juce::String(v, 2)+":1", "-> " + ratioParamDisplayName};
                 else return {"1:"+juce::String(1/v, 2), "-> " + ratioParamDisplayName};
             };
 
-            config.valueFunction = [&, ratioParamDisplayName](const Parameter& /*p*/, juce::String v) -> float {
+            config.valueFunction = [&, ratioParamDisplayName](juce::String v) -> float {
                 v = v.upToFirstOccurrenceOf("->", false, true);
                 juce::StringArray ratio;
                 ratio.addTokens(v, ":", "");

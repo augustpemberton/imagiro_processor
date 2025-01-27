@@ -7,33 +7,35 @@
 #include "ParameterConfig.h"
 #include "ParameterHelpers.h"
 #include "choc/containers/choc_Value.h"
+#include "modulation/ModTarget.h"
 
 namespace imagiro {
     class Processor;
-    class Parameter;
-    class ParameterListener
-    {
-    public:
-        virtual ~ParameterListener() = default;
-        virtual void parameterChanged (Parameter* ) {}
-        virtual void parameterChangedSync (Parameter* ) {}
-        virtual void configChanged(Parameter* ) {}
-        virtual void gestureStarted(Parameter* ) {}
-        virtual void gestureStartedSync(Parameter* ) {}
-        virtual void gestureEnded(Parameter* ) {}
-        virtual void gestureEndedSync(Parameter* ) {}
-        virtual void lockChanged(Parameter* ) {}
-    };
 
     class Parameter : private juce::RangedAudioParameter, private juce::Timer {
     public:
-        using Listener = ParameterListener;
+        class Listener {
+        public:
+            virtual void parameterChanged (Parameter* ) {}
+            virtual void parameterChangedSync (Parameter* ) {}
+            virtual void configChanged(Parameter* ) {}
+            virtual void gestureStarted(Parameter* ) {}
+            virtual void gestureStartedSync(Parameter* ) {}
+            virtual void gestureEnded(Parameter* ) {}
+            virtual void gestureEndedSync(Parameter* ) {}
+            virtual void lockChanged(Parameter* ) {} };
+
         Parameter(std::string uid, std::string name,
-                  std::vector<ParameterConfig> config, bool internal = false,
+                  std::vector<ParameterConfig> config,
+                  ModMatrix::ModulationType modulationType = ModMatrix::ModulationType::Global,
+                  bool internal = false,
                   bool isMetaParam = false,
                   bool automatable = true, int versionHint=1);
 
         ~Parameter() override;
+
+        ModMatrix::ModulationType getModulationType() const { return modTarget.getModulationType(); }
+        void setModMatrix(ModMatrix& m);
 
         juce::RangedAudioParameter* asJUCEParameter() { return this; }
 
@@ -66,6 +68,9 @@ namespace imagiro {
          */
         float getValue() const override;
         bool getBoolValue() const;
+
+        float getModValue() const;
+        float getModUserValue() const;
 
 
         float getDefaultValue() const override;
@@ -223,6 +228,8 @@ namespace imagiro {
         std::atomic<bool> asyncValueUpdateFlag;
         std::atomic<bool> asyncGestureStartUpdateFlag;
         std::atomic<bool> asyncGestureEndUpdateFlag;
-    };
 
+        ModMatrix* modMatrix {nullptr};
+        ModTarget modTarget;
+    };
 }
