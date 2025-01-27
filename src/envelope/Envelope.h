@@ -28,7 +28,6 @@ public:
         adsr.setTargetRatioDR(0.01f);
     }
 
-
     void noteOn() {
         adsr.setNoteOn(true);
     }
@@ -123,7 +122,7 @@ private:
 
     double sampleRate {0};
 
-    const float quickfadeSeconds {0.01f};
+    const float quickfadeSeconds {0.04f};
     float quickfadeRate {0};
     bool quickfading {false};
 
