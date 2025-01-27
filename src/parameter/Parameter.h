@@ -15,17 +15,16 @@ namespace imagiro {
     {
     public:
         virtual ~ParameterListener() = default;
-        virtual void parameterChanged (Parameter* param) {}
-        virtual void parameterChangedSync (Parameter* param) {}
-        virtual void configChanged(Parameter* param) {}
-        virtual void gestureStarted(Parameter* param) {}
-        virtual void gestureStartedSync(Parameter* param) {}
-        virtual void gestureEnded(Parameter* param) {}
-        virtual void gestureEndedSync(Parameter* param) {}
-        virtual void lockChanged(Parameter* param) {}
+        virtual void parameterChanged (Parameter* ) {}
+        virtual void parameterChangedSync (Parameter* ) {}
+        virtual void configChanged(Parameter* ) {}
+        virtual void gestureStarted(Parameter* ) {}
+        virtual void gestureStartedSync(Parameter* ) {}
+        virtual void gestureEnded(Parameter* ) {}
+        virtual void gestureEndedSync(Parameter* ) {}
+        virtual void lockChanged(Parameter* ) {}
     };
 
-    class ModulationMatrix;
     class Parameter : private juce::RangedAudioParameter, private juce::Timer {
     public:
         using Listener = ParameterListener;
@@ -104,7 +103,7 @@ namespace imagiro {
             std::string uid;
             float value;
             std::string config;
-            bool locked;
+            bool locked {false};
 
             bool operator==(const ParamState& other) const {
                 return uid == other.uid &&
@@ -195,7 +194,6 @@ namespace imagiro {
 
     protected:
         bool internal {false};
-        ModulationMatrix* modMatrix = nullptr;
         int modIndex = -1;
 
         virtual void valueChanged();

@@ -11,3 +11,6 @@
 #include "src/note/ScaledMPENote.h"
 #include "src/envelope/Envelope.h"
 #include "src/BufferFileLoader.h"
+#include "src/parameter/modulation/ModMatrix.h"
+#include "src/parameter/modulation/ModSource.h"
+#include "src/parameter/modulation/ModTarget.h"
