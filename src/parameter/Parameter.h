@@ -27,14 +27,12 @@ namespace imagiro {
 
         Parameter(std::string uid, std::string name,
                   std::vector<ParameterConfig> config,
-                  ModMatrix::ModulationType modulationType = ModMatrix::ModulationType::Global,
                   bool internal = false,
                   bool isMetaParam = false,
                   bool automatable = true, int versionHint=1);
 
         ~Parameter() override;
 
-        ModMatrix::ModulationType getModulationType() const { return modTarget.getModulationType(); }
         void setModMatrix(ModMatrix& m);
 
         juce::RangedAudioParameter* asJUCEParameter() { return this; }

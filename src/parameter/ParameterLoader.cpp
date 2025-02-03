@@ -29,8 +29,6 @@ namespace imagiro {
         auto isInternal = getBool(p, "internal", false);
         auto isMeta = getBool(p, "meta", false);
         auto isAutomatable = getBool(p, "automatable", true);
-        auto modType = getString(p, "modType", "global");
-        auto voiceModType = modType == "voice" ? ModMatrix::ModulationType::PerVoice : ModMatrix::ModulationType::Global;
         std::vector<ParameterConfig> configs;
 
         // Multi-configs
@@ -44,7 +42,7 @@ namespace imagiro {
 
         std::vector<std::unique_ptr<Parameter>> params;
         params.push_back( std::make_unique<Parameter>(uid.toStdString(), name.toStdString(), configs,
-                                            voiceModType, isMeta, isInternal, isAutomatable));
+                                            isMeta, isInternal, isAutomatable));
         return params;
     }
 

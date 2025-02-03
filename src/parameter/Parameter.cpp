@@ -11,7 +11,6 @@ namespace imagiro {
 
     Parameter::Parameter(std::string uid, std::string name,
                          std::vector<ParameterConfig> configs,
-                         ModMatrix::ModulationType modType,
                          bool meta, bool internal,
                          bool automatable, int versionHint)
 
@@ -22,8 +21,7 @@ namespace imagiro {
               configs(std::move(configs)),
               internal(internal),
               uid(uid),
-              name(name),
-              modTarget(modType)
+              name(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         startTimerHz(30);

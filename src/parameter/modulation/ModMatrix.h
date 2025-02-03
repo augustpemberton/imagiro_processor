@@ -8,11 +8,10 @@
 namespace imagiro {
     class ModMatrix {
     public:
-        enum class ModulationType { Global, PerVoice };
         static constexpr int MAX_VOICES = 128;
 
-        SourceID registerSource(ModulationType type);
-        TargetID registerTarget(ModulationType type);
+        SourceID registerSource();
+        TargetID registerTarget();
 
         struct ConnectionInfo {
             float depth;
@@ -21,29 +20,23 @@ namespace imagiro {
         void setConnectionInfo(SourceID sourceID, TargetID targetID, ConnectionInfo connection);
         void removeConnectionInfo(SourceID sourceID, TargetID targetID);
 
-        float getModulatedValue(TargetID targetID);
-        float getModulatedValue(TargetID targetID, size_t voiceIndex);
-        void calculateTargetValues();
-
-        void setSourceValue(SourceID sourceID, float value);
-        void setSourceValue(SourceID sourceID, size_t voiceIndex, float value);
-
+        float getModulatedValue(TargetID targetID, int voiceIndex = -1);
         int getNumModSources(TargetID targetID);
 
-    private:
-        static std::variant<float, std::array<float, MAX_VOICES>> getDefaultVariantValue(ModulationType type) {
-            if (type == ModulationType::Global) return 0.f;
-            else return std::array<float, MAX_VOICES>();
-        }
+        void setGlobalSourceValue(SourceID sourceID, float value);
+        void setVoiceSourceValue(SourceID sourceID, size_t voiceIndex, float value);
 
+        void calculateTargetValues();
+
+    private:
         struct SourceValue {
-            ModulationType type;
-            std::variant<float, std::array<float, MAX_VOICES>> value;
+            float globalModValue {0};
+            std::array<float, MAX_VOICES> voiceModValues;
         };
 
         struct TargetValue {
-            ModulationType type;
-            std::variant<float, std::array<float, MAX_VOICES>> value;
+            float globalModValue {0};
+            std::array<float, MAX_VOICES> voiceModValues;
         };
 
         std::unordered_map<std::pair<SourceID, TargetID>, ConnectionInfo> matrix{};
