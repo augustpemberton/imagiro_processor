@@ -49,20 +49,20 @@ namespace imagiro {
         return convertFrom0to1(value01);
     }
 
-    float Parameter::getModValue() const {
+    float Parameter::getModValue(int voiceIndex) const {
         if (!modMatrix) return getValue();
-        return modTarget.getModulatedValue(getValue());
+        return modTarget.getModulatedValue(getValue(), voiceIndex);
     }
 
-    float Parameter::getModUserValue() const {
-        return convertFrom0to1(getModValue());
+    float Parameter::getModUserValue(int voiceIndex) const {
+        return convertFrom0to1(getModValue(voiceIndex));
     }
 
-    float Parameter::getProcessorValue() const {
+    float Parameter::getProcessorValue(int voiceIndex) const {
         if (auto conversionFunction = getConfig()->processorConversionFunction)
-            return conversionFunction(getModUserValue());
+            return conversionFunction(getModUserValue(voiceIndex));
 
-        return getModUserValue();
+        return getModUserValue(voiceIndex);
     }
 
     float Parameter::getProcessorValue(float userValue) const {

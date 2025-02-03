@@ -55,7 +55,7 @@ namespace imagiro {
          * @return the user value with an optional conversion function applied.
          * note - does not map back to value01
          */
-        float getProcessorValue() const;
+        float getProcessorValue(int voiceIndex = -1) const;
         float getProcessorValue(float userValue) const;
 
         /*!
@@ -69,8 +69,8 @@ namespace imagiro {
         float getValue() const override;
         bool getBoolValue() const;
 
-        float getModValue() const;
-        float getModUserValue() const;
+        float getModValue(int voiceIndex = -1) const;
+        float getModUserValue(int voiceIndex = -1) const;
 
 
         float getDefaultValue() const override;

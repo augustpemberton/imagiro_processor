@@ -30,7 +30,7 @@ namespace imagiro {
         auto isMeta = getBool(p, "meta", false);
         auto isAutomatable = getBool(p, "automatable", true);
         auto modType = getString(p, "modType", "global");
-        auto voiceModType = modType == "perVoice" ? ModMatrix::ModulationType::PerVoice : ModMatrix::ModulationType::Global;
+        auto voiceModType = modType == "voice" ? ModMatrix::ModulationType::PerVoice : ModMatrix::ModulationType::Global;
         std::vector<ParameterConfig> configs;
 
         // Multi-configs

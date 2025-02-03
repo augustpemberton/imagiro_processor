@@ -27,14 +27,18 @@ namespace imagiro {
             return baseValue + matrix->getModulatedValue(*id);
         }
 
-        float getModulatedValue(float baseValue, size_t voiceIndex) const {
+        float getModulatedValue(float baseValue, int voiceIndex) const {
+            if (voiceIndex < 0) {
+                return getModulatedValue(baseValue);
+            }
+
             if (!matrix || !id) {
                 jassertfalse;
                 return baseValue;
             }
 
             jassert (modulationType == ModMatrix::ModulationType::PerVoice);
-            return baseValue + matrix->getModulatedValue(*id, voiceIndex);
+            return baseValue + matrix->getModulatedValue(*id, static_cast<size_t>(voiceIndex));
         }
 
         void connectTo(SourceID sourceID, ModMatrix::ConnectionInfo connection) {
