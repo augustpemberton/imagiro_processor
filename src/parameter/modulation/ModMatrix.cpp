@@ -7,11 +7,13 @@
 namespace imagiro {
     void ModMatrix::removeConnectionInfo(SourceID sourceID, TargetID targetID) {
         matrix.erase({sourceID, targetID});
+        listeners.call(&Listener::OnMatrixUpdated);
     }
 
     void ModMatrix::setConnectionInfo(SourceID sourceID, TargetID targetID,
                                   ModMatrix::ConnectionInfo connection) {
         matrix[{sourceID, targetID}] = connection;
+        listeners.call(&Listener::OnMatrixUpdated);
     }
 
     float ModMatrix::getModulatedValue(TargetID targetID, int voiceIndex) {
@@ -64,15 +66,29 @@ namespace imagiro {
     }
 
 
-    SourceID ModMatrix::registerSource() {
+    SourceID ModMatrix::registerSource(std::string name) {
         auto id = SourceID{nextSourceID++};
         sourceValues.insert({id, {}});
+
+        if (name.empty()) {
+             name = "source " + std::to_string(id);
+        }
+
+        sourceNames.insert({id, name});
+
         return id;
     }
 
-    TargetID ModMatrix::registerTarget() {
+    TargetID ModMatrix::registerTarget(std::string name) {
         auto id = TargetID{nextTargetID++};
         targetValues.insert({id, {}});
+
+        if (name.empty()) {
+            name = "target " + std::to_string(id);
+        }
+
+        targetNames.insert({id, name});
+
         return id;
     }
 

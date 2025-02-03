@@ -21,7 +21,8 @@ namespace imagiro {
               configs(std::move(configs)),
               internal(internal),
               uid(uid),
-              name(name)
+              name(name),
+              modTarget(name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         startTimerHz(30);

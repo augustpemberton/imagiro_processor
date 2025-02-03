@@ -10,8 +10,15 @@ namespace imagiro {
     public:
         static constexpr int MAX_VOICES = 128;
 
-        SourceID registerSource();
-        TargetID registerTarget();
+        struct Listener {
+            virtual void OnMatrixUpdated() {}
+        };
+
+        void addListener(Listener* l) { listeners.add(l); }
+        void removeListener(Listener* l) { listeners.remove(l); }
+
+        SourceID registerSource(std::string name = "");
+        TargetID registerTarget(std::string name = "");
 
         struct ConnectionInfo {
             float depth;
@@ -28,7 +35,12 @@ namespace imagiro {
 
         void calculateTargetValues();
 
+        auto getMatrix() { return matrix; }
+        auto& getSourceNames() { return sourceNames; }
+        auto& getTargetNames() { return targetNames; }
+
     private:
+        juce::ListenerList<Listener> listeners;
         struct SourceValue {
             float globalModValue {0};
             std::array<float, MAX_VOICES> voiceModValues;
@@ -46,6 +58,10 @@ namespace imagiro {
 
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};
+
+        std::unordered_map<SourceID, std::string> sourceNames;
+        std::unordered_map<TargetID, std::string> targetNames;
+
         std::unordered_map<TargetID, int> numModSources {};
     };
 }

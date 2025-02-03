@@ -8,17 +8,19 @@
 namespace imagiro {
     class ModTarget {
     public:
-        ModTarget(ModMatrix* m = nullptr) {
+        ModTarget(std::string targetName = "", ModMatrix* m = nullptr)
+                : name(targetName)
+        {
             if (m) setModMatrix(*m);
         }
 
         void setModMatrix(ModMatrix& m) {
             matrix = &m;
-            id = matrix->registerTarget();
+            id = matrix->registerTarget(name);
         }
 
         float getModulatedValue(float baseValue, int voiceIndex = -1) const {
-            return baseValue + matrix->getModulatedValue(*id, voiceIndex);
+            return std::clamp(baseValue + matrix->getModulatedValue(*id, voiceIndex), 0.f, 1.f);
         }
 
         void connectTo(SourceID sourceID, ModMatrix::ConnectionInfo connection) {
@@ -46,6 +48,7 @@ namespace imagiro {
 
     private:
         std::optional<TargetID> id;
+        std::string name;
         ModMatrix* matrix;
     };
 }

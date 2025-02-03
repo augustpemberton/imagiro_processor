@@ -8,13 +8,15 @@
 namespace imagiro {
     class ModSource {
     public:
-        ModSource(ModMatrix* m) : matrix(m) {
+        ModSource(std::string sourceName = "", ModMatrix* m = nullptr)
+            : matrix(m), name(sourceName)
+        {
             if (m) setModMatrix(*m);
         }
 
         void setModMatrix(ModMatrix& m) {
             matrix = &m;
-            id = matrix->registerSource();
+            id = matrix->registerSource(name);
         }
 
         // global
@@ -53,6 +55,7 @@ namespace imagiro {
 
     private:
         std::optional<SourceID> id;
+        std::string name;
         ModMatrix* matrix;
     };
 }
