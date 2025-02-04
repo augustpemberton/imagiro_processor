@@ -63,6 +63,12 @@ namespace imagiro {
 
     void ModMatrix::setVoiceSourceValue(SourceID sourceID, size_t voiceIndex, float value) {
         sourceValues[sourceID].voiceModValues[voiceIndex] = value;
+
+        if (!almostEqual(value, 0.f)) {
+            sourceValues[sourceID].alteredVoiceValues.insert((int)voiceIndex);
+        } else {
+            sourceValues[sourceID].alteredVoiceValues.erase((int)voiceIndex);
+        }
     }
 
 

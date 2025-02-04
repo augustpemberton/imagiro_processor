@@ -44,6 +44,7 @@ namespace imagiro {
         struct SourceValue {
             float globalModValue {0};
             std::array<float, MAX_VOICES> voiceModValues;
+            std::set<int> alteredVoiceValues;
         };
 
         struct TargetValue {
