@@ -54,8 +54,8 @@ namespace imagiro {
 
         std::unordered_map<std::pair<SourceID, TargetID>, ConnectionInfo> matrix{};
 
-        uint nextSourceID = 0;
-        uint nextTargetID = 0;
+        unsigned int nextSourceID = 0;
+        unsigned int nextTargetID = 0;
 
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};
