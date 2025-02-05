@@ -3,7 +3,8 @@
 
 #pragma once
 #include "ModID.h"
-#include <variant>
+#include "../../dsp/EnvelopeFollower.h"
+#include "SerializedMatrix.h"
 
 namespace imagiro {
     class ModMatrix {
@@ -20,12 +21,60 @@ namespace imagiro {
         SourceID registerSource(std::string name = "");
         TargetID registerTarget(std::string name = "");
 
-        struct ConnectionInfo {
-            float depth;
+        class Connection {
+        public:
+            struct Settings {
+                float depth {0};
+                float attackMS {10};
+                float releaseMS {10};
+            };
+
+            Connection(double sr = 44100, Settings s = {0, 10, 10})
+                : sampleRate(sr), settings(s)
+            {
+                setSettings(s);
+                setSampleRate(sampleRate);
+            }
+
+            Connection(const Connection& other) : sampleRate(other.sampleRate) {
+                setSettings(other.settings);
+                setSampleRate(other.sampleRate);
+            }
+
+            void setSampleRate(double sr) {
+                sampleRate = sr;
+
+                globalValueEnvelopeFollower.setSampleRate(sampleRate);
+                for (auto& e : voiceValueEnvelopeFollowers) {
+                    e.setSampleRate(sampleRate);
+                }
+            }
+
+            void setSettings(Settings s) {
+                settings = s;
+                globalValueEnvelopeFollower.setAttackMs(settings.attackMS);
+                globalValueEnvelopeFollower.setReleaseMs(settings.releaseMS);
+                globalValueEnvelopeFollower.setSampleRate(sampleRate);
+
+                for (auto& e : voiceValueEnvelopeFollowers) {
+                    e.setAttackMs(settings.attackMS);
+                    e.setReleaseMs(settings.releaseMS);
+                    e.setSampleRate(sampleRate);
+                }
+            }
+
+            EnvelopeFollower<float>& getGlobalEnvelopeFollower() { return globalValueEnvelopeFollower; }
+            EnvelopeFollower<float>& getVoiceEnvelopeFollower(size_t index) { return voiceValueEnvelopeFollowers[index]; }
+            Settings getSettings() const { return settings; }
+        private:
+            double sampleRate;
+            Settings settings;
+            EnvelopeFollower<float> globalValueEnvelopeFollower;
+            std::array<EnvelopeFollower<float>, MAX_VOICES> voiceValueEnvelopeFollowers;
         };
 
-        void setConnectionInfo(SourceID sourceID, TargetID targetID, ConnectionInfo connection);
-        void removeConnectionInfo(SourceID sourceID, TargetID targetID);
+        void setConnection(SourceID sourceID, TargetID targetID, Connection::Settings connectionSettings);
+        void removeConnection(SourceID sourceID, TargetID targetID);
 
         float getModulatedValue(TargetID targetID, int voiceIndex = -1);
         int getNumModSources(TargetID targetID);
@@ -33,16 +82,23 @@ namespace imagiro {
         void setGlobalSourceValue(SourceID sourceID, float value);
         void setVoiceSourceValue(SourceID sourceID, size_t voiceIndex, float value);
 
-        void calculateTargetValues();
+        void prepareToPlay(double sampleRate, int maxSamplesPerBlock);
+        void calculateTargetValues(int numSamples = 1);
 
-        auto getMatrix() { return matrix; }
+        auto& getMatrix() { return matrix; }
         auto& getSourceNames() { return sourceNames; }
         auto& getTargetNames() { return targetNames; }
 
+        SerializedMatrix getSerializedMatrix();
+        void loadSerializedMatrix(const SerializedMatrix& m);
+
+        using MatrixType = std::unordered_map<std::pair<SourceID, TargetID>, ModMatrix::Connection>;
     private:
         juce::ListenerList<Listener> listeners;
+        double sampleRate {44100};
+
         struct SourceValue {
-            float globalModValue {0};
+            float globalModValue;
             std::array<float, MAX_VOICES> voiceModValues;
             std::set<int> alteredVoiceValues;
         };
@@ -52,7 +108,7 @@ namespace imagiro {
             std::array<float, MAX_VOICES> voiceModValues;
         };
 
-        std::unordered_map<std::pair<SourceID, TargetID>, ConnectionInfo> matrix{};
+        MatrixType matrix{};
 
         unsigned int nextSourceID = 0;
         unsigned int nextTargetID = 0;

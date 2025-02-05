@@ -23,13 +23,13 @@ namespace imagiro {
             return std::clamp(baseValue + matrix->getModulatedValue(*id, voiceIndex), 0.f, 1.f);
         }
 
-        void connectTo(SourceID sourceID, ModMatrix::ConnectionInfo connection) {
+        void connectTo(SourceID sourceID, ModMatrix::Connection::Settings connectionSettings) {
             if (!matrix || !id) {
                 jassertfalse;
                 return;
             }
 
-            matrix->setConnectionInfo(sourceID, *id, connection);
+            matrix->setConnection(sourceID, *id, connectionSettings);
         }
 
         TargetID getID() {

@@ -22,6 +22,7 @@ choc::value::Value Preset::getState() const {
         paramStatesValue.addArrayElement(p.getStateCompressed(isDAWSaveState()));
     }
     state.addMember("paramStates", paramStatesValue);
+    state.addMember("modMatrix", serializedModMatrix.getState());
 
     return state;
 }
@@ -37,6 +38,7 @@ choc::value::Value Preset::getUIState() const {
         paramStatesValue.addArrayElement(p.getState(isDAWSaveState()));
     }
     state.addMember("paramStates", paramStatesValue);
+    state.addMember("modMatrix", serializedModMatrix.getState());
 
     state.addMember("available", available);
     state.addMember("errorString", errorString);
@@ -59,6 +61,11 @@ Preset Preset::fromState(const choc::value::ValueView &state,
     }
 
     p.data = state["data"];
+    if (state.hasObjectMember("modMatrix")) {
+        p.serializedModMatrix = SerializedMatrix::fromState(state["modMatrix"]);
+    }
+
+
     if (validateProcessor != nullptr) {
         auto error = validateProcessor->isPresetAvailable(p);
         if (!error.has_value()) {

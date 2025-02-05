@@ -37,6 +37,9 @@ public:
     bool isDAWSaveState() const { return dawState; }
     bool isAvailable() const { return available; }
 
+    void setModMatrix(SerializedMatrix m) { serializedModMatrix = m; }
+    const SerializedMatrix& getModMatrix() { return serializedModMatrix; }
+
 protected:
     bool dawState {false};
     std::string name;
@@ -44,6 +47,7 @@ protected:
     choc::value::Value data;
 
     std::vector<imagiro::Parameter::ParamState> paramStates;
+    SerializedMatrix serializedModMatrix;
 
     bool validPreset;
     bool available {true};

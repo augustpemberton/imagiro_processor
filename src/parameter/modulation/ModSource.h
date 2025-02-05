@@ -39,13 +39,13 @@ namespace imagiro {
             matrix->setVoiceSourceValue(*id, voiceIndex, v);
         }
 
-        void connectTo(TargetID targetID, ModMatrix::ConnectionInfo connection) {
+        void connectTo(TargetID targetID, ModMatrix::Connection::Settings connectionSettings) {
             if (!matrix || !id) {
                 jassertfalse;
                 return;
             }
 
-            matrix->setConnectionInfo(*id, targetID, connection);
+            matrix->setConnection(*id, targetID, connectionSettings);
         }
 
         SourceID getID() {

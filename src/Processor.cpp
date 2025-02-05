@@ -213,6 +213,7 @@ namespace imagiro {
             for(auto s=0; s<buffer.getNumSamples(); s++)
                 dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
+        modMatrix.calculateTargetValues(buffer.getNumSamples());
 
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
@@ -260,6 +261,8 @@ namespace imagiro {
             p.addParamState(paramState);
         }
 
+        p.setModMatrix(modMatrix.getSerializedMatrix());
+
         return p;
     }
     void Processor::loadPreset(FileBackedPreset p) {
@@ -275,10 +278,13 @@ namespace imagiro {
             }
         }
 
+        modMatrix.loadSerializedMatrix(preset.getModMatrix());
+
         presetListeners.call([&](PresetListener &l) { l.OnPresetChange(preset); });
     }
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        modMatrix.prepareToPlay(sampleRate, samplesPerBlock);
         measurer.reset(sampleRate, samplesPerBlock);
         dryBufferLatencyCompensationLine.prepare({
             sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())

@@ -5,14 +5,18 @@
 #include "ModMatrix.h"
 
 namespace imagiro {
-    void ModMatrix::removeConnectionInfo(SourceID sourceID, TargetID targetID) {
+    void ModMatrix::removeConnection(SourceID sourceID, TargetID targetID) {
         matrix.erase({sourceID, targetID});
         listeners.call(&Listener::OnMatrixUpdated);
     }
 
-    void ModMatrix::setConnectionInfo(SourceID sourceID, TargetID targetID,
-                                  ModMatrix::ConnectionInfo connection) {
-        matrix[{sourceID, targetID}] = connection;
+    void ModMatrix::setConnection(SourceID sourceID, TargetID targetID,
+                                  ModMatrix::Connection::Settings settings) {
+        if (matrix.contains({sourceID, targetID})) {
+            matrix.at({sourceID, targetID}).setSettings(settings);
+        } else {
+            matrix.insert({{sourceID, targetID}, {sampleRate, settings}});
+        }
         listeners.call(&Listener::OnMatrixUpdated);
     }
 
@@ -30,7 +34,15 @@ namespace imagiro {
         }
     }
 
-    void ModMatrix::calculateTargetValues() {
+    void ModMatrix::prepareToPlay(double sr, int /*maxSamplesPerBlock*/) {
+        sampleRate = sr;
+
+        for (auto& [pair, connection] : matrix) {
+            connection.setSampleRate(sampleRate);
+        }
+    }
+
+    void ModMatrix::calculateTargetValues(int numSamples) {
         for (auto& [targetID, targetValue] : targetValues) {
             targetValues[targetID].globalModValue = 0;
             auto& v = targetValues[targetID].voiceModValues;
@@ -42,7 +54,7 @@ namespace imagiro {
         }
 
         // TODO clamp 0-1 ?
-        for (const auto &[ids, connection] : matrix) {
+        for (auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
 
             if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID))
@@ -50,9 +62,18 @@ namespace imagiro {
 
             numModSources[targetID]++;
 
-            targetValues[targetID].globalModValue += sourceValues[sourceID].globalModValue * connection.depth;
-            for (auto i=0u; i<MAX_VOICES; i++) {
-                targetValues[targetID].voiceModValues[i] += sourceValues[sourceID].voiceModValues[i] * connection.depth;
+            auto connectionSettings = connection.getSettings();
+
+            auto globalValueAddition = sourceValues[sourceID].globalModValue;
+            connection.getGlobalEnvelopeFollower().setTargetValue(globalValueAddition);
+            connection.getGlobalEnvelopeFollower().skip(numSamples);
+            targetValues[targetID].globalModValue += connection.getGlobalEnvelopeFollower().getCurrentValue() * connectionSettings.depth;
+
+            for (auto i : sourceValues[sourceID].alteredVoiceValues) {
+                auto voiceValueAddition = sourceValues[sourceID].voiceModValues[i];
+                connection.getVoiceEnvelopeFollower(i).setTargetValue(voiceValueAddition);
+                connection.getVoiceEnvelopeFollower(i).skip(numSamples);
+                targetValues[targetID].voiceModValues[i] += connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
             }
         }
     }
@@ -100,5 +121,29 @@ namespace imagiro {
 
     int ModMatrix::getNumModSources(imagiro::TargetID targetID) {
         return numModSources[targetID];
+    }
+
+    SerializedMatrix ModMatrix::getSerializedMatrix() {
+        SerializedMatrix serializedMatrix;
+        for (const auto& [pair, connection] : matrix) {
+            serializedMatrix.push_back({
+                   static_cast<int>(pair.first),
+                   static_cast<int>(pair.second),
+                   connection.getSettings().depth,
+                   connection.getSettings().attackMS,
+                   connection.getSettings().releaseMS
+           });
+        };
+        return serializedMatrix;
+    }
+
+    void ModMatrix::loadSerializedMatrix(const SerializedMatrix &m) {
+        matrix.clear();
+        for (const auto& entry : m) {
+            matrix.insert({
+                                  {SourceID(entry.sourceID), TargetID(entry.targetID)},
+                                  Connection(sampleRate, {entry.depth, entry.attackMS, entry.releaseMS})
+                          });
+        }
     }
 }
