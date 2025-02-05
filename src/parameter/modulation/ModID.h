@@ -5,8 +5,8 @@
 #pragma once
 
 namespace imagiro {
-    typedef uint SourceID;
-    typedef uint TargetID;
+    typedef unsigned int SourceID;
+    typedef unsigned int TargetID;
 }
 
 namespace std {
