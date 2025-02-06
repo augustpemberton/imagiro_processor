@@ -22,8 +22,7 @@ namespace imagiro {
 
     float ModMatrix::getModulatedValue(TargetID targetID, int voiceIndex) {
         if (voiceIndex < 0) {
-            // TODO use most recently played voice instead of voice 0
-            voiceIndex = 0;
+            voiceIndex = static_cast<int>(mostRecentVoiceIndex);
         }
 
         if (targetValues.contains(targetID)) {

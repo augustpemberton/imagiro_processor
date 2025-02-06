@@ -93,7 +93,10 @@ namespace imagiro {
         void loadSerializedMatrix(const SerializedMatrix& m);
 
         using MatrixType = std::unordered_map<std::pair<SourceID, TargetID>, ModMatrix::Connection>;
+
+        void setMostRecentVoiceIndex(size_t index) { mostRecentVoiceIndex = index; }
     private:
+        size_t mostRecentVoiceIndex {0};
         juce::ListenerList<Listener> listeners;
         double sampleRate {44100};
 
