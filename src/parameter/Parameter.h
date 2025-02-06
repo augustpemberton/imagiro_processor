@@ -29,7 +29,8 @@ namespace imagiro {
                   std::vector<ParameterConfig> config,
                   bool internal = false,
                   bool isMetaParam = false,
-                  bool automatable = true, int versionHint=1);
+                  bool automatable = true,
+                  int versionHint=1);
 
         ~Parameter() override;
 
@@ -70,9 +71,11 @@ namespace imagiro {
         float getModValue(int voiceIndex = -1) const;
         float getModUserValue(int voiceIndex = -1) const;
 
-
         float getDefaultValue() const override;
         float getUserDefaultValue() const;
+
+        void setJitterAmount(float amount) { jitterAmount = amount; }
+        float getJitterAmount() const { return jitterAmount; }
 
         void setValue (float newValue) override;
         void setUserValue (float v);
@@ -106,12 +109,14 @@ namespace imagiro {
             std::string uid;
             float value;
             std::string config;
+            float jitter {0};
             bool locked {false};
 
             bool operator==(const ParamState& other) const {
                 return uid == other.uid &&
                        abs(value - other.value) < 0.0001f &&
                        config == other.config &&
+                        almostEqual(jitter, other.jitter) &&
                        locked == other.locked;
             }
 
@@ -124,6 +129,7 @@ namespace imagiro {
                 state.addArrayElement(uid);
                 state.addArrayElement(value);
                 state.addArrayElement(config);
+                state.addArrayElement(jitter);
                 if (isDAWSaveState) state.addArrayElement(locked);
                 return state;
             }
@@ -133,10 +139,11 @@ namespace imagiro {
                         state[0].getWithDefault(""),
                         state[1].getWithDefault(0.f),
                         state[2].getWithDefault(""),
+                        state.size() > 3 ? state[3].getWithDefault(0.f) : 0.f,
                 };
 
-                if (state.size() > 3) {
-                    s.locked = state[3].getWithDefault(false);
+                if (state.size() > 4) {
+                    s.locked = state[4].getWithDefault(false);
                 }
                 return s;
             }
@@ -146,6 +153,7 @@ namespace imagiro {
                 state.addMember("uid", uid);
                 state.addMember("value", value);
                 state.addMember("config", config);
+                state.addMember("jitter", jitter);
                 if (isDAWSaveState) state.addMember("locked", locked);
                 return state;
             }
@@ -156,6 +164,7 @@ namespace imagiro {
                     state["uid"].getWithDefault(""),
                     state["value"].getWithDefault(0.f),
                     state["config"].getWithDefault(""),
+                    state["jitter"].getWithDefault(0.f),
                     state["locked"].getWithDefault(false),
                 };
             }
@@ -231,5 +240,7 @@ namespace imagiro {
 
         ModMatrix* modMatrix {nullptr};
         ModTarget modTarget;
+
+        float jitterAmount {0};
     };
 }

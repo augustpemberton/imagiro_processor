@@ -49,8 +49,10 @@ namespace imagiro {
     }
 
     float Parameter::getModValue(int voiceIndex) const {
-        if (!modMatrix) return getValue();
-        return modTarget.getModulatedValue(getValue(), voiceIndex);
+        auto jitter = (imagiro::rand01() * 2 - 1) * jitterAmount;
+        auto valueWithJitter = getValue() + jitter;
+        if (!modMatrix) return valueWithJitter;
+        return modTarget.getModulatedValue(valueWithJitter, voiceIndex);
     }
 
     float Parameter::getModUserValue(int voiceIndex) const {
@@ -175,7 +177,7 @@ namespace imagiro {
     }
 
     Parameter::ParamState Parameter::getState() {
-        return {uid, getUserValue(), configs[configIndex].name, locked};
+        return {uid, getUserValue(), configs[configIndex].name, jitterAmount, locked};
     }
 
     void Parameter::setState (const ParamState& state) {
@@ -189,6 +191,7 @@ namespace imagiro {
         }
 
         setLocked(state.locked);
+        setJitterAmount(state.jitter);
     }
 
     float Parameter::getValue() const {
@@ -267,7 +270,7 @@ namespace imagiro {
     }
 
     void Parameter::setConfig(int index) {
-        if (index == configIndex) return;
+        if (index == static_cast<int>(configIndex)) return;
 
         auto uv = getUserValue();
         configIndex = index % configs.size();

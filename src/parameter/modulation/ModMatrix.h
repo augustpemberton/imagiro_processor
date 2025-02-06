@@ -101,14 +101,14 @@ namespace imagiro {
         double sampleRate {44100};
 
         struct SourceValue {
-            float globalModValue;
-            std::array<float, MAX_VOICES> voiceModValues;
-            std::set<int> alteredVoiceValues;
+            float globalModValue {0};
+            std::array<float, MAX_VOICES> voiceModValues {};
+            std::set<int> alteredVoiceValues {};
         };
 
         struct TargetValue {
             float globalModValue {0};
-            std::array<float, MAX_VOICES> voiceModValues;
+            std::array<float, MAX_VOICES> voiceModValues {};
         };
 
         MatrixType matrix{};
