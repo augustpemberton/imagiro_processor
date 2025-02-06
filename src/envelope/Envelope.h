@@ -9,8 +9,8 @@ class Envelope {
 public:
     Envelope() = default;
 
-    void setSampleRate(float rate) {
-        this->sampleRate = rate;
+    void setSampleRate(double rate) {
+        sampleRate = rate;
         quickfadeRate = static_cast<float>(1.0f / (quickfadeSeconds * sampleRate));
         quickfadeRate *= downsampleRate;
 

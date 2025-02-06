@@ -24,9 +24,9 @@ public:
         return ticking;
     }
 
-    void setSampleRate(float sr) {
+    void setSampleRate(double sr) {
         sampleRate = sr;
-        secondsPerTick = 1 / sr;
+        secondsPerTick = static_cast<float>(1.0 / sr);
     }
 
     void setRate(float seconds) {
@@ -42,7 +42,7 @@ public:
 
 private:
     bool active = true;
-    float sampleRate = 0;
+    double sampleRate = 0;
     float secondsPerTick = 0;
 
     float rate = 0.4f;
