@@ -213,7 +213,10 @@ namespace imagiro {
             for(auto s=0; s<buffer.getNumSamples(); s++)
                 dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
-        modMatrix.calculateTargetValues(buffer.getNumSamples());
+        // NOTE: we don't calculate the mod matrix here - it likely needs be calculated at a specific time
+        // (i.e. after MIDI processing - midi values might be mod sources that need to be processed)
+        // so we let the parent take care of it
+//        modMatrix.calculateTargetValues(buffer.getNumSamples());
 
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
