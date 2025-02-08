@@ -12,7 +12,7 @@ public:
     void setSampleRate(double rate) {
         sampleRate = rate;
         quickfadeRate = static_cast<float>(1.0f / (quickfadeSeconds * sampleRate));
-        quickfadeRate *= downsampleRate;
+        quickfadeRate /= downsampleRate;
 
         setParameters(params);
     }
@@ -85,14 +85,7 @@ public:
 
         // Generate envelope values
         for (auto s = 0; s < numSamples; s++) {
-            if (imagiro::almostEqual(downsampleCounter, 0.f)) {
-                prevEnv = nextEnv;
-                nextEnv = getNextSample();
-            }
-
-            *eW++ = imagiro::lerp(prevEnv, nextEnv, downsampleCounter);
-            downsampleCounter += downsampleInv;
-            downsampleCounter = downsampleCounter >= 1 ? 0 : downsampleCounter;
+            *eW++ = getNextSample();
         }
 
         // Apply buffer

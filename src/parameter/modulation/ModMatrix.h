@@ -9,7 +9,7 @@
 namespace imagiro {
     class ModMatrix {
     public:
-        static constexpr int MAX_VOICES = 128;
+        static constexpr int MAX_MOD_VOICES = 128;
 
         struct Listener {
             virtual void OnMatrixUpdated() {}
@@ -24,7 +24,7 @@ namespace imagiro {
 
         struct SourceValue {
             float globalModValue {0};
-            std::array<float, MAX_VOICES> voiceModValues {};
+            std::array<float, MAX_MOD_VOICES> voiceModValues {};
             std::set<int> alteredVoiceValues {};
 
             choc::value::Value getValue() const {
@@ -39,7 +39,7 @@ namespace imagiro {
 
         struct TargetValue {
             float globalModValue {0};
-            std::array<float, MAX_VOICES> voiceModValues {};
+            std::array<float, MAX_MOD_VOICES> voiceModValues {};
             std::set<int> alteredVoiceValues {};
 
             choc::value::Value getValue() const {
@@ -101,7 +101,7 @@ namespace imagiro {
             double sampleRate;
             Settings settings;
             EnvelopeFollower<float> globalValueEnvelopeFollower;
-            std::array<EnvelopeFollower<float>, MAX_VOICES> voiceValueEnvelopeFollowers;
+            std::array<EnvelopeFollower<float>, MAX_MOD_VOICES> voiceValueEnvelopeFollowers;
         };
 
         void setConnection(SourceID sourceID, TargetID targetID, Connection::Settings connectionSettings);
