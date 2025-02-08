@@ -243,7 +243,7 @@ namespace imagiro {
     }
 
     void Processor::configChanged(imagiro::Parameter *param) {
-        auto changeDetails = ChangeDetails::getDefaultFlags().withParameterInfoChanged(true);
+        auto changeDetails = AudioProcessorListener::ChangeDetails::getDefaultFlags().withParameterInfoChanged(true);
         updateHostDisplay(changeDetails);
     }
 
