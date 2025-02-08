@@ -41,11 +41,17 @@ namespace imagiro {
         }
     }
 
+    std::set<int> ModMatrix::getAlteredTargetVoices(TargetID id) {
+        if (!targetValues.contains(id)) return {};
+        return targetValues[id].alteredVoiceValues;
+    }
+
     void ModMatrix::calculateTargetValues(int numSamples) {
         for (auto& [targetID, targetValue] : targetValues) {
             targetValues[targetID].globalModValue = 0;
             auto& v = targetValues[targetID].voiceModValues;
             std::fill(v.begin(), v.end(), 0.f);
+            targetValues[targetID].alteredVoiceValues.clear();
         }
 
         for (auto& [targetID, numSources] : numModSources) {
@@ -73,6 +79,7 @@ namespace imagiro {
                 connection.getVoiceEnvelopeFollower(i).setTargetValue(voiceValueAddition);
                 connection.getVoiceEnvelopeFollower(i).skip(numSamples);
                 targetValues[targetID].voiceModValues[i] += connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
+                targetValues[targetID].alteredVoiceValues.insert(i);
             }
         }
     }

@@ -13,6 +13,7 @@ namespace imagiro {
 
         struct Listener {
             virtual void OnMatrixUpdated() {}
+            virtual void OnRecentVoiceUpdated(size_t voiceIndex) {}
         };
 
         void addListener(Listener* l) { listeners.add(l); }
@@ -20,6 +21,36 @@ namespace imagiro {
 
         SourceID registerSource(std::string name = "");
         TargetID registerTarget(std::string name = "");
+
+        struct SourceValue {
+            float globalModValue {0};
+            std::array<float, MAX_VOICES> voiceModValues {};
+            std::set<int> alteredVoiceValues {};
+
+            choc::value::Value getValue() const {
+                auto v = choc::value::createObject("SourceValue");
+                v.addMember("global", globalModValue);
+                for (const auto index : alteredVoiceValues) {
+                    v.addMember(std::to_string(index), voiceModValues[index]);
+                }
+                return v;
+            }
+        };
+
+        struct TargetValue {
+            float globalModValue {0};
+            std::array<float, MAX_VOICES> voiceModValues {};
+            std::set<int> alteredVoiceValues {};
+
+            choc::value::Value getValue() const {
+                auto v = choc::value::createObject("TargetValue");
+                v.addMember("global", globalModValue);
+                for (const auto index : alteredVoiceValues) {
+                    v.addMember(std::to_string(index), voiceModValues[index]);
+                }
+                return v;
+            }
+        };
 
         class Connection {
         public:
@@ -84,6 +115,7 @@ namespace imagiro {
 
         void prepareToPlay(double sampleRate, int maxSamplesPerBlock);
         void calculateTargetValues(int numSamples = 1);
+        std::set<int> getAlteredTargetVoices(TargetID targetID);
 
         auto& getMatrix() { return matrix; }
         auto& getSourceNames() { return sourceNames; }
@@ -94,22 +126,18 @@ namespace imagiro {
 
         using MatrixType = std::unordered_map<std::pair<SourceID, TargetID>, ModMatrix::Connection>;
 
-        void setMostRecentVoiceIndex(size_t index) { mostRecentVoiceIndex = index; }
+        void setMostRecentVoiceIndex(size_t index) {
+            mostRecentVoiceIndex = index;
+            listeners.call(&Listener::OnRecentVoiceUpdated, index);
+        }
+
+        std::unordered_map<SourceID, SourceValue>& getSourceValues() { return sourceValues; };
+        std::unordered_map<TargetID, TargetValue>& getTargetValues() { return targetValues; };
+
     private:
         size_t mostRecentVoiceIndex {0};
         juce::ListenerList<Listener> listeners;
         double sampleRate {44100};
-
-        struct SourceValue {
-            float globalModValue {0};
-            std::array<float, MAX_VOICES> voiceModValues {};
-            std::set<int> alteredVoiceValues {};
-        };
-
-        struct TargetValue {
-            float globalModValue {0};
-            std::array<float, MAX_VOICES> voiceModValues {};
-        };
 
         MatrixType matrix{};
 
