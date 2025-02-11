@@ -6,11 +6,15 @@
 #include "../../dsp/EnvelopeFollower.h"
 #include "SerializedMatrix.h"
 
+#if defined(MAX_VOICES)
+    #define MAX_MOD_VOICES MAX_VOICES
+#else if !defined(MAX_MOD_VOICES)
+    #define MAX_MOD_VOICES 128
+#endif
+
 namespace imagiro {
     class ModMatrix {
     public:
-        static constexpr int MAX_MOD_VOICES = 128;
-
         struct Listener {
             virtual void OnMatrixUpdated() {}
             virtual void OnRecentVoiceUpdated(size_t voiceIndex) {}
