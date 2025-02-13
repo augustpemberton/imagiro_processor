@@ -5,6 +5,7 @@
 #include "ModID.h"
 #include "../../dsp/EnvelopeFollower.h"
 #include "SerializedMatrix.h"
+#include <stack>
 
 #if defined(MAX_VOICES)
     #define MAX_MOD_VOICES MAX_VOICES
@@ -23,8 +24,8 @@ namespace imagiro {
         void addListener(Listener* l) { listeners.add(l); }
         void removeListener(Listener* l) { listeners.remove(l); }
 
-        SourceID registerSource(std::string name = "");
-        TargetID registerTarget(std::string name = "");
+        void registerSource(const SourceID& id, std::string name = "");
+        void registerTarget(const TargetID& id, std::string name = "");
 
         struct SourceValue {
             float globalModValue {0};
@@ -108,18 +109,18 @@ namespace imagiro {
             std::array<EnvelopeFollower<float>, MAX_MOD_VOICES> voiceValueEnvelopeFollowers;
         };
 
-        void setConnection(SourceID sourceID, TargetID targetID, Connection::Settings connectionSettings);
-        void removeConnection(SourceID sourceID, TargetID targetID);
+        void setConnection(const SourceID& sourceID, TargetID targetID, Connection::Settings connectionSettings);
+        void removeConnection(const SourceID& sourceID, TargetID targetID);
 
-        float getModulatedValue(TargetID targetID, int voiceIndex = -1);
-        int getNumModSources(TargetID targetID);
+        float getModulatedValue(const TargetID& targetID, int voiceIndex = -1);
+        int getNumModSources(const TargetID& targetID);
 
-        void setGlobalSourceValue(SourceID sourceID, float value);
-        void setVoiceSourceValue(SourceID sourceID, size_t voiceIndex, float value);
+        void setGlobalSourceValue(const SourceID& sourceID, float value);
+        void setVoiceSourceValue(const SourceID& sourceID, size_t voiceIndex, float value);
 
         void prepareToPlay(double sampleRate, int maxSamplesPerBlock);
         void calculateTargetValues(int numSamples = 1);
-        std::set<int> getAlteredTargetVoices(TargetID targetID);
+        std::set<int> getAlteredTargetVoices(const TargetID& targetID);
 
         auto& getMatrix() { return matrix; }
         auto& getSourceNames() { return sourceNames; }
@@ -130,9 +131,19 @@ namespace imagiro {
 
         using MatrixType = std::unordered_map<std::pair<SourceID, TargetID>, ModMatrix::Connection>;
 
-        void setMostRecentVoiceIndex(size_t index) {
+        void setVoiceOn(size_t index) {
             mostRecentVoiceIndex = index;
             listeners.call(&Listener::OnRecentVoiceUpdated, index);
+            noteOnStack.push_back(index);
+        }
+
+        void setVoiceOff(size_t index) {
+            std::erase_if(noteOnStack, [&, index](const size_t e) {
+                return e == index;
+            });
+            auto oldRecentVoice = mostRecentVoiceIndex;
+            mostRecentVoiceIndex = noteOnStack.back();
+            if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
         }
 
         std::unordered_map<SourceID, SourceValue>& getSourceValues() { return sourceValues; };
@@ -143,10 +154,9 @@ namespace imagiro {
         juce::ListenerList<Listener> listeners;
         double sampleRate {44100};
 
-        MatrixType matrix{};
+        std::list<size_t> noteOnStack;
 
-        unsigned int nextSourceID = 0;
-        unsigned int nextTargetID = 0;
+        MatrixType matrix{};
 
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};

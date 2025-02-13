@@ -3,51 +3,52 @@
 //
 
 #pragma once
+#include <utility>
+
 #include "ModMatrix.h"
 
 namespace imagiro {
     class ModTarget {
     public:
-        ModTarget(std::string targetName = "", ModMatrix* m = nullptr)
-                : name(targetName)
+        ModTarget(TargetID targetID, std::string targetName = "", ModMatrix* m = nullptr)
+                : id(std::move(targetID)), name(std::move(targetName))
         {
             if (m) setModMatrix(*m);
         }
 
         void setModMatrix(ModMatrix& m) {
             matrix = &m;
-            id = matrix->registerTarget(name);
+            matrix->registerTarget(id, name);
         }
 
         float getModulatedValue(float baseValue, int voiceIndex = -1) const {
-            return std::clamp(baseValue + matrix->getModulatedValue(*id, voiceIndex), 0.f, 1.f);
+            return std::clamp(baseValue + matrix->getModulatedValue(id, voiceIndex), 0.f, 1.f);
         }
 
         void connectTo(SourceID sourceID, ModMatrix::Connection::Settings connectionSettings) {
-            if (!matrix || !id) {
+            if (!matrix) {
                 jassertfalse;
                 return;
             }
 
-            matrix->setConnection(sourceID, *id, connectionSettings);
+            matrix->setConnection(std::move(sourceID), id, connectionSettings);
         }
 
         TargetID getID() {
-            jassert(id);
-            return *id;
+            return id;
         }
 
         int getNumModSources() {
-            if (!matrix || !id) {
+            if (!matrix) {
                 jassertfalse;
                 return 0;
             }
 
-            return matrix->getNumModSources(*id);
+            return matrix->getNumModSources(id);
         }
 
     private:
-        std::optional<TargetID> id;
+        TargetID id;
         std::string name;
         ModMatrix* matrix;
     };

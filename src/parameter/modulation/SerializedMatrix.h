@@ -6,8 +6,8 @@
 #include <choc/containers/choc_Value.h>
 
 struct SerializedMatrixEntry {
-    int sourceID;
-    int targetID;
+    std::string sourceID;
+    std::string targetID;
     float depth;
     float attackMS;
     float releaseMS;
@@ -24,8 +24,8 @@ struct SerializedMatrixEntry {
 
     static SerializedMatrixEntry fromState(const choc::value::ValueView& state) {
         SerializedMatrixEntry e {
-                state["sourceID"].getWithDefault(0),
-                state["targetID"].getWithDefault(0),
+                state["sourceID"].getWithDefault(""),
+                state["targetID"].getWithDefault(""),
                 state["depth"].getWithDefault(0.f),
                 state["attackMS"].getWithDefault(0.f),
                 state["releaseMS"].getWithDefault(0.f)

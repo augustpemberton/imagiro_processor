@@ -22,7 +22,7 @@ namespace imagiro {
               internal(internal),
               uid(uid),
               name(name),
-              modTarget(name)
+              modTarget("param-" + uid, name)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         startTimerHz(30);

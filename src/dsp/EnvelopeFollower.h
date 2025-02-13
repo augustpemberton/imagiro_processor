@@ -29,6 +29,10 @@ public:
         targetValue = target;
     }
 
+    void reset() {
+        envelope = 0;
+    }
+
     void skip(int numSamples) {
         if (targetValue <= envelope) {
             envelope = targetValue + (envelope - targetValue) * static_cast<T>(std::pow(releaseCoeff, numSamples));
