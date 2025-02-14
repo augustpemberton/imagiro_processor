@@ -42,7 +42,7 @@ public:
     }
 
     T pushSample(float sample, T snap = -1) {
-        setTargetValue(sample, abs);
+        setTargetValue(sample);
         skip(1);
         if (snap > 0 && std::abs(targetValue - envelope) < snap) {
             envelope = targetValue;
