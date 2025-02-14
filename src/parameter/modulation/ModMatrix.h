@@ -9,7 +9,7 @@
 
 #if defined(MAX_VOICES)
     #define MAX_MOD_VOICES MAX_VOICES
-#else if !defined(MAX_MOD_VOICES)
+#elif !defined(MAX_MOD_VOICES)
     #define MAX_MOD_VOICES 128
 #endif
 
@@ -18,41 +18,65 @@ namespace imagiro {
     public:
         struct Listener {
             virtual void OnMatrixUpdated() {}
-            virtual void OnRecentVoiceUpdated(size_t voiceIndex) {}
+            virtual void OnRecentVoiceUpdated(size_t) {}
         };
 
         void addListener(Listener* l) { listeners.add(l); }
         void removeListener(Listener* l) { listeners.remove(l); }
 
-        void registerSource(const SourceID& id, std::string name = "");
+        enum class SourceType {
+            Note = 0,
+            LFO = 1,
+            Env = 2,
+            Misc = 3
+        };
+
+        void registerSource(const SourceID& id, std::string name = "",
+                            SourceType type = SourceType::Misc, bool isBipolar = false);
         void registerTarget(const TargetID& id, std::string name = "");
 
         struct SourceValue {
+            std::string name;
             float globalModValue {0};
             std::array<float, MAX_MOD_VOICES> voiceModValues {};
             std::set<int> alteredVoiceValues {};
+            bool bipolar;
+            SourceType type;
 
             choc::value::Value getValue() const {
                 auto v = choc::value::createObject("SourceValue");
-                v.addMember("global", globalModValue);
+                v.addMember("bipolar", bipolar);
+                v.addMember("type", static_cast<int>(type));
+                v.addMember("name", name);
+
+                auto values = choc::value::createObject("Values");
+                values.addMember("global", globalModValue);
                 for (const auto index : alteredVoiceValues) {
-                    v.addMember(std::to_string(index), voiceModValues[index]);
+                    values.addMember(std::to_string(index), voiceModValues[index]);
                 }
+                v.addMember("values", values);
+
                 return v;
             }
         };
 
         struct TargetValue {
+            std::string name;
             float globalModValue {0};
             std::array<float, MAX_MOD_VOICES> voiceModValues {};
             std::set<int> alteredVoiceValues {};
 
             choc::value::Value getValue() const {
                 auto v = choc::value::createObject("TargetValue");
-                v.addMember("global", globalModValue);
+                v.addMember("name", name);
+
+                auto values = choc::value::createObject("Values");
+                values.addMember("global", globalModValue);
                 for (const auto index : alteredVoiceValues) {
-                    v.addMember(std::to_string(index), voiceModValues[index]);
+                    values.addMember(std::to_string(index), voiceModValues[index]);
                 }
+                v.addMember("values", values);
+
                 return v;
             }
         };
@@ -63,9 +87,10 @@ namespace imagiro {
                 float depth {0};
                 float attackMS {10};
                 float releaseMS {10};
+                bool bipolar {false};
             };
 
-            Connection(double sr = 44100, Settings s = {0, 10, 10})
+            Connection(double sr = 44100, Settings s = {0, 10, 10, false})
                 : sampleRate(sr), settings(s)
             {
                 setSettings(s);
@@ -109,7 +134,7 @@ namespace imagiro {
             std::array<EnvelopeFollower<float>, MAX_MOD_VOICES> voiceValueEnvelopeFollowers;
         };
 
-        void setConnection(const SourceID& sourceID, TargetID targetID, Connection::Settings connectionSettings);
+        void setConnection(const SourceID& sourceID, const TargetID& targetID, Connection::Settings connectionSettings);
         void removeConnection(const SourceID& sourceID, TargetID targetID);
 
         float getModulatedValue(const TargetID& targetID, int voiceIndex = -1);
@@ -123,8 +148,6 @@ namespace imagiro {
         std::set<int> getAlteredTargetVoices(const TargetID& targetID);
 
         auto& getMatrix() { return matrix; }
-        auto& getSourceNames() { return sourceNames; }
-        auto& getTargetNames() { return targetNames; }
 
         SerializedMatrix getSerializedMatrix();
         void loadSerializedMatrix(const SerializedMatrix& m);
@@ -141,16 +164,18 @@ namespace imagiro {
             std::erase_if(noteOnStack, [&, index](const size_t e) {
                 return e == index;
             });
-            auto oldRecentVoice = mostRecentVoiceIndex;
+            auto oldRecentVoice = mostRecentVoiceIndex.load();
             mostRecentVoiceIndex = noteOnStack.back();
             if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
         }
 
-        std::unordered_map<SourceID, SourceValue>& getSourceValues() { return sourceValues; };
-        std::unordered_map<TargetID, TargetValue>& getTargetValues() { return targetValues; };
+        std::unordered_map<SourceID, SourceValue>& getSourceValues() { return sourceValues; }
+        std::unordered_map<TargetID, TargetValue>& getTargetValues() { return targetValues; }
+
+        size_t getMostRecentVoiceIndex() { return mostRecentVoiceIndex; }
 
     private:
-        size_t mostRecentVoiceIndex {0};
+        std::atomic<size_t> mostRecentVoiceIndex {0};
         juce::ListenerList<Listener> listeners;
         double sampleRate {44100};
 
@@ -160,9 +185,6 @@ namespace imagiro {
 
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};
-
-        std::unordered_map<SourceID, std::string> sourceNames;
-        std::unordered_map<TargetID, std::string> targetNames;
 
         std::unordered_map<TargetID, int> numModSources {};
     };

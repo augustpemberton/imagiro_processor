@@ -11,6 +11,7 @@ struct SerializedMatrixEntry {
     float depth;
     float attackMS;
     float releaseMS;
+    bool bipolar;
 
     choc::value::Value getState() const {
         auto val = choc::value::createObject("ModMatrixEntry");
@@ -19,6 +20,7 @@ struct SerializedMatrixEntry {
         val.addMember("depth", choc::value::Value(depth));
         val.addMember("attackMS", choc::value::Value(attackMS));
         val.addMember("releaseMS", choc::value::Value(releaseMS));
+        val.addMember("bipolar", choc::value::Value(bipolar));
         return val;
     }
 
@@ -28,7 +30,8 @@ struct SerializedMatrixEntry {
                 state["targetID"].getWithDefault(""),
                 state["depth"].getWithDefault(0.f),
                 state["attackMS"].getWithDefault(0.f),
-                state["releaseMS"].getWithDefault(0.f)
+                state["releaseMS"].getWithDefault(0.f),
+                state["bipolar"].getWithDefault(false)
         };
 
         return e;

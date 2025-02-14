@@ -10,16 +10,18 @@ namespace imagiro {
         listeners.call(&Listener::OnMatrixUpdated);
     }
 
-    void ModMatrix::setConnection(const SourceID& sourceID, TargetID targetID,
+    void ModMatrix::setConnection(const SourceID& sourceID, const TargetID& targetID,
                                   ModMatrix::Connection::Settings settings) {
         if (!sourceValues.contains(sourceID)) {
             jassertfalse;
             return;
         }
+
         if (!targetValues.contains(targetID)) {
             jassertfalse;
             return;
         }
+
         if (matrix.contains({sourceID, targetID})) {
             matrix.at({sourceID, targetID}).setSettings(settings);
         } else {
@@ -82,14 +84,18 @@ namespace imagiro {
             auto globalValueAddition = sourceValues[sourceID].globalModValue;
             connection.getGlobalEnvelopeFollower().setTargetValue(globalValueAddition);
             connection.getGlobalEnvelopeFollower().skip(numSamples);
-            targetValues[targetID].globalModValue += connection.getGlobalEnvelopeFollower().getCurrentValue() * connectionSettings.depth;
+            auto v = connection.getGlobalEnvelopeFollower().getCurrentValue() * connectionSettings.depth;
+            if (connectionSettings.bipolar) v *= 0.5f;
+            targetValues[targetID].globalModValue += v;
 
             for (size_t i : sourceValues[sourceID].alteredVoiceValues) {
                 auto voiceValueAddition = sourceValues[sourceID].voiceModValues[i];
                 connection.getVoiceEnvelopeFollower(i).setTargetValue(voiceValueAddition);
                 connection.getVoiceEnvelopeFollower(i).skip(numSamples);
-                targetValues[targetID].voiceModValues[i] += connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
-                targetValues[targetID].alteredVoiceValues.insert(i);
+                auto va = connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
+                if (connectionSettings.bipolar) va *= 0.5f;
+                targetValues[targetID].voiceModValues[i] += va;
+                targetValues[targetID].alteredVoiceValues.insert((int)i);
 
                 if (!almostEqual(voiceValueAddition, 0.f) || !almostEqual(connection.getVoiceEnvelopeFollower(i).getCurrentValue(), 0.f)) {
                     activeVoicesForSource[sourceID].insert(i);
@@ -102,7 +108,7 @@ namespace imagiro {
             if (auto it = activeVoicesForSource.find(sourceID); it != activeVoicesForSource.end()) {
                 auto& alteredValues = sourceValue.alteredVoiceValues;
                 std::erase_if(alteredValues, [&activeSet = it->second](auto v) {
-                    return !activeSet.contains(v);
+                    return !activeSet.contains(static_cast<size_t>(v));
                 });
             }
         }
@@ -111,7 +117,7 @@ namespace imagiro {
             if (auto it = activeVoicesForTarget.find(targetID); it != activeVoicesForTarget.end()) {
                 auto& alteredValues = targetValue.alteredVoiceValues;
                 std::erase_if(alteredValues, [&activeSet = it->second](auto v) {
-                    return !activeSet.contains(v);
+                    return !activeSet.contains(static_cast<size_t>(v));
                 });
             }
         }
@@ -130,26 +136,30 @@ namespace imagiro {
     }
 
 
-    void ModMatrix::registerSource(const SourceID& id, std::string name) {
+    void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
         jassert(!sourceValues.contains(id));
-        sourceValues.insert({id, {}});
-
-        if (name.empty()) {
-             name = id;
-        }
-
-        sourceNames.insert({id, name});
-    }
-
-    void ModMatrix::registerTarget(const TargetID& id, std::string name) {
-        jassert(!targetValues.contains(id));
-        targetValues.insert({id, {}});
 
         if (name.empty()) {
             name = id;
         }
 
-        targetNames.insert({id, name});
+        SourceValue sourceValue;
+        sourceValue.bipolar = isBipolar;
+        sourceValue.type = type;
+        sourceValue.name = name;
+        sourceValues.insert({id, sourceValue});
+    }
+
+    void ModMatrix::registerTarget(const TargetID& id, std::string name) {
+        jassert(!targetValues.contains(id));
+
+        if (name.empty()) {
+            name = id;
+        }
+
+        TargetValue targetValue;
+        targetValue.name = name;
+        targetValues.insert({id, targetValue});
     }
 
     int ModMatrix::getNumModSources(const imagiro::TargetID& targetID) {
@@ -164,7 +174,8 @@ namespace imagiro {
                    pair.second,
                    connection.getSettings().depth,
                    connection.getSettings().attackMS,
-                   connection.getSettings().releaseMS
+                   connection.getSettings().releaseMS,
+                   connection.getSettings().bipolar
            });
         };
         return serializedMatrix;
