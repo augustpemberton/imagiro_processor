@@ -85,8 +85,8 @@ namespace imagiro {
         public:
             struct Settings {
                 float depth {0};
-                float attackMS {10};
-                float releaseMS {10};
+                float attackMS {0};
+                float releaseMS {0};
                 bool bipolar {false};
             };
 

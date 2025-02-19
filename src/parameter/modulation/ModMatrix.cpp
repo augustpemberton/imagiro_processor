@@ -85,7 +85,7 @@ namespace imagiro {
             connection.getGlobalEnvelopeFollower().setTargetValue(globalValueAddition);
             connection.getGlobalEnvelopeFollower().skip(numSamples);
             auto v = connection.getGlobalEnvelopeFollower().getCurrentValue() * connectionSettings.depth;
-            if (connectionSettings.bipolar) v *= 0.5f;
+            if (connectionSettings.bipolar) v *= 0.5f; // half depth & half value
             targetValues[targetID].globalModValue += v;
 
             for (size_t i : sourceValues[sourceID].alteredVoiceValues) {

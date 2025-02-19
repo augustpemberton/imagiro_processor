@@ -12,7 +12,9 @@ namespace imagiro {
     Parameter::Parameter(std::string uid, std::string name,
                          std::vector<ParameterConfig> configs,
                          bool meta, bool internal,
-                         bool automatable, int versionHint)
+                         bool automatable,
+                         float jitter,
+                         int versionHint)
 
             : juce::RangedAudioParameter({uid, versionHint}, name,
                                          juce::AudioProcessorParameterWithIDAttributes()
@@ -22,7 +24,8 @@ namespace imagiro {
               internal(internal),
               uid(uid),
               name(name),
-              modTarget("param-" + uid, name)
+              modTarget("param-" + uid, name),
+              jitterAmount(jitter)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         startTimerHz(30);

@@ -30,6 +30,7 @@ namespace imagiro {
                   bool internal = false,
                   bool isMetaParam = false,
                   bool automatable = true,
+                  float jitterAmount=0.f,
                   int versionHint=1);
 
         ~Parameter() override;
@@ -74,7 +75,9 @@ namespace imagiro {
         float getDefaultValue() const override;
         float getUserDefaultValue() const;
 
-        void setJitterAmount(float amount) { jitterAmount = amount; }
+        void setJitterAmount(float amount) {
+            jitterAmount = amount;
+        }
         float getJitterAmount() const { return jitterAmount; }
 
         void setValue (float newValue) override;
