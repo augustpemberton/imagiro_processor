@@ -24,8 +24,8 @@ public:
         adsr.setReleaseRate(params.release * sampleRate / downsampleRate);
         adsr.setSustainLevel(params.sustain);
 
-        adsr.setTargetRatioA(0.01f);
-        adsr.setTargetRatioDR(0.01f);
+        adsr.setTargetRatioA(0.1f * params.attack);
+        adsr.setTargetRatioDR(0.001f);
     }
 
     void noteOn() {

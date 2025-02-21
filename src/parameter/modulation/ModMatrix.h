@@ -90,7 +90,7 @@ namespace imagiro {
                 bool bipolar {false};
             };
 
-            Connection(double sr = 44100, Settings s = {0, 10, 10, false})
+            Connection(double sr = 48000, Settings s = {0, 10, 10, false})
                 : sampleRate(sr), settings(s)
             {
                 setSettings(s);
@@ -177,7 +177,7 @@ namespace imagiro {
     private:
         std::atomic<size_t> mostRecentVoiceIndex {0};
         juce::ListenerList<Listener> listeners;
-        double sampleRate {44100};
+        double sampleRate {48000};
 
         std::list<size_t> noteOnStack;
 

@@ -105,7 +105,7 @@ namespace imagiro {
         double getBPM();
         std::atomic<double> defaultBPM {120};
         std::atomic<double> lastBPM{120};
-        std::atomic<double> lastSampleRate {44100};
+        std::atomic<double> lastSampleRate {48000};
         std::atomic<bool> lastPlaying{false};
         juce::ListenerList<BPMListener> bpmListeners;
 

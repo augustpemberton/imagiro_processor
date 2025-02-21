@@ -5,9 +5,12 @@
 #include "src/config/Resources.h"
 #include "src/parameter/ParameterLoader.h"
 #include "src/preset/FileBackedPreset.h"
+
 #include "src/dsp/filter/StateVariableTPTFilter.h"
 #include "src/dsp/EnvelopeFollower.h"
+#include "src/dsp/LFO.h"
 #include "src/dsp/interpolation.h"
+
 #include "src/note/ScaledMPENote.h"
 #include "src/envelope/Envelope.h"
 #include "src/BufferFileLoader.h"

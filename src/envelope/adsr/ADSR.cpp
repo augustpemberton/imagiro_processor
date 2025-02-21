@@ -37,44 +37,90 @@ ADSR::ADSR() {
 void ADSR::setAttackRate(double rate) {
     attackRate = rate;
     attackCoef = calcCoef(rate, targetRatioA);
-    attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
-}
+    attackRate = rate;
+    attackCoef = calcCoef(rate, targetRatioA);
+
+    // Recalculate attack base relative to current output
+    if (state == EnvState::env_attack) {
+        attackBase = (1.0 - output) * (1.0 - attackCoef);
+    } else {
+        attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
+    }}
 
 void ADSR::setDecayRate(double rate) {
     decayRate = rate;
     decayCoef = calcCoef(rate, targetRatioDR);
-    decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
-}
+
+    // Recalculate decay base relative to current output
+    if (state == EnvState::env_decay) {
+        decayBase = (sustainLevel - output) * (1.0 - decayCoef);
+    } else {
+        decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
+    }}
 
 void ADSR::setReleaseRate(double rate) {
     releaseRate = rate;
     releaseCoef = calcCoef(rate, targetRatioDR);
-    releaseBase = -targetRatioDR * (1.0 - releaseCoef);
-}
+
+    // Recalculate release base relative to current output
+    if (state == EnvState::env_release) {
+        releaseBase = -output * (1.0 - releaseCoef);
+    } else {
+        releaseBase = -targetRatioDR * (1.0 - releaseCoef);
+    }}
 
 double ADSR::calcCoef(double rate, double targetRatio) {
     return (rate <= 0) ? 0.0 : exp(-log((1.0 + targetRatio) / targetRatio) / rate);
 }
 
 void ADSR::setSustainLevel(double level) {
+    // Store old sustain level for interpolation
+    double oldSustainLevel = sustainLevel;
     sustainLevel = level;
-    decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
-}
+
+    // Update decay base considering current state
+    if (state == EnvState::env_decay) {
+        decayBase = (sustainLevel - output) * (1.0 - decayCoef);
+    } else if (state == EnvState::env_sustain) {
+        // Smoothly transition to new sustain level by entering decay state
+        state = EnvState::env_decay;
+        decayBase = (sustainLevel - output) * (1.0 - decayCoef);
+    } else {
+        decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
+    }}
 
 void ADSR::setTargetRatioA(double targetRatio) {
     if (targetRatio < 0.000000001)
         targetRatio = 0.000000001;  // -180 dB
     targetRatioA = targetRatio;
     attackCoef = calcCoef(attackRate, targetRatioA);
-    attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
+
+    // Update attack base considering current state
+    if (state == EnvState::env_attack) {
+        attackBase = (1.0 - output) * (1.0 - attackCoef);
+    } else {
+        attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
+    }
 }
 
 void ADSR::setTargetRatioDR(double targetRatio) {
     if (targetRatio < 0.000000001)
         targetRatio = 0.000000001;  // -180 dB
     targetRatioDR = targetRatio;
+
     decayCoef = calcCoef(decayRate, targetRatioDR);
     releaseCoef = calcCoef(releaseRate, targetRatioDR);
-    decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
-    releaseBase = -targetRatioDR * (1.0 - releaseCoef);
+
+    // Update bases considering current state
+    if (state == EnvState::env_decay) {
+        decayBase = (sustainLevel - output) * (1.0 - decayCoef);
+    } else {
+        decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
+    }
+
+    if (state == EnvState::env_release) {
+        releaseBase = -output * (1.0 - releaseCoef);
+    } else {
+        releaseBase = -targetRatioDR * (1.0 - releaseCoef);
+    }
 }

@@ -186,7 +186,8 @@ namespace imagiro {
         for (const auto& entry : m) {
             matrix.insert({
                                   {SourceID(entry.sourceID), TargetID(entry.targetID)},
-                                  Connection(sampleRate, {entry.depth, entry.attackMS, entry.releaseMS})
+                                  Connection(sampleRate, {entry.depth, entry.attackMS, entry.releaseMS,
+                                                          entry.bipolar})
                           });
         }
     }

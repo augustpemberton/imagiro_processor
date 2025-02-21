@@ -153,7 +153,7 @@ private:
     SampleType g, h, R2;
     std::vector<SampleType> s1 { 2 }, s2 { 2 };
 
-    double sampleRate = 44100.0;
+    double sampleRate = 48000.0;
     Type filterType = Type::lowpass;
     SampleType cutoffFrequency = static_cast<SampleType> (1000.0),
                resonance       = static_cast<SampleType> (1.0 / std::sqrt (2.0));
