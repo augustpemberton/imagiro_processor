@@ -16,7 +16,7 @@ namespace imagiro {
         const float x = index - floored;
 
         const float ym1 = floored > 0 ? in[floored-1] : in[0];
-        const float y0 = in[floored];
+        const float y0 = in[floored]    ;
         const float y1 = in[floored + 1];
         const float y2 = in[floored + 2];
 

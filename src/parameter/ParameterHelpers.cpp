@@ -179,13 +179,13 @@ namespace imagiro {
         return s;
     }
 
-    DisplayValue DisplayFunctions::degreeDisplay(float deg) {
-        return {juce::String(deg), "°"};
+    DisplayValue DisplayFunctions::degreeDisplay(float v) {
+        return {juce::String((int)(v*360)), juce::CharPointer_UTF8("\u00B0")};
     }
 
     float DisplayFunctions::degreeInput(juce::String deg) {
         deg = deg.replace("°", "", true);
-        return deg.getFloatValue();
+        return deg.getFloatValue() / 360.f;
     }
 
     DisplayValue DisplayFunctions::syncDisplay(float val) {

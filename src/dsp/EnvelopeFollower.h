@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <imagiro_util/imagiro_util.h>
 
 template <typename T = float>
 class EnvelopeFollower {
@@ -11,11 +12,13 @@ public:
     }
 
     void setAttackMs(float attackMS) {
+        if (imagiro::almostEqual(attackMS, this->attackMs)) return;
         this->attackMs = attackMS;
         recalculateCoefficients();
     }
 
     void setReleaseMs(float releaseMS) {
+        if (imagiro::almostEqual(releaseMS, this->releaseMs)) return;
         this->releaseMs = releaseMS;
         recalculateCoefficients();
     }

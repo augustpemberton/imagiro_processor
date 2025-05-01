@@ -16,9 +16,14 @@ public:
         phaseInc = frequency / sampleRate;
     }
 
+    void setPhaseOffset(float offset) {
+        phaseOffset.setTargetValue(offset);
+    }
+
     void setSampleRate(float sr) {
         sampleRate = sr;
         phaseInc = frequency / sampleRate;
+        phaseOffset.reset(sampleRate, 0.02);
     }
 
     void setShape(Shape newShape) {
@@ -36,26 +41,33 @@ public:
             phase -= 1.0f;
         }
 
+        phaseOffset.skip(numSamples);
+        auto phaseWithOffset = phase + phaseOffset.getCurrentValue();
+        while (phaseWithOffset >= 1.0f) {
+            phaseWithOffset -= 1.f;
+        }
+
         float output = 0.f;
         if (shape == Shape::Sine) {
-            float p = phase < 0.5f ? phase : (1.f - phase);
-            output = fastersin(p * 2 * 3.1415f) * (phase < 0.5f ? 1.f : -1.f);
+            float p = phaseWithOffset < 0.5f ? phaseWithOffset : (1.f - phaseWithOffset);
+            output = fastersin(p * 2 * 3.1415f) * (phaseWithOffset < 0.5f ? 1.f : -1.f);
         } else if (shape == Shape::Triangle) {
-            if (phase < 0.5f) {
-                output = 4.0f * phase - 1.0f;
+            if (phaseWithOffset < 0.5f) {
+                output = 4.0f * phaseWithOffset - 1.0f;
             } else {
-                output = 3.0f - 4.0f * phase;
+                output = 3.0f - 4.0f * phaseWithOffset;
             }
         } else if (shape == Shape::RampDown) {
-            output = 1.0f - 2.0f * phase;
+            output = 1.0f - 2.0f * phaseWithOffset;
         } else if (shape == Shape::RampUp) {
-            output = 2.0f * phase - 1.0f;
+            output = 2.0f * phaseWithOffset - 1.0f;
         }
 
         return output;
     }
 
 private:
+    juce::SmoothedValue<float> phaseOffset;
     float phase;
     float phaseInc;
     Shape shape;
