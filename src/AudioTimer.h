@@ -11,6 +11,12 @@ public:
     bool advance() {
         if (!active) return false;
 
+        // if we are on a negative (infinite) rate, tick this one time but not again
+        if (rate < 0) {
+            setActive(false);
+            return true;
+        }
+
         if (secondsSinceLastTick < 0) secondsSinceLastTick = rate;
 
         secondsSinceLastTick += secondsPerTick;
@@ -38,6 +44,10 @@ public:
         if (!this->active) {
             secondsSinceLastTick = -1;
         }
+    }
+
+    void reset() {
+        secondsSinceLastTick = -1;
     }
 
 private:
