@@ -12,7 +12,7 @@ public:
         if (!active) return false;
 
         // if we are on a negative (infinite) rate, tick this one time but not again
-        if (rate < 0) {
+        if (rate <= 0) {
             setActive(false);
             return true;
         }
