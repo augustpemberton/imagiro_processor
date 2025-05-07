@@ -100,8 +100,8 @@ namespace imagiro {
                 return {choice != 0.f ? "on" : "off"};
             };
         } else if (type == "semitone") {
-            config.textFunction = DisplayFunctions::semitoneDisplay;
-            config.valueFunction = DisplayFunctions::semitoneInput;
+            config.textFunction = DisplayFunctions::centDisplay;
+            config.valueFunction = DisplayFunctions::centInput;
         } else if (type == "cent") {
             config.textFunction = DisplayFunctions::centDisplay;
             config.valueFunction = DisplayFunctions::centInput;

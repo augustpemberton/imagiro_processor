@@ -99,6 +99,7 @@ namespace imagiro {
     }
 
     DisplayValue DisplayFunctions::centDisplay(float semitones) {
+        if (almostEqual(semitones, 0.f)) return {"0.00", "st"}; // prevent -0.00
         std::stringstream ss;
         ss << std::fixed << std::setprecision(2) << semitones;
         return {ss.str(), "st"};
