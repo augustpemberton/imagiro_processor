@@ -18,3 +18,6 @@
 #include "src/parameter/modulation/ModSource.h"
 #include "src/parameter/modulation/ModTarget.h"
 #include "src/AudioTimer.h"
+
+#include "src/processors/EffectChainProcessor.h"
+#include "src/parameter/ProxyParameter.h"

@@ -16,6 +16,8 @@ namespace imagiro {
     public:
         class Listener {
         public:
+            virtual ~Listener() = default;
+
             virtual void parameterChanged (Parameter* ) {}
             virtual void parameterChangedSync (Parameter* ) {}
             virtual void configChanged(Parameter* ) {}
@@ -23,7 +25,8 @@ namespace imagiro {
             virtual void gestureStartedSync(Parameter* ) {}
             virtual void gestureEnded(Parameter* ) {}
             virtual void gestureEndedSync(Parameter* ) {}
-            virtual void lockChanged(Parameter* ) {} };
+            virtual void lockChanged(Parameter* ) {}
+        };
 
         Parameter(std::string uid, std::string name,
                   std::vector<ParameterConfig> config,
@@ -37,7 +40,7 @@ namespace imagiro {
 
         void setModMatrix(ModMatrix& m);
 
-        juce::RangedAudioParameter* asJUCEParameter() { return this; }
+        RangedAudioParameter* asJUCEParameter() { return this; }
 
         void setInternal (bool i)          { internal = i;     }
         bool isInternal() const            { return internal;  }
@@ -78,14 +81,15 @@ namespace imagiro {
         void setJitterAmount(float amount) {
             jitterAmount = amount;
         }
-        float getJitterAmount() const { return jitterAmount; }
+        virtual float getJitterAmount() const { return jitterAmount; }
 
-        void setValue (float newValue) override;
+        virtual void setValue (float newValue) override;
         void setUserValue (float v);
-        void setValueAndNotifyHost (float f, bool forceUpdate = false);
+        virtual void setValueAndNotifyHost (float f, bool forceUpdate = false);
         void setUserValueAndNotifyHost (float f, bool forceUpdate = false);
         void setUserValueAsUserAction (float f);
-        std::string getUserValueText() const;
+
+        virtual std::string getUserValueText() const;
         std::string userValueToText (float val);
         DisplayValue getDisplayValue() const;
         DisplayValue getDisplayValueForUserValue(float userValue) const;
@@ -191,10 +195,11 @@ namespace imagiro {
 
         const juce::NormalisableRange<float>& getNormalisableRange() const override;
 
-        std::vector<ParameterConfig> configs;
         unsigned int configIndex {0};
-        const ParameterConfig* getConfig() const;
-        ParameterConfig* getConfig();
+        virtual const ParameterConfig* getConfig() const;
+        virtual std::vector<ParameterConfig> getAllConfigs() const {
+            return configs;
+        }
 
         int getConfigIndex();
         void setConfig(int index);
@@ -210,6 +215,8 @@ namespace imagiro {
         ModTarget& getModTarget() { return modTarget; }
 
     protected:
+        std::vector<ParameterConfig> configs;
+
         bool internal {false};
         int modIndex = -1;
 

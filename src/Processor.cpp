@@ -13,6 +13,9 @@ namespace imagiro {
             : ProcessorBase(ioLayouts)
     {
         bypassGain.reset(250);
+        mixGain.reset(250);
+        bypassGain.setTargetValue(1);
+        mixGain.setTargetValue(1);
         juce::AudioProcessor::addListener(this);
 
         auto parameters = loader.loadParameters(parametersYAMLString, *this);
@@ -34,7 +37,12 @@ namespace imagiro {
 
     Parameter* Processor::addParam (std::unique_ptr<Parameter> p) {
         if (p->getUID() == "bypass") {
+            bypassGain.setTargetValue(1 - p->getValue());
             p->addListener(this);
+        }
+
+        if (p->getUID() == "mix") {
+            mixGain.setTargetValue(p->getValue());
         }
 
         p->setModMatrix(modMatrix);
@@ -167,9 +175,6 @@ namespace imagiro {
     }
 
     void Processor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
-#if JucePlugin_IsSynth
-        buffer.clear();
-#endif
 
         for (auto param : getPluginParameters()) {
             param->startBlock(buffer.getNumSamples());
@@ -199,13 +204,15 @@ namespace imagiro {
         }
 
         playhead = getPlayHead();
-        posInfo = playhead->getPosition();
+        if (playhead) {
+            posInfo = playhead->getPosition();
 
-        if (posInfo.hasValue()) {
-            auto playing = posInfo->getIsPlaying();
-            if (playing != lastPlaying) {
-                bpmListeners.call(&BPMListener::playChanged, playing);
-                lastPlaying = playing;
+            if (posInfo.hasValue()) {
+                auto playing = posInfo->getIsPlaying();
+                if (playing != lastPlaying) {
+                    bpmListeners.call(&BPMListener::playChanged, playing);
+                    lastPlaying = playing;
+                }
             }
         }
 
@@ -225,12 +232,13 @@ namespace imagiro {
 
         cpuLoad.store(static_cast<float>(measurer.getLoadAsProportion()));
 
-        // apply bypass
+        // apply bypass and mix
         for (auto s=0; s<buffer.getNumSamples(); s++) {
             auto gain = bypassGain.getNextValue();
+            gain *= mixGain.getNextValue();
             for (auto c=0; c<getTotalNumOutputChannels(); c++) {
-                auto v = buffer.getSample(c, s) * (1-gain);
-                v += dryBufferLatencyCompensationLine.popSample(c) * gain;
+                auto v = buffer.getSample(c, s) * (gain);
+                v += dryBufferLatencyCompensationLine.popSample(c) * (1 -gain);
                 buffer.setSample(c, s, v);
             }
         }
@@ -238,7 +246,10 @@ namespace imagiro {
 
     void Processor::parameterChanged(imagiro::Parameter *param) {
         if (param->getUID() == "bypass") {
-            bypassGain.setTargetValue(param->getValue());
+            bypassGain.setTargetValue(1 - param->getValue());
+        }
+        if (param->getUID() == "mix") {
+            mixGain.setTargetValue(param->getValue());
         }
     }
 

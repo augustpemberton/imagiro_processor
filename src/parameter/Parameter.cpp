@@ -11,7 +11,7 @@ namespace imagiro {
 
     Parameter::Parameter(std::string uid, std::string name,
                          std::vector<ParameterConfig> configs,
-                         bool meta, bool internal,
+                         bool internal, bool meta,
                          bool automatable,
                          float jitter,
                          int versionHint)
@@ -28,6 +28,7 @@ namespace imagiro {
               jitterAmount(jitter)
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
+        this->valueSmoother.setCurrentAndTargetValue(getProcessorValue());
         startTimerHz(30);
     }
 
@@ -48,7 +49,7 @@ namespace imagiro {
     }
 
     float Parameter::getUserValue() const {
-        return convertFrom0to1(value01);
+        return convertFrom0to1(getValue());
     }
 
     float Parameter::getModValue(int voiceIndex) const {
@@ -268,9 +269,9 @@ namespace imagiro {
         return &configs[configIndex];
     }
 
-    ParameterConfig* Parameter::getConfig() {
-        return &configs[configIndex];
-    }
+    // ParameterConfig* Parameter::getConfig() {
+    //     return &configs[configIndex];
+    // }
 
     void Parameter::setConfig(int index) {
         if (index == static_cast<int>(configIndex)) return;

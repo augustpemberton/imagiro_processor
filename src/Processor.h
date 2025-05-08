@@ -120,7 +120,8 @@ namespace imagiro {
         juce::Array<Parameter*> allParameters;
         juce::OwnedArray<Parameter> internalParameters;
 
-        juce::SmoothedValue<float> bypassGain;
+        juce::SmoothedValue<float> mixGain {0};
+        juce::SmoothedValue<float> bypassGain {0};
         const int MAX_DELAY_LINES_SAMPLES_DURATION = 48000 * 4;
         juce::dsp::DelayLine<float> dryBufferLatencyCompensationLine { MAX_DELAY_LINES_SAMPLES_DURATION };
 
