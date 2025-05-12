@@ -304,6 +304,7 @@ namespace imagiro {
     }
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        setRateAndBufferSizeDetails(sampleRate, samplesPerBlock);
         modMatrix.prepareToPlay(sampleRate, samplesPerBlock);
         measurer.reset(sampleRate, samplesPerBlock);
         dryBufferLatencyCompensationLine.prepare({

@@ -9,6 +9,7 @@
 #include "gain/GainProcessor.h"
 #include "iir-filter/IIRFilterProcessor.h"
 #include "imagiro_processor/src/parameter/ProxyParameter.h"
+#include "noise/NoiseProcessor.h"
 #include "wobble/WobbleProcessor.h"
 
 class EffectChainProcessor {
@@ -20,6 +21,7 @@ public:
         Chorus = 3,
         Saturation= 4,
         Wobble = 5,
+        Noise = 6,
     };
 
     static std::shared_ptr<Processor> getProcessorForEffectType(const EffectType type) {
@@ -29,10 +31,12 @@ public:
         if (type == EffectType::Chorus) return std::make_shared<ChorusProcessor>();
         if (type == EffectType::Saturation) return std::make_shared<SaturationProcessor>();
         if (type == EffectType::Wobble) return std::make_shared<WobbleProcessor>();
+        if (type == EffectType::Noise) return std::make_shared<NoiseProcessor>();
         return nullptr;
     }
 
     struct Effect {
+        int id {-1};
         EffectType type;
         std::shared_ptr<Processor> processor;
     };
@@ -97,6 +101,7 @@ public:
             mappedProxyParameters[i] = std::map<std::string, ProxyParameter*>{};
 
             for (const auto& param : effect.processor->getPluginParameters()) {
+                if (param->isInternal()) continue;
                 ProxyParameter* proxyParam;
                 if (oldEffect) {
                     auto oldEffectParam = oldEffect->processor->getParameter(param->getUID());

@@ -76,6 +76,7 @@ namespace imagiro {
             config.textFunction = DisplayFunctions::dbDisplay;
             config.valueFunction = DisplayFunctions::dbInput;
             config.processorConversionFunction = [](float val) {
+                if (val <= -60) return 0.f;
                 return juce::Decibels::decibelsToGain(val);
             };
         } else if (type == "time") {
