@@ -12,7 +12,7 @@ using namespace imagiro;
 class IIRFilterProcessor : public Processor {
 public:
     IIRFilterProcessor()
-        : Processor(IIRFilterProcessorParameters::PARAMETERS_YAML) {
+        : Processor(IIRFilterProcessorParameters::PARAMETERS_YAML, ParameterLoader(), getDefaultProperties()) {
         frequencyParam = getParameter("frequency");
         typeParam = getParameter("type");
 
@@ -21,6 +21,12 @@ public:
 
     ~IIRFilterProcessor() override {
         typeParam->removeListener(this);
+    }
+
+    BusesProperties getDefaultProperties() {
+        return BusesProperties()
+            .withInput("Input", juce::AudioChannelSet::stereo(), true)
+            .withOutput("Output", juce::AudioChannelSet::stereo(), true);
     }
 
     void prepareToPlay(const double sampleRate, const int samplesPerBlock) override {
@@ -55,7 +61,8 @@ public:
         }
     }
 
-    void parameterChanged(Parameter *) override {
+    void parameterChanged(Parameter *p) override {
+        Processor::parameterChanged(p);
         reloadFilterFlag = true;
     }
 

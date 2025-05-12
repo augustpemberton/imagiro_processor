@@ -6,12 +6,13 @@
 #include "imagiro_processor/src/Processor.h"
 #include "Parameters.h"
 
-class GainProcessor : public Processor {
+using namespace imagiro;
+class SaturationProcessor : public Processor {
 public:
-    GainProcessor()
-        : Processor(GainProcessorParameters::PARAMETERS_YAML,
+    SaturationProcessor()
+        : Processor(SaturationProcessorParameters::PARAMETERS_YAML,
             ParameterLoader(), getDefaultProperties()) {
-        gainParam = getParameter("gain");
+        driveParam = getParameter("drive");
     }
 
     BusesProperties getDefaultProperties() {
@@ -26,14 +27,19 @@ public:
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
         for (auto c = 0; c < buffer.getNumChannels(); c++) {
-            juce::FloatVectorOperations::multiply(
-                buffer.getWritePointer(c),
-                gainParam->getSmoothedProcessorValueBuffer().getReadPointer(0),
-                buffer.getNumSamples()
-            );
+            for (auto s = 0; s < buffer.getNumSamples(); s++) {
+                auto drive = driveParam->getSmoothedValue(s);
+                auto v = buffer.getSample(c, s);
+
+                v *= drive;
+                v = std::tanh(v);
+                v /= drive;
+
+                buffer.setSample(c, s, v);
+            }
         }
     }
 
 private:
-    Parameter *gainParam;
+    Parameter *driveParam;
 };

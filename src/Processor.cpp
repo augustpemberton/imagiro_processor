@@ -20,11 +20,13 @@ namespace imagiro {
 
         auto parameters = loader.loadParameters(parametersYAMLString, *this);
         for (auto& param : parameters) this->addParam(std::move(param));
+        dryBufferLatencyCompensationLine.reset();
     }
 
     Processor::~Processor() {
         for (auto p : getPluginParameters()) {
             if (p->getUID() == "bypass") p->removeListener(this);
+            if (p->getUID() == "mix") p->removeListener(this);
         }
         juce::AudioProcessor::removeListener(this);
     }
@@ -43,6 +45,7 @@ namespace imagiro {
 
         if (p->getUID() == "mix") {
             mixGain.setTargetValue(p->getValue());
+            p->addListener(this);
         }
 
         p->setModMatrix(modMatrix);
@@ -175,6 +178,9 @@ namespace imagiro {
     }
 
     void Processor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+        if (getTotalNumInputChannels() == 0) {
+            buffer.clear();
+        }
 
         for (auto param : getPluginParameters()) {
             param->startBlock(buffer.getNumSamples());

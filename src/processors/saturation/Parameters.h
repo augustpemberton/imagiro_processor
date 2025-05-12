@@ -1,13 +1,13 @@
 #pragma once
 
-namespace GainProcessorParameters {
+namespace SaturationProcessorParameters {
     static constexpr const char* PARAMETERS_YAML = R"(
 
-    gain:
-      name: "gain"
+    drive:
+      name: "drive"
       type: db
       default: 0
-      range: {min: -60, max: 12, step: 0.1}
+      range: {min: -36, max: 36, step: 0.1}
 
     mix:
       name: "mix"

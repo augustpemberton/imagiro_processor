@@ -12,10 +12,16 @@ using namespace imagiro;
 class ChorusProcessor : public Processor {
 public:
     ChorusProcessor()
-        : Processor(ChorusProcessorParameters::PARAMETERS_YAML) {
+        : Processor(ChorusProcessorParameters::PARAMETERS_YAML, ParameterLoader(), getDefaultProperties()) {
         rateParam = getParameter("rate");
         depthParam = getParameter("depth");
         mixParam = getParameter("mix");
+    }
+
+    BusesProperties getDefaultProperties() {
+        return BusesProperties()
+            .withInput("Input", juce::AudioChannelSet::stereo(), true)
+            .withOutput("Output", juce::AudioChannelSet::stereo(), true);
     }
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override {
@@ -40,7 +46,6 @@ public:
         for (auto s=0; s<buffer.getNumSamples(); s++) {
             const auto depthSamples = depthParam->getSmoothedValue(s) * maxDelayDepthSamples;
             const auto rate = rateParam->getSmoothedValue(s);
-            const auto mix = mixParam->getSmoothedValue(s);
 
             for (auto c=0; c<buffer.getNumChannels(); c++) {
                 channelLFOs[c].set(0, 1, rate / getSampleRate(), 0.3, 0.3);
@@ -49,8 +54,7 @@ public:
                 auto input = buffer.getSample(c, s);
                 auto delayedSample = channelDelays[c].write(input).read(delaySamples);
 
-                buffer.setSample(c, s,
-                    input * (1-mix) + delayedSample * mix);
+                buffer.setSample(c, s, delayedSample);
             }
 
         }

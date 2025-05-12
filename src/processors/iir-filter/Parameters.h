@@ -15,6 +15,12 @@ namespace IIRFilterProcessorParameters {
         choices: ['lowpass', 'bandpass', 'highpass']
         default: 0
 
+    mix:
+      name: "mix"
+      type: percent
+      default: 1
+
+
     )";
 
 };

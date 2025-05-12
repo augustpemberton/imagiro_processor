@@ -11,11 +11,10 @@ using namespace imagiro;
 class DiffuseDelayProcessor : public Processor {
 public:
     DiffuseDelayProcessor()
-        : Processor(DiffuseDelayProcessorParameters::PARAMETERS_YAML) {
+        : Processor(DiffuseDelayProcessorParameters::PARAMETERS_YAML, ParameterLoader(), getDefaultProperties()) {
         diffuseParam = getParameter("diffuse");
         delayParam = getParameter("delay");
         feedbackParam = getParameter("feedback");
-        mixParam = getParameter("mix");
         lowpassParam = getParameter("diffuseLowpass");
         highpassParam = getParameter("diffuseHighpass");
         modDepthParam = getParameter("diffuseModDepth");
@@ -26,7 +25,7 @@ public:
         for (auto p : {
                 diffuseParam, delayParam, feedbackParam,
                 lowpassParam, highpassParam,
-                modDepthParam, modRateParam, mixParam
+                modDepthParam, modRateParam
         }) {
                     p->addListener(this);
         }
@@ -50,7 +49,12 @@ public:
         highpassParam->addListener(this);
         modDepthParam->removeListener(this);
         modRateParam->removeListener(this);
-        mixParam->removeListener(this);
+    }
+
+    BusesProperties getDefaultProperties() {
+        return BusesProperties()
+            .withInput("Input", juce::AudioChannelSet::stereo(), true)
+            .withOutput("Output", juce::AudioChannelSet::stereo(), true);
     }
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override {
@@ -84,7 +88,6 @@ private:
     Parameter* diffuseParam;
     Parameter* delayParam;
     Parameter* feedbackParam;
-    Parameter* mixParam;
     Parameter* highpassParam;
     Parameter* lowpassParam;
     Parameter* modDepthParam;

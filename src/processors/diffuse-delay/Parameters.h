@@ -7,6 +7,7 @@ mix:
   name: "mix"
   type: percent
   default: 0.5
+
 diffuse:
   name: "diffuse"
   type: percent
