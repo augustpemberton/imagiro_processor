@@ -6,6 +6,7 @@
 #include "imagiro_processor/src/Processor.h"
 #include "Parameters.h"
 #include "imagiro_util/src/dsp/envelopes.h"
+#include <vector>
 
 using namespace imagiro;
 
@@ -15,7 +16,8 @@ public:
         : Processor(ChorusProcessorParameters::PARAMETERS_YAML, ParameterLoader(), getDefaultProperties()) {
         rateParam = getParameter("rate");
         depthParam = getParameter("depth");
-        mixParam = getParameter("mix");
+        feedbackParam = getParameter("feedback");
+        voicesParam = getParameter("voices");
     }
 
     BusesProperties getDefaultProperties() {
@@ -28,45 +30,82 @@ public:
         Processor::prepareToPlay(sampleRate, samplesPerBlock);
 
         maxDelayDepthSamples = maxDelayDepthSeconds * sampleRate;
-        channelDelays.clear();
-        channelLFOs.clear();
-        for (auto i=0; i<getTotalNumOutputChannels(); i++) {
-            channelDelays.emplace_back();
-            channelDelays.back().resize(maxDelayDepthSamples);
-
-            channelLFOs.emplace_back();
-            channelLFOs.back().setPhase(i / (float)getTotalNumOutputChannels());
+        
+        const int maxVoices = voicesParam->getNormalisableRange().end;
+        
+        voiceDelays.clear();
+        voiceLFOs.clear();
+        
+        // Initialize for each channel
+        for (auto c = 0; c < getTotalNumOutputChannels(); c++) {
+            voiceDelays.emplace_back();
+            voiceLFOs.emplace_back();
+            
+            for (auto v = 0; v < maxVoices; v++) {
+                voiceDelays[c].emplace_back();
+                voiceDelays[c][v].resize(maxDelayDepthSamples);
+                
+                voiceLFOs[c].emplace_back();
+                // Offset phase slightly for each voice
+                float phaseOffset = c / (float)getTotalNumOutputChannels() + v * 0.1f;
+                voiceLFOs[c][v].setPhase(phaseOffset);
+            }
         }
-
     }
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
-
-
-        for (auto s=0; s<buffer.getNumSamples(); s++) {
+        for (auto s = 0; s < buffer.getNumSamples(); s++) {
             const auto depthSamples = depthParam->getSmoothedValue(s) * maxDelayDepthSamples;
             const auto rate = rateParam->getSmoothedValue(s);
+            const auto feedback = feedbackParam->getSmoothedValue(s);
 
-            for (auto c=0; c<buffer.getNumChannels(); c++) {
-                channelLFOs[c].set(0, 1, rate / getSampleRate(), 0.3, 0.3);
-                auto delaySamples = channelLFOs[c].next() * (depthSamples - 1) + 1;
+            const int numVoices = static_cast<int>(voicesParam->getSmoothedValue(s) + 0.5f);
+            
+            for (auto c = 0; c < buffer.getNumChannels(); c++) {
+                const auto input = buffer.getSample(c, s);
+                float wetSignal = 0.0f;
 
-                auto input = buffer.getSample(c, s);
-                auto delayedSample = channelDelays[c].write(input).read(delaySamples);
+                // Process each active voice
+                for (auto v = 0; v < numVoices; v++) {
+                    voiceLFOs[c][v].set(0, 1, rate / getSampleRate(), 0.01, 0.05);
 
-                buffer.setSample(c, s, delayedSample);
+                    // Get delay time from LFO
+                    auto delaySamples = voiceLFOs[c][v].next() * (depthSamples - 1) + 1;
+
+                    // Read from delay line
+                    auto delayedSample = voiceDelays[c][v].read(delaySamples);
+
+                    // Add to wet signal (without division at this point)
+                    wetSignal += delayedSample;
+
+                    // Write input + feedback to delay line
+                    voiceDelays[c][v].write(input + delayedSample * feedback);
+                }
+
+                // Calculate adaptive gain compensation based on depth and voices
+                float depthNormalized = depthParam->getSmoothedValue(s); // 0.0 to 1.0
+                // This formula creates a curve where:
+                // - At depth=0: compensationFactor = numVoices (full compensation)
+                // - At depth=1: compensationFactor = sqrt(numVoices) (reduced compensation)
+                float compensationFactor = numVoices * (1.0f - depthNormalized) +
+                                          std::sqrt(static_cast<float>(numVoices)) * depthNormalized;
+
+                // Apply the adaptive gain compensation
+                wetSignal /= compensationFactor;
+                
+                buffer.setSample(c, s, wetSignal);
             }
-
         }
     }
 
 private:
     Parameter *rateParam;
     Parameter *depthParam;
-    Parameter *mixParam;
+    Parameter *feedbackParam;
+    Parameter *voicesParam;
 
-    std::vector<signalsmith::delay::Delay<float>> channelDelays;
-    std::vector<signalsmith::envelopes::CubicLfo> channelLFOs;
+    std::vector<std::vector<signalsmith::delay::Delay<float>>> voiceDelays;
+    std::vector<std::vector<signalsmith::envelopes::CubicLfo>> voiceLFOs;
 
     const float maxDelayDepthSeconds = 0.06;
     int maxDelayDepthSamples = maxDelayDepthSeconds * 44100;

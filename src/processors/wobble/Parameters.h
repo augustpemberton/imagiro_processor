@@ -21,6 +21,11 @@ depth:
     range: {min: 0, max: 1}
     type: percent
 
+bypass:
+  name: "bypass"
+  default: 0
+  type: toggle
+
 mix:
     name: "mix"
     type: percent

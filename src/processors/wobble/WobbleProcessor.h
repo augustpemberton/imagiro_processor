@@ -113,5 +113,5 @@ private:
     juce::NormalisableRange<float> wobbleTimeMinRange{0.01f, 4.f, 0.f, 0.3f};
     juce::NormalisableRange<float> wobbleTimeMaxRange{0.07f, 6.f, 0.f, 0.35f};
     juce::NormalisableRange<float> wobbleLengthRange{0.04f, 1.f, 0.f, 0.8f};
-    juce::NormalisableRange<float> wobbleDepthRange{0.0f, 0.08f, 0.f, 0.2f};
+    juce::NormalisableRange<float> wobbleDepthRange{0.0f, 0.08f, 0.f, 0.5f};
 };

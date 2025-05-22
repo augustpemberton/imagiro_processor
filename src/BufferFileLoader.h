@@ -12,7 +12,7 @@ public:
         afm.registerBasicFormats();
     }
 
-    ~BufferFileLoader() {
+    ~BufferFileLoader() override {
         stopThread(500);
     }
 
@@ -20,17 +20,18 @@ public:
      * Loads a file into the given buffer on a background thread.
      * Note - this will resize the given buffer to match the file.
      */
-    void loadFileIntoBuffer(juce::File fileToLoad, juce::AudioSampleBuffer& buffer, double targetSampleRate) {
+    void loadFileIntoBuffer(juce::File fileToLoad, double targetSampleRate) {
         this->fileToLoad = fileToLoad;
-        this->buffer = &buffer;
         this->targetSampleRate = targetSampleRate;
 
         startThread();
     }
 
     struct Listener {
+        virtual ~Listener() = default;
+
         virtual void OnFileLoadProgress(float progress) {}
-        virtual void OnFileLoadComplete(float maxMagnitude) {}
+        virtual void OnFileLoadComplete(std::shared_ptr<juce::AudioSampleBuffer> buffer, float maxMagnitude) {}
         virtual void OnFileLoadError(juce::String error) {}
     };
 
@@ -42,10 +43,11 @@ private:
     juce::ListenerList<Listener> listeners;
 
     juce::File fileToLoad;
-    juce::AudioSampleBuffer* buffer;
     double targetSampleRate;
 
     void run() override {
+        auto buffer = std::make_shared<juce::AudioSampleBuffer>();
+
         DBG("loading file " + fileToLoad.getFullPathName());
         auto reader = std::unique_ptr<juce::AudioFormatReader>(afm.createReaderFor(fileToLoad));
 
@@ -109,7 +111,7 @@ private:
             listeners.call(&Listener::OnFileLoadProgress, outN / (float) nInterpSamples);
         }
 
-        listeners.call(&Listener::OnFileLoadComplete, magnitude);
+        listeners.call(&Listener::OnFileLoadComplete, buffer, magnitude);
     }
 
 };

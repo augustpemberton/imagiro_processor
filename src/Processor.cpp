@@ -14,8 +14,10 @@ namespace imagiro {
     {
         bypassGain.reset(250);
         mixGain.reset(250);
+
         bypassGain.setTargetValue(1);
         mixGain.setTargetValue(1);
+
         juce::AudioProcessor::addListener(this);
 
         auto parameters = loader.loadParameters(parametersYAMLString, *this);
@@ -178,6 +180,19 @@ namespace imagiro {
     }
 
     void Processor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+
+        // skip smoothing on first buffer
+        // in case we changed this parameter before starting the processor 
+        if (firstBufferFlag) {
+            firstBufferFlag = false;
+            if (auto mixParam = getParameter("mix")) {
+                mixGain.setCurrentAndTargetValue(mixParam->getProcessorValue());
+            }
+            if (auto bypassParam = getParameter("bypass")) {
+                bypassGain.setCurrentAndTargetValue(1 - bypassParam->getProcessorValue());
+            }
+        }
+
         if (getTotalNumInputChannels() == 0) {
             buffer.clear();
         }

@@ -8,6 +8,12 @@ mix:
   type: percent
   default: 0.5
 
+bypass:
+  name: "bypass"
+  default: 0
+  type: toggle
+
+
 diffuse:
   name: "diffuse"
   type: percent

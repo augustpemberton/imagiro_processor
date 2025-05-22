@@ -21,43 +21,43 @@ public:
 
     // setters
     void setValue(const float newValue) override {
-        if (proxyTarget) proxyTarget->setValue(newValue);
+        if (proxyTarget) proxyTarget.load()->setValue(newValue);
     }
 
     void setValueAndNotifyHost(float f, bool forceUpdate) override {
-        if (proxyTarget) proxyTarget->setValueAndNotifyHost(f, forceUpdate);
+        if (proxyTarget) proxyTarget.load()->setValueAndNotifyHost(f, forceUpdate);
     }
 
     // getters
     float getValue() const override {
-        return proxyTarget ? proxyTarget->getValue() : value01.load();
+        return proxyTarget ? proxyTarget.load()->getValue() : value01.load();
     }
 
     std::vector<ParameterConfig> getAllConfigs() const override {
-        return proxyTarget ? proxyTarget->getAllConfigs() : configs;
+        return proxyTarget ? proxyTarget.load()->getAllConfigs() : configs;
     }
 
     const ParameterConfig *getConfig() const override {
-        return proxyTarget ? proxyTarget->getConfig() : &configs[configIndex];
+        return proxyTarget ? proxyTarget.load()->getConfig() : &configs[configIndex];
     }
 
     std::string getUserValueText() const override {
-        return proxyTarget ? proxyTarget->getUserValueText() : "";
+        return proxyTarget ? proxyTarget.load()->getUserValueText() : "";
     }
 
     juce::String getText(float normalisedValue, int) const override {
-        return proxyTarget ? proxyTarget->getText(normalisedValue, 0) : "0";
+        return proxyTarget ? proxyTarget.load()->getText(normalisedValue, 0) : "0";
     }
 
     float getJitterAmount() const override {
-        return proxyTarget ? proxyTarget->getJitterAmount() : jitterAmount;
+        return proxyTarget ? proxyTarget.load()->getJitterAmount() : jitterAmount;
     }
 
     juce::String getName(int maximumStringLength) const override {
-        return proxyTarget ? proxyTarget->getName(maximumStringLength) : name;
+        return proxyTarget ? proxyTarget.load()->getName(maximumStringLength) : name;
     }
 
 private:
-    Parameter* proxyTarget {nullptr};
+    std::atomic<Parameter*> proxyTarget {nullptr};
 
 };

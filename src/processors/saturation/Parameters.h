@@ -1,7 +1,7 @@
 #pragma once
 
 namespace SaturationProcessorParameters {
-    static constexpr const char* PARAMETERS_YAML = R"(
+    static constexpr const char *PARAMETERS_YAML = R"(
 
     drive:
       name: "drive"
@@ -14,6 +14,12 @@ namespace SaturationProcessorParameters {
       type: percent
       default: 1
 
-    )";
+  bypass:
+    name: "bypass"
+    default: 0
+    type: toggle
 
+
+
+    )";
 };

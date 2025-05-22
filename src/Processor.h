@@ -99,8 +99,13 @@ namespace imagiro {
         float getCpuLoad();
         juce::AudioProcessorParameter* getBypassParameter() const override;
 
+        void resetBypassMixSmoothers() {
+        }
+
     protected:
         juce::SharedResourcePointer<Resources> resources;
+
+        bool firstBufferFlag {true};
 
         double getBPM();
         std::atomic<double> defaultBPM {120};

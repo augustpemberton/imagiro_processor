@@ -43,7 +43,7 @@ namespace imagiro {
 
         std::vector<std::unique_ptr<Parameter>> params;
         auto parameter = std::make_unique<Parameter>(uid.toStdString(), name.toStdString(), configs,
-                                                 isMeta, isInternal, isAutomatable, defaultJitter);
+                                                 isInternal, isMeta, isAutomatable, defaultJitter);
         params.push_back(std::move(parameter));
         return params;
     }
