@@ -225,7 +225,6 @@ public:
 
             Array diffuse = diffuser.process(input);
 
-
             buffer.clear(s, 1);
 
             for (auto c=0; c<channels; c++) {
