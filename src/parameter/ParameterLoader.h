@@ -8,6 +8,8 @@
 
 namespace imagiro {
     struct ParameterLoader {
+        virtual ~ParameterLoader() = default;
+
         /*
          * Create parameters from a YAML string.
          * a processor is needed for tempo-sync parameters

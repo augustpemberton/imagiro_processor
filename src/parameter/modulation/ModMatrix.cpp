@@ -36,11 +36,10 @@ namespace imagiro {
         }
 
         if (targetValues.contains(targetID)) {
-            return targetValues[targetID].globalModValue + targetValues[targetID].voiceModValues[(size_t)voiceIndex];
+            return targetValues[targetID].value.getGlobalValue() + targetValues[targetID].value.getVoiceValue((size_t)voiceIndex);
         }
-        else {
-            return 0;
-        }
+
+        return 0;
     }
 
     void ModMatrix::prepareToPlay(double sr, int /*maxSamplesPerBlock*/) {
@@ -51,88 +50,75 @@ namespace imagiro {
         }
     }
 
-    std::set<int> ModMatrix::getAlteredTargetVoices(const TargetID& id) {
+    std::set<size_t> ModMatrix::getAlteredTargetVoices(const TargetID& id) {
         if (!targetValues.contains(id)) return {};
-        return targetValues[id].alteredVoiceValues;
+        return targetValues[id].value.getAlteredVoices();
     }
 
     void ModMatrix::calculateTargetValues(int numSamples) {
+
+        // reset all target values
         for (auto& [targetID, targetValue] : targetValues) {
-            targetValues[targetID].globalModValue = 0;
-            auto& v = targetValues[targetID].voiceModValues;
-            std::fill(v.begin(), v.end(), 0.f);
-            targetValues[targetID].alteredVoiceValues.clear();
+            targetValue.value.setGlobalValue(0);
+            auto alteredVoices = targetValue.value.getAlteredVoices();
+            for (const auto& v: alteredVoices) {
+                targetValue.value.setVoiceValue(v, 0);
+            }
         }
 
-        for (auto& [targetID, numSources] : numModSources) {
-            numSources = 0;
-        }
-
-        // TODO clamp 0-1 ?
-        std::unordered_map<SourceID, std::unordered_set<size_t>> activeVoicesForSource;
-        std::unordered_map<TargetID, std::unordered_set<size_t>> activeVoicesForTarget;
+        // std::unordered_map<SourceID, std::unordered_set<size_t>> activeVoicesForSource;
+        // std::unordered_map<TargetID, std::unordered_set<size_t>> activeVoicesForTarget;
         for (auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
 
-            if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID))
-                continue;
-
-            numModSources[targetID]++;
+            if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID)) continue;
 
             auto connectionSettings = connection.getSettings();
 
-            auto globalValueAddition = sourceValues[sourceID].globalModValue;
+            // Update target's global value
+            auto globalValueAddition = sourceValues[sourceID].value.getGlobalValue();
             connection.getGlobalEnvelopeFollower().setTargetValue(globalValueAddition);
             connection.getGlobalEnvelopeFollower().skip(numSamples);
             auto v = connection.getGlobalEnvelopeFollower().getCurrentValue() * connectionSettings.depth;
             if (connectionSettings.bipolar) v *= 0.5f; // half depth & half value
-            targetValues[targetID].globalModValue += v;
+            targetValues[targetID].value.setGlobalValue(targetValues[targetID].value.getGlobalValue() + v);
 
-            for (size_t i : sourceValues[sourceID].alteredVoiceValues) {
-                auto voiceValueAddition = sourceValues[sourceID].voiceModValues[i];
+            // Update target's voice values
+            for (size_t i : sourceValues[sourceID].value.getAlteredVoices()) {
+                auto voiceValueAddition = sourceValues[sourceID].value.getVoiceValue(i);
                 connection.getVoiceEnvelopeFollower(i).setTargetValue(voiceValueAddition);
                 connection.getVoiceEnvelopeFollower(i).skip(numSamples);
                 auto va = connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
                 if (connectionSettings.bipolar) va *= 0.5f;
-                targetValues[targetID].voiceModValues[i] += va;
-                targetValues[targetID].alteredVoiceValues.insert((int)i);
+                targetValues[targetID].value.setVoiceValue(i, targetValues[targetID].value.getVoiceValue(i) + va);
 
-                if (!almostEqual(voiceValueAddition, 0.f) || !almostEqual(connection.getVoiceEnvelopeFollower(i).getCurrentValue(), 0.f)) {
-                    activeVoicesForSource[sourceID].insert(i);
-                    activeVoicesForTarget[targetID].insert(i);
-                }
+                // Store voices if active so we can update active voices array later
+                // if (!almostEqual(voiceValueAddition, 0.f) || !almostEqual(connection.getVoiceEnvelopeFollower(i).getCurrentValue(), 0.f)) {
+                //     activeVoicesForSource[sourceID].insert(i);
+                //     activeVoicesForTarget[targetID].insert(i);
+                // }
             }
         }
 
-        for (auto& [sourceID, sourceValue] : sourceValues) {
-            if (auto it = activeVoicesForSource.find(sourceID); it != activeVoicesForSource.end()) {
-                auto& alteredValues = sourceValue.alteredVoiceValues;
-                std::erase_if(alteredValues, [&activeSet = it->second](auto v) {
-                    return !activeSet.contains(static_cast<size_t>(v));
-                });
-            }
-        }
-
-        for (auto& [targetID, targetValue] : targetValues) {
-            if (auto it = activeVoicesForTarget.find(targetID); it != activeVoicesForTarget.end()) {
-                auto& alteredValues = targetValue.alteredVoiceValues;
-                std::erase_if(alteredValues, [&activeSet = it->second](auto v) {
-                    return !activeSet.contains(static_cast<size_t>(v));
-                });
-            }
-        }
+        // reset inactive sourceValue voice channels
+        // for (auto& [sourceID, sourceValue] : sourceValues) {
+        //     if (auto it = activeVoicesForSource.find(sourceID); it != activeVoicesForSource.end()) {
+        //         auto alteredValues = sourceValue.value.getAlteredVoices();
+        //         for (auto v : alteredValues) {
+        //             if (!it->second.contains(v)) {
+        //                 sourceValue.value.setVoiceValue(v, 0);
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     void ModMatrix::setGlobalSourceValue(const SourceID& sourceID, float value) {
-        sourceValues[sourceID].globalModValue = value;
+        sourceValues[sourceID].value.setGlobalValue(value);
     }
 
     void ModMatrix::setVoiceSourceValue(const SourceID& sourceID, size_t voiceIndex, float value) {
-        sourceValues[sourceID].voiceModValues[voiceIndex] = value;
-
-        if (!almostEqual(value, 0.f)) {
-            sourceValues[sourceID].alteredVoiceValues.insert((int)voiceIndex);
-        }
+        sourceValues[sourceID].value.setVoiceValue(voiceIndex, value);
     }
 
 
@@ -160,10 +146,6 @@ namespace imagiro {
         TargetValue targetValue;
         targetValue.name = name;
         targetValues.insert({id, targetValue});
-    }
-
-    int ModMatrix::getNumModSources(const imagiro::TargetID& targetID) {
-        return numModSources[targetID];
     }
 
     SerializedMatrix ModMatrix::getSerializedMatrix() {
