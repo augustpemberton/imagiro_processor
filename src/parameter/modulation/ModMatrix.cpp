@@ -10,6 +10,22 @@ namespace imagiro {
         listeners.call(&Listener::OnMatrixUpdated);
     }
 
+    void ModMatrix::removeConnectionsWithSource(const SourceID& sourceID) {
+        erase_if(matrix, [sourceID](const auto& entry) {
+            return sourceID == entry.first.first;
+        });
+
+        listeners.call(&Listener::OnMatrixUpdated);
+    }
+
+    void ModMatrix::removeConnectionsWithTarget(const TargetID& targetID) {
+        erase_if(matrix, [targetID](const auto& entry) {
+            return targetID == entry.first.first;
+        });
+
+        listeners.call(&Listener::OnMatrixUpdated);
+    }
+
     void ModMatrix::setConnection(const SourceID& sourceID, const TargetID& targetID,
                                   ModMatrix::Connection::Settings settings) {
         if (!sourceValues.contains(sourceID)) {
@@ -121,9 +137,13 @@ namespace imagiro {
         sourceValues[sourceID].value.setVoiceValue(voiceIndex, value);
     }
 
+    void ModMatrix::resetSourceValue(const SourceID& sourceID) {
+        sourceValues[sourceID].value.resetValue();
+    }
+
 
     void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
-        jassert(!sourceValues.contains(id));
+        if (sourceValues.contains(id)) return;
 
         if (name.empty()) {
             name = id;
@@ -137,7 +157,7 @@ namespace imagiro {
     }
 
     void ModMatrix::registerTarget(const TargetID& id, std::string name) {
-        jassert(!targetValues.contains(id));
+        if (targetValues.contains(id)) return;
 
         if (name.empty()) {
             name = id;

@@ -21,6 +21,14 @@ namespace imagiro {
             matrix->registerTarget(id, name);
         }
 
+        void clearConnections() const {
+            matrix->removeConnectionsWithTarget(id);
+        }
+
+        void setTargetID(const TargetID &targetID) {
+            id = targetID;
+        }
+
         float getModulatedValue(float baseValue, int voiceIndex = -1) const {
             return std::clamp(baseValue + matrix->getModulatedValue(id, voiceIndex), 0.f, 1.f);
         }

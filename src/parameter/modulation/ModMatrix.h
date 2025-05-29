@@ -120,11 +120,14 @@ namespace imagiro {
 
         void setConnection(const SourceID& sourceID, const TargetID& targetID, Connection::Settings connectionSettings);
         void removeConnection(const SourceID& sourceID, TargetID targetID);
+        void removeConnectionsWithSource(const SourceID& sourceID);
+        void removeConnectionsWithTarget(const TargetID& targetID);
 
         float getModulatedValue(const TargetID& targetID, int voiceIndex = -1);
 
         void setGlobalSourceValue(const SourceID& sourceID, float value);
         void setVoiceSourceValue(const SourceID& sourceID, size_t voiceIndex, float value);
+        void resetSourceValue(const SourceID& sourceID);
 
         void prepareToPlay(double sampleRate, int maxSamplesPerBlock);
         void calculateTargetValues(int numSamples = 1);

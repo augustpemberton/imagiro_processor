@@ -16,6 +16,12 @@ public:
     void setGlobalValue(float value) { globalValue = value; }
     float getGlobalValue() const { return globalValue; }
 
+    void resetValue() {
+        voiceValues.fill(0);
+        globalValue = 0;
+        alteredVoices.clear();
+    }
+
     void setVoiceValue(size_t voiceIndex, float value) {
         voiceValues[voiceIndex] = value;
 

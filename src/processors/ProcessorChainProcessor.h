@@ -122,9 +122,9 @@ private:
         p.setPlayConfigDetails(
             numChannels,
             numChannels,
-            getSampleRate(),
+            lastSampleRate,
             getBlockSize());
-        p.prepareToPlay(getSampleRate(), getBlockSize());
+        p.prepareToPlay(lastSampleRate, getBlockSize());
     }
 
     void renderProcessor(Processor &p, juce::AudioSampleBuffer &buffer, juce::MidiBuffer &m) {

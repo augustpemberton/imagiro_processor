@@ -22,6 +22,14 @@ namespace imagiro {
             matrix->registerSource(id, name, type, isBipolar);
         }
 
+        void resetValue() const {
+            matrix->resetSourceValue(id);
+        }
+
+        void clearConnections() {
+            matrix->removeConnectionsWithSource(id);
+        }
+
         // global
         void setGlobalValue(float v) {
             if (!matrix) {

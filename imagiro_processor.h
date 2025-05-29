@@ -21,3 +21,4 @@
 
 #include "src/processors/EffectChainProcessor.h"
 #include "src/parameter/ProxyParameter.h"
+#include "src/parameter/modulation/generators/GeneratorChainManager.h"

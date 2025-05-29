@@ -71,7 +71,7 @@ public:
         }
         processorGraph.queueChain(processorList);
 
-        cleanupOldProxyParams();
+        cleanupOldEffects(oldChain);
     }
 
     Processor& getProcessor() { return processorGraph; }
@@ -121,16 +121,23 @@ private:
 
     juce::ListenerList<Listener> listeners;
 
-    void cleanupOldProxyParams() {
-        for (auto it = mappedProxyParameters.begin(); it != mappedProxyParameters.end();) {
-            if (isIDInChain(currentChain, it->first)) {
-                ++it;
-            } else {
-                for (auto [id, param] : it->second) {
-                    param->clearProxyTarget();
-                }
-                it = mappedProxyParameters.erase(it);
+    void cleanupOldEffects(const EffectChain& oldChain) {
+        for (const auto& oldEffect : oldChain) {
+            auto id = oldEffect.id;
+            auto newVersion = std::ranges::find_if(currentChain,
+                                                   [id](const Effect &e) {
+                                                       return e.id == id;
+                                                   });
+
+            // if the new version has that id we aren't deleting it
+            if (newVersion != currentChain.end()) continue;
+
+            for (auto [uid, param] : mappedProxyParameters[id]) {
+                param->getModTarget().clearConnections();
+                param->clearProxyTarget();
             }
+            mappedProxyParameters.erase(id);
+
         }
     }
 
@@ -188,6 +195,7 @@ private:
 
             if (mappedProxyParameters[oldEffect.id].contains(param->getUID())) {
                 auto proxy = mappedProxyParameters[oldEffect.id][param->getUID()];
+                param->setModTarget(proxy->getModTarget());
                 proxy->setProxyTarget(*param);
             }
         }
@@ -218,12 +226,13 @@ private:
                 break;
             }
 
+            param->setModTarget(ModTarget("param-fx-"+std::to_string(e.id)+param->getUID()));
             proxyParam->setProxyTarget(*param);
             mappedProxyParameters[e.id][param->getUID()] = proxyParam;
         }
     }
 
-    ProxyParameter* getFreeProxyParameter() {
+    ProxyParameter* getFreeProxyParameter() const {
         if (!proxyParameters) return nullptr;
         for (auto param : *proxyParameters) {
             if (param->isProxySet()) continue;

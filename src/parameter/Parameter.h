@@ -212,7 +212,8 @@ namespace imagiro {
         void setSmoothTime(float seconds);
         juce::AudioSampleBuffer& getSmoothedProcessorValueBuffer();
 
-        ModTarget& getModTarget() { return modTarget; }
+        virtual ModTarget& getModTarget() { return modTarget; }
+        void setModTarget(const ModTarget& target) { modTarget = target; }
 
     protected:
         std::vector<ParameterConfig> configs;

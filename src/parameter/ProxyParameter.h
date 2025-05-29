@@ -17,6 +17,13 @@ public:
     void setProxyTarget(Parameter& p) {
         internal = p.isInternal();
         proxyTarget = &p;
+        if (modMatrix) {
+            p.setModMatrix(*modMatrix);
+        }
+    }
+
+    ModTarget& getModTarget() override {
+        return proxyTarget ? proxyTarget.load()->getModTarget() : modTarget;
     }
 
     // setters
