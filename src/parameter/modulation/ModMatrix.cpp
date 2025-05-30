@@ -82,12 +82,13 @@ namespace imagiro {
             }
         }
 
-        // std::unordered_map<SourceID, std::unordered_set<size_t>> activeVoicesForSource;
-        // std::unordered_map<TargetID, std::unordered_set<size_t>> activeVoicesForTarget;
+        std::unordered_set<TargetID> updatedTargets;
         for (auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
-
             if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID)) continue;
+
+            if (!updatedSourcesSinceLastCalculate.contains(sourceID)) continue;
+            updatedTargets.insert(targetID);
 
             auto connectionSettings = connection.getSettings();
 
@@ -107,43 +108,37 @@ namespace imagiro {
                 auto va = connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
                 if (connectionSettings.bipolar) va *= 0.5f;
                 targetValues[targetID].value.setVoiceValue(i, targetValues[targetID].value.getVoiceValue(i) + va);
-
-                // Store voices if active so we can update active voices array later
-                // if (!almostEqual(voiceValueAddition, 0.f) || !almostEqual(connection.getVoiceEnvelopeFollower(i).getCurrentValue(), 0.f)) {
-                //     activeVoicesForSource[sourceID].insert(i);
-                //     activeVoicesForTarget[targetID].insert(i);
-                // }
             }
         }
 
-        // reset inactive sourceValue voice channels
-        // for (auto& [sourceID, sourceValue] : sourceValues) {
-        //     if (auto it = activeVoicesForSource.find(sourceID); it != activeVoicesForSource.end()) {
-        //         auto alteredValues = sourceValue.value.getAlteredVoices();
-        //         for (auto v : alteredValues) {
-        //             if (!it->second.contains(v)) {
-        //                 sourceValue.value.setVoiceValue(v, 0);
-        //             }
-        //         }
-        //     }
-        // }
+        for (auto& id : updatedTargets) {
+            listeners.call(&Listener::OnTargetValueUpdated, id);
+        }
+
+        updatedSourcesSinceLastCalculate.clear();
     }
 
     void ModMatrix::setGlobalSourceValue(const SourceID& sourceID, float value) {
+        const auto oldVal = sourceValues[sourceID].value.getGlobalValue();
         sourceValues[sourceID].value.setGlobalValue(value);
+        if (oldVal != value) updatedSourcesSinceLastCalculate.insert(sourceID);
     }
 
     void ModMatrix::setVoiceSourceValue(const SourceID& sourceID, size_t voiceIndex, float value) {
+        const auto oldVal = sourceValues[sourceID].value.getVoiceValue(voiceIndex);
         sourceValues[sourceID].value.setVoiceValue(voiceIndex, value);
+        if (oldVal != value) updatedSourcesSinceLastCalculate.insert(sourceID);
     }
 
     void ModMatrix::resetSourceValue(const SourceID& sourceID) {
         sourceValues[sourceID].value.resetValue();
+        updatedSourcesSinceLastCalculate.insert(sourceID);
     }
 
-
     void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
-        if (sourceValues.contains(id)) return;
+        if (sourceValues.contains(id)) {
+            sourceValues.erase(id);
+        }
 
         if (name.empty()) {
             name = id;
@@ -154,10 +149,13 @@ namespace imagiro {
         sourceValue.type = type;
         sourceValue.name = name;
         sourceValues.insert({id, sourceValue});
+        listeners.call(&Listener::OnMatrixUpdated);
     }
 
     void ModMatrix::registerTarget(const TargetID& id, std::string name) {
-        if (targetValues.contains(id)) return;
+        if (targetValues.contains(id)) {
+            targetValues.erase(id);
+        }
 
         if (name.empty()) {
             name = id;
@@ -166,6 +164,7 @@ namespace imagiro {
         TargetValue targetValue;
         targetValue.name = name;
         targetValues.insert({id, targetValue});
+        listeners.call(&Listener::OnMatrixUpdated);
     }
 
     SerializedMatrix ModMatrix::getSerializedMatrix() {

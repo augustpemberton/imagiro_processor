@@ -63,7 +63,6 @@ public:
         auto oldChain = currentChain;
 
         currentChain = chain;
-        listeners.call(&Listener::OnChainUpdated);
 
         std::vector<std::shared_ptr<Processor>> processorList;
         for (auto& effect : currentChain) {
@@ -72,6 +71,7 @@ public:
         processorGraph.queueChain(processorList);
 
         cleanupOldEffects(oldChain);
+        listeners.call(&Listener::OnChainUpdated);
     }
 
     Processor& getProcessor() { return processorGraph; }
@@ -98,13 +98,15 @@ public:
 
     void loadState(const choc::value::ValueView& state) {
         EffectChain chain;
+        int id=0;
         for (const auto& effectState : state) {
             auto effectType = static_cast<EffectType>(effectState["EffectType"].getWithDefault(0));
             auto processorState = Preset::fromState(effectState["ProcessorState"]);
 
-            auto processor = getProcessorForEffectType(effectType);
-            processor->loadPreset(processorState);
-            chain.push_back({-1, effectType, processor });
+            Effect g {id, effectType};
+            createNewProcessor(g, ++id);
+            g.processor->loadPreset(processorState);
+            chain.push_back(g);
         }
 
         setChain(chain);
@@ -134,6 +136,7 @@ private:
 
             for (auto [uid, param] : mappedProxyParameters[id]) {
                 param->getModTarget().clearConnections();
+                param->getModTarget().deregister();
                 param->clearProxyTarget();
             }
             mappedProxyParameters.erase(id);

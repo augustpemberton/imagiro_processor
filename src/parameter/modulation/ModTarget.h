@@ -8,21 +8,56 @@
 #include "ModMatrix.h"
 
 namespace imagiro {
-    class ModTarget {
+    class ModTarget : ModMatrix::Listener {
     public:
+
+        struct Listener {
+            virtual void OnTargetUpdated() {}
+        };
+        void addListener(Listener* l) { listeners.add(l); }
+        void removeListener(Listener* l) { listeners.remove(l); }
+
         ModTarget(TargetID targetID, std::string targetName = "", ModMatrix* m = nullptr)
                 : id(std::move(targetID)), name(std::move(targetName))
         {
             if (m) setModMatrix(*m);
         }
 
+        ~ModTarget() override {
+            if (matrix) matrix->removeListener(this);
+        }
+
+        ModTarget(const ModTarget& other) {
+            id = other.id;
+            name = other.name;
+            matrix = other.matrix;
+        }
+
+        ModTarget& operator=(const ModTarget& other) {
+            id = other.id;
+            name = other.name;
+            matrix = other.matrix;
+            return *this;
+        }
+
+        void OnTargetValueUpdated(const TargetID &targetID) override {
+            if (targetID != id) return;
+            listeners.call(&Listener::OnTargetUpdated);
+        }
+
         void setModMatrix(ModMatrix& m) {
+            if (matrix) matrix->removeListener(this);
             matrix = &m;
             matrix->registerTarget(id, name);
+            matrix->addListener(this);
         }
 
         void clearConnections() const {
             matrix->removeConnectionsWithTarget(id);
+        }
+
+        void deregister() const {
+            matrix->removeTarget(id);
         }
 
         void setTargetID(const TargetID &targetID) {
@@ -50,5 +85,7 @@ namespace imagiro {
         TargetID id;
         std::string name;
         ModMatrix* matrix;
+
+        juce::ListenerList<Listener> listeners;
     };
 }

@@ -11,11 +11,10 @@ public:
                  ModMatrix &m,
                  const std::string &uid,
                  const std::string &name = "",
-                 const ModMatrix::SourceType sourceType = ModMatrix::SourceType::Misc,
                  const bool bipolar = false)
         : Processor(parametersYAML, ParameterLoader(),
             BusesProperties().withOutput("out",juce::AudioChannelSet::mono())),
-          source(uid, name, &m, sourceType, bipolar) {
+          source(uid, name, &m, ModMatrix::SourceType::Misc, bipolar) {
     }
 
     void process(juce::AudioSampleBuffer& buffer, juce::MidiBuffer& midiMessages) override {

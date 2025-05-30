@@ -29,10 +29,12 @@ namespace imagiro {
     {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         this->valueSmoother.setCurrentAndTargetValue(getProcessorValue());
+        this->modTarget.addListener(this);
         startTimerHz(30);
     }
 
     Parameter::~Parameter() noexcept {
+        this->modTarget.removeListener(this);
         stopTimer();
         // sync param will be created after, therefore destroyed first
         // so cannot remove listener as it will already be destroyed at this point
@@ -349,4 +351,9 @@ namespace imagiro {
     void Parameter::callValueChangedListeners() {
         valueChanged();
     }
+
+    void Parameter::OnTargetUpdated() {
+         callValueChangedListeners();
+    }
+
 }

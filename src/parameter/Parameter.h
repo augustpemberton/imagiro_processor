@@ -8,11 +8,12 @@
 #include "ParameterHelpers.h"
 #include "choc/containers/choc_Value.h"
 #include "modulation/ModTarget.h"
+#include "modulation/ModTarget.h"
 
 namespace imagiro {
     class Processor;
 
-    class Parameter : private juce::RangedAudioParameter, private juce::Timer {
+    class Parameter : juce::RangedAudioParameter, juce::Timer, ModTarget::Listener {
     public:
         class Listener {
         public:
@@ -214,6 +215,7 @@ namespace imagiro {
 
         virtual ModTarget& getModTarget() { return modTarget; }
         void setModTarget(const ModTarget& target) { modTarget = target; }
+        void OnTargetUpdated() override;
 
     protected:
         std::vector<ParameterConfig> configs;

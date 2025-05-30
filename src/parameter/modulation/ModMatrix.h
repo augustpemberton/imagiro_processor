@@ -19,8 +19,11 @@ namespace imagiro {
     class ModMatrix {
     public:
         struct Listener {
+            virtual ~Listener() = default;
+
             virtual void OnMatrixUpdated() {}
             virtual void OnRecentVoiceUpdated(size_t) {}
+            virtual void OnTargetValueUpdated(const TargetID& targetID) {}
         };
 
         void addListener(Listener* l) { listeners.add(l); }
@@ -36,6 +39,9 @@ namespace imagiro {
         void registerSource(const SourceID& id, std::string name = "",
                             SourceType type = SourceType::Misc, bool isBipolar = false);
         void registerTarget(const TargetID& id, std::string name = "");
+
+        void removeSource(const SourceID& id) { sourceValues.erase(id); }
+        void removeTarget(const TargetID& id) { targetValues.erase(id); }
 
         struct SourceValue {
             std::string name;
@@ -171,5 +177,6 @@ namespace imagiro {
 
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};
+        std::unordered_set<SourceID> updatedSourcesSinceLastCalculate {};
     };
 }

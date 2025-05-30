@@ -26,12 +26,16 @@ namespace imagiro {
             matrix->resetSourceValue(id);
         }
 
-        void clearConnections() {
+        void clearConnections() const {
             matrix->removeConnectionsWithSource(id);
         }
 
+        void deregister() const {
+            matrix->removeSource(id);
+        }
+
         // global
-        void setGlobalValue(float v) {
+        void setGlobalValue(float v) const {
             if (!matrix) {
                 jassertfalse;
                 return;

@@ -6,6 +6,7 @@
 #include "GeneratorChainProcessor.h"
 #include "imagiro_processor/src/parameter/ProxyParameter.h"
 #include "LFO/LFOGenerator.h"
+#include "Macro/MacroGenerator.h"
 
 class GeneratorChainManager {
 public:
@@ -14,11 +15,25 @@ public:
     }
 
     enum class GeneratorType {
-        LFO = 0
+        LFO = 0,
+        Macro = 1
     };
 
-    std::shared_ptr<ModGenerator> getModGeneratorForGeneratorType(const GeneratorType type, std::string uid, std::string name) const {
+    static std::string to_string(const GeneratorType type) {
+        switch (type) {
+            case GeneratorType::LFO:
+                return "LFO";
+            case GeneratorType::Macro:
+                return "Macro";
+        }
+        return "";
+    }
+
+    std::shared_ptr<ModGenerator> getModGeneratorForGeneratorType(const GeneratorType type, int id) const {
+        const std::string uid = "mod-" + std::to_string(id);
+        const std::string name = to_string(type) + " " + std::to_string(id);
         if (type == GeneratorType::LFO) return std::make_shared<LFOGenerator>(modMatrix, uid, name);
+        if (type == GeneratorType::Macro) return std::make_shared<MacroGenerator>(modMatrix, uid, name);
         return nullptr;
     }
 
@@ -47,7 +62,6 @@ public:
         auto oldChain = currentChain;
 
         currentChain = chain;
-        listeners.call(&Listener::OnChainUpdated);
 
         std::vector<std::shared_ptr<ModGenerator>> processorList;
         for (auto& effect : currentChain) {
@@ -56,6 +70,7 @@ public:
         processor.queueChain(processorList);
 
         cleanupDeletedGenerators(oldChain);
+        listeners.call(&Listener::OnChainUpdated);
     }
 
     Processor& getProcessor() { return processor; }
@@ -87,11 +102,10 @@ public:
             auto effectType = static_cast<GeneratorType>(effectState["GeneratorType"].getWithDefault(0));
             auto processorState = Preset::fromState(effectState["ModGeneratorState"]);
 
-            const std::string uid = "mod-" + std::to_string(id);
-            const std::string name = "Modulator " + std::to_string(id);
-            auto processor = getModGeneratorForGeneratorType(effectType, uid, name);
-            processor->loadPreset(processorState);
-            chain.push_back({-1, effectType, processor });
+            Generator g {id, effectType};
+            createNewModGenerator(g, ++id);
+            g.generator->loadPreset(processorState);
+            chain.push_back(g);
         }
 
         setChain(chain);
@@ -124,18 +138,16 @@ private:
 
             oldGenerator.generator->getSource().resetValue();
             oldGenerator.generator->getSource().clearConnections();
+            oldGenerator.generator->getSource().deregister();
 
             for (auto [uid, param] : mappedProxyParameters[id]) {
                 param->getModTarget().clearConnections();
+                param->getModTarget().deregister();
                 param->clearProxyTarget();
             }
             mappedProxyParameters.erase(id);
 
         }
-    }
-
-    void cleanupGenerator(Generator& g) {
-
     }
 
     bool isIDInChain(const GeneratorChain& chain, int id) {
@@ -185,24 +197,21 @@ private:
 
     void copyModGeneratorAndMoveProxyParams(Generator& newGenerator, Generator& oldGenerator) {
         newGenerator.id = oldGenerator.id;
-        const std::string uid = "mod-" + std::to_string(oldGenerator.id);
-        const std::string name = "Modulator " + std::to_string(oldGenerator.id);
-        newGenerator.generator = getModGeneratorForGeneratorType(oldGenerator.type, uid, name);
+        newGenerator.generator = getModGeneratorForGeneratorType(oldGenerator.type, oldGenerator.id);
         for (auto& param : newGenerator.generator->getPluginParameters()) {
             auto oldParam = oldGenerator.generator->getParameter(param->getUID());
             param->setState(oldParam->getState());
 
             if (mappedProxyParameters[oldGenerator.id].contains(param->getUID())) {
                 auto proxy = mappedProxyParameters[oldGenerator.id][param->getUID()];
+                param->setModTarget(proxy->getModTarget());
                 proxy->setProxyTarget(*param);
             }
         }
     }
 
     void createNewModGenerator(Generator& e, int id) {
-        const std::string uid = "mod-" + std::to_string(id);
-        const std::string name = "Modulator " + std::to_string(id);
-        e.generator = getModGeneratorForGeneratorType(e.type, uid, name);
+        e.generator = getModGeneratorForGeneratorType(e.type, id);
         e.id = id;
         proxyMapGenerator(e);
     }
@@ -226,6 +235,7 @@ private:
                 break;
             }
 
+            param->setModTarget(ModTarget("param-generator-"+std::to_string(e.id)+param->getUID()));
             proxyParam->setProxyTarget(*param);
             mappedProxyParameters[e.id][param->getUID()] = proxyParam;
         }

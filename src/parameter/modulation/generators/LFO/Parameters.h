@@ -8,7 +8,7 @@ frequency:
   configs:
     free:
       type: freq
-      default: 0.1
+      default: 1
       range: {min: 0, max: 20, skew: 0.45}
     sync:
       range: {type: sync, min: -6, max: 3}
@@ -29,7 +29,7 @@ frequency:
 depth:
   name: "depth"
   type: percent
-  default: 0.1
+  default: 0.5
   range: {min: 0, max: 1}
 
 phase:

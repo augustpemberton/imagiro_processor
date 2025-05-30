@@ -12,7 +12,7 @@
 class LFOGenerator : public ModGenerator {
 public:
     LFOGenerator(ModMatrix& m, const std::string& uid, const std::string& name)
-        : ModGenerator(LFOGeneratorParameters::PARAMETERS_YAML, m, uid, name)
+        : ModGenerator(LFOGeneratorParameters::PARAMETERS_YAML, m, uid, name, true)
     {
 
         depth = getParameter("depth");
