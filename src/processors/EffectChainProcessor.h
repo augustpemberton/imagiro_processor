@@ -1,32 +1,31 @@
-//
-// Created by August Pemberton on 08/05/2025.
-//
-
 #pragma once
-#include "ProcessorChainProcessor.h"
-#include "chorus/ChorusProcessor.h"
+#include "ChainManager.h"
+#include "erosion/ErosionProcessor.h"
+#include "iir-filter/IIRFilterProcessor.h"
+#include "noise/NoiseProcessor.h"
 #include "saturation/SaturationProcessor.h"
 #include "utility/UtilityProcessor.h"
-#include "iir-filter/IIRFilterProcessor.h"
-#include "imagiro_processor/src/parameter/ProxyParameter.h"
-#include "erosion/ErosionProcessor.h"
-#include "noise/NoiseProcessor.h"
 #include "wobble/WobbleProcessor.h"
 
-class EffectChainProcessor {
-public:
-    enum class EffectType {
-        Gain = 0,
-        DiffuseDelay = 1,
-        Filter = 2,
-        Chorus = 3,
-        Saturation= 4,
-        Wobble = 5,
-        Noise = 6,
-        Erosion = 7,
-    };
+enum class EffectType {
+    Gain = 0,
+    DiffuseDelay = 1,
+    Filter = 2,
+    Chorus = 3,
+    Saturation = 4,
+    Wobble = 5,
+    Noise = 6,
+    Erosion = 7,
+};
 
-    static std::shared_ptr<Processor> getProcessorForEffectType(const EffectType type) {
+class EffectChainProcessor : public ChainManager<EffectType, Processor> {
+public:
+    EffectChainProcessor()
+        : ChainManager(true, 2) {
+    }
+
+protected:
+    std::shared_ptr<Processor> createProcessorForType(const EffectType type, int id) const override {
         if (type == EffectType::Gain) return std::make_shared<UtilityProcessor>();
         if (type == EffectType::DiffuseDelay) return std::make_shared<DiffuseDelayProcessor>();
         if (type == EffectType::Filter) return std::make_shared<IIRFilterProcessor>();
@@ -38,231 +37,9 @@ public:
         return nullptr;
     }
 
-    struct Effect {
-        int id {-1};
-        EffectType type;
-        std::shared_ptr<Processor> processor;
-    };
-
-    using EffectChain = std::vector<Effect>;
-    using TypesList = std::vector<EffectType>;
-
-    struct Listener {
-        virtual ~Listener() = default;
-        virtual void OnChainUpdated() {}
-    };
-
-    void addListener(Listener* l) { listeners.add(l); }
-    void removeListener(Listener* l) { listeners.remove(l); }
-
-    void processBlock(juce::AudioSampleBuffer& b, juce::MidiBuffer& midi) {
-        processorGraph.processBlock(b, midi);
-        ProxyParameter* p;
-
-        bool updated = false;
-        while (proxyParamsToUpdate.try_dequeue(p)) {
-            p->processQueuedTarget();
-            updated = true;
-         }
-
-        if (updated) clearWaitingProxiesFlag = true;
-    }
-
-    /* Allocates - call from message thread */
-    void setChain(EffectChain chain) {
-        updateProcessors(chain);
-
-        // hold onto existing processors until after we call cleanup old proxy params
-        auto oldChain = currentChain;
-
-        currentChain = chain;
-
-        std::vector<std::shared_ptr<Processor>> processorList;
-        for (auto& effect : currentChain) {
-            processorList.push_back(effect.processor);
-        }
-        processorGraph.queueChain(processorList);
-
-        cleanupOldEffects(oldChain);
-        listeners.call(&Listener::OnChainUpdated);
-    }
-
-    Processor& getProcessor() { return processorGraph; }
-    const EffectChain& getCurrentChain() { return currentChain; }
-
-    void setProxyParameters(std::vector<ProxyParameter*>& p) {
-        this->proxyParameters = &p;
-    }
-
-    auto& getProxyParameterMap() { return mappedProxyParameters; }
-
-    choc::value::Value getState() {
-        auto states = choc::value::createEmptyArray();
-        for (auto& effect : currentChain) {
-            auto state = choc::value::createObject("EffectState");
-            state.addMember("EffectType", static_cast<int>(effect.type));
-
-            auto processorPreset = effect.processor->createPreset("", true);
-            state.addMember("ProcessorState", processorPreset.getState());
-            states.addArrayElement(state);
-        }
-        return states;
-    }
-
-    void loadState(const choc::value::ValueView& state) {
-        EffectChain chain;
-        int id=0;
-        for (const auto& effectState : state) {
-            auto effectType = static_cast<EffectType>(effectState["EffectType"].getWithDefault(0));
-            auto processorState = Preset::fromState(effectState["ProcessorState"]);
-
-            Effect g {id, effectType};
-            createNewProcessor(g, ++id);
-            g.processor->loadPreset(processorState);
-            chain.push_back(g);
-        }
-
-        setChain(chain);
-    }
-
-private:
-    ProcessorChainProcessor processorGraph;
-
-    EffectChain currentChain;
-
-    std::set<ProxyParameter*> usedProxyParams;
-    std::vector<ProxyParameter*>* proxyParameters {nullptr};
-    std::map<int, std::map<std::string, ProxyParameter*>> mappedProxyParameters;
-
-    juce::ListenerList<Listener> listeners;
-
-    void cleanupOldEffects(const EffectChain& oldChain) {
-        for (const auto& oldEffect : oldChain) {
-            auto id = oldEffect.id;
-            auto newVersion = std::ranges::find_if(currentChain,
-                                                   [id](const Effect &e) {
-                                                       return e.id == id;
-                                                   });
-
-            // if the new version has that id we aren't deleting it
-            if (newVersion != currentChain.end()) continue;
-
-            for (auto [uid, param] : mappedProxyParameters[id]) {
-                param->getModTarget().clearConnections();
-                param->getModTarget().deregister();
-                param->clearProxyTarget();
-            }
-            mappedProxyParameters.erase(id);
-
-        }
-    }
-
-    bool isIDInChain(const EffectChain& chain, int id) {
-        for (const auto& effect : chain) {
-            if (effect.id == id) return true;
-        }
-        return false;
-    }
-
-    std::pair<Effect*, int> findProcessorOfTypeFromCurrentChain(EffectType type, int startIndex) {
-        for (auto i = startIndex; i<currentChain.size(); i++) {
-            if (currentChain[i].type == type) {
-                return {&currentChain[i], i};
-            }
-        }
-        return {nullptr, -1};
-    }
-
-    static int getMaxIDInChain(const EffectChain &chain) {
-        int maxID = 0;
-        for (auto& effect : chain) {
-            maxID = std::max(effect.id, maxID);
-        }
-        return maxID;
-    }
-
-    static Effect* findEffectInChain(EffectChain& chain, const int id) {
-        for (auto& effect : chain) {
-            if (effect.id == id) return &effect;
-        }
-        return nullptr;
-    }
-
-    void updateProcessors(EffectChain &chain) {
-        for (auto& effect : chain) {
-            if (effect.processor) continue;
-            if (effect.id < 0) {
-                createNewProcessor(effect, getMaxIDInChain(chain) + 1);
-                continue;
-            }
-
-            auto currentEffect = findEffectInChain(currentChain, effect.id);
-            if (currentEffect) copyProcessorAndMoveProxyParams(effect, *currentEffect);
-            else createNewProcessor(effect, getMaxIDInChain(chain) + 1);
-        }
-    }
-
-    void copyProcessorAndMoveProxyParams(Effect& newEffect, Effect& oldEffect) {
-        newEffect.processor = getProcessorForEffectType(oldEffect.type);
-        newEffect.id = oldEffect.id;
-        for (auto& param : newEffect.processor->getPluginParameters()) {
-            auto oldParam = oldEffect.processor->getParameter(param->getUID());
-            param->setState(oldParam->getState());
-
-            if (mappedProxyParameters[oldEffect.id].contains(param->getUID())) {
-                auto proxy = mappedProxyParameters[oldEffect.id][param->getUID()];
-                param->setModTarget(proxy->getModTarget());
-                proxy->queueProxyTarget(*param);
-                proxyParamsToUpdate.enqueue(proxy);
-                proxiesWaitingToUpdate.insert(proxy);
-            }
-        }
-    }
-
-    void createNewProcessor(Effect& e, int id) {
-        e.processor = getProcessorForEffectType(e.type);
-        e.id = id;
-        proxyMapEffect(e);
-    }
-
-    void proxyMapEffect(Effect& e) {
-        // cleanup existing params
-        if (mappedProxyParameters.contains(e.id)) {
-            auto existingProxyMap = mappedProxyParameters[e.id];
-            for (auto [id, param] : existingProxyMap) {
-                param->clearProxyTarget();
-            }
-            mappedProxyParameters[e.id] = std::map<std::string, ProxyParameter*>();
-        }
-
-
-        for (auto& param : e.processor->getPluginParameters()) {
-            if (param->isInternal()) continue;
-            auto proxyParam = getFreeProxyParameter();
-            if (!proxyParam) {
-                jassertfalse;
-                break;
-            }
-
-            param->setModTarget(ModTarget("param-fx-"+std::to_string(e.id)+param->getUID()));
-            proxyParam->queueProxyTarget(*param);
-            proxyParamsToUpdate.enqueue(proxyParam);
-            proxiesWaitingToUpdate.insert(proxyParam);
-            mappedProxyParameters[e.id][param->getUID()] = proxyParam;
-        }
-    }
-
-    ProxyParameter* getFreeProxyParameter() const {
-        if (!proxyParameters) return nullptr;
-        for (auto param : *proxyParameters) {
-            if (param->isProxySet()) continue;
-            if (proxiesWaitingToUpdate.contains(param)) continue;
-            return param;
-        }
-        return nullptr;
-    }
-
-    moodycamel::ReaderWriterQueue<ProxyParameter *> proxyParamsToUpdate{200};
-    std::unordered_set<ProxyParameter*> proxiesWaitingToUpdate;
-    std::atomic<bool> clearWaitingProxiesFlag {false};
+    std::string getModTargetPrefix() const override { return "param-fx-"; }
+    std::string getStateObjectName() const override { return "EffectState"; }
+    std::string getTypeFieldName() const override { return "EffectType"; }
+    std::string getProcessorStateFieldName() const override { return "ProcessorState"; }
+    bool shouldPassInputToOutput() const override { return true; }
 };

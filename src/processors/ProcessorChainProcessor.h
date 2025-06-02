@@ -8,17 +8,19 @@
 
 class ProcessorChainProcessor : public Processor, juce::Timer {
 public:
-    using ProcessorChain = std::vector<std::shared_ptr<Processor> >;
+    using ProcessorChain = std::vector<std::shared_ptr<Processor>>;
 
-    ProcessorChainProcessor()
-        : Processor("", ParameterLoader(), getDefaultProperties()) {
+    ProcessorChainProcessor(bool fadeBetweenChains, unsigned int numChannels = 2)
+        : Processor("", ParameterLoader(), getProperties(numChannels)),
+          fadeBetweenChains(fadeBetweenChains) {
         startTimerHz(20);
     }
 
-    BusesProperties getDefaultProperties() {
+    static BusesProperties getProperties(unsigned int numChannels = 2) {
+        if (numChannels == 0) return BusesProperties();
         return BusesProperties()
-                .withInput("Input", juce::AudioChannelSet::stereo(), true)
-                .withOutput("Output", juce::AudioChannelSet::stereo(), true);
+                .withInput("Input", juce::AudioChannelSet::discreteChannels(numChannels), true)
+                .withOutput("Output", juce::AudioChannelSet::discreteChannels(numChannels), true);
     }
 
     /*
@@ -43,9 +45,14 @@ public:
         while (preparedChains.try_dequeue(newChain)) { newChainAvailable = true; }
 
         if (newChainAvailable) {
-            oldChain = activeChain;
-            activeChain = newChain;
-            chainFadeRatio = 1;
+            if (fadeBetweenChains) {
+                oldChain = activeChain;
+                activeChain = newChain;
+                chainFadeRatio = 1;
+            } else {
+                chainsToDeallocate.enqueue(activeChain);
+                activeChain = newChain;
+            }
         }
 
         if (oldChain.has_value()) {
@@ -61,7 +68,6 @@ public:
         }
 
         if (oldChain.has_value()) {
-
             // render old chain
             for (const auto &processor: *oldChain) {
                 renderProcessor(*processor, dryCopy, midiMessages);
@@ -74,7 +80,7 @@ public:
 
             for (auto c = 0; c < buffer.getNumChannels(); c++) {
                 buffer.applyGainRamp(c, 0, buffer.getNumSamples(),
-                    1-startRatio, 1 - chainFadeRatio);
+                                     1 - startRatio, 1 - chainFadeRatio);
                 buffer.addFromWithRamp(c, 0,
                                        dryCopy.getReadPointer(c), buffer.getNumSamples(),
                                        startRatio, chainFadeRatio);
@@ -95,6 +101,8 @@ private:
     float chainFadePerSample{0};
 
     float chainFadeTime{0.02};
+
+    bool fadeBetweenChains{false};
 
     moodycamel::ConcurrentQueue<ProcessorChain> chainsToPrepare{4};
     moodycamel::ReaderWriterQueue<ProcessorChain, 4> preparedChains;

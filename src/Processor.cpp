@@ -324,10 +324,13 @@ namespace imagiro {
         setRateAndBufferSizeDetails(sampleRate, samplesPerBlock);
         modMatrix.prepareToPlay(sampleRate, samplesPerBlock);
         measurer.reset(sampleRate, samplesPerBlock);
-        dryBufferLatencyCompensationLine.prepare({
-            sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())
-        });
-        dryBufferLatencyCompensationLine.setDelay(getLatencySamples());
+
+        if (getTotalNumOutputChannels() > 0) {
+            dryBufferLatencyCompensationLine.prepare({
+                sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())
+            });
+            dryBufferLatencyCompensationLine.setDelay(getLatencySamples());
+        }
 
         for (auto parameter : getPluginParameters()) {
             parameter->prepareToPlay(sampleRate, samplesPerBlock);

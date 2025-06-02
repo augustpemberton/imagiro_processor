@@ -12,8 +12,7 @@ public:
                  const std::string &uid,
                  const std::string &name = "",
                  const bool bipolar = false)
-        : Processor(parametersYAML, ParameterLoader(),
-            BusesProperties().withOutput("out",juce::AudioChannelSet::mono())),
+        : Processor(parametersYAML, ParameterLoader(), BusesProperties()),
           source(uid, name, &m, ModMatrix::SourceType::Misc, bipolar) {
     }
 

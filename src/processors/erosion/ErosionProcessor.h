@@ -5,6 +5,7 @@
 #pragma once
 #include "Parameters.h"
 #include "imagiro_processor/src/Processor.h"
+#include "imagiro_processor/src/processors/iir-filter/IIRFilterProcessor.h"
 
 using namespace imagiro;
 class ErosionProcessor : public Processor {
