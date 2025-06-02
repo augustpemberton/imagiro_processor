@@ -1,7 +1,9 @@
 #pragma once
 #include "ModGenerator.h"
+#include "Envelope/EnvelopeGenerator.h"
 #include "EnvelopeFollower/EnvelopeFollowerGenerator.h"
 #include "EnvelopeFollower/EnvelopeFollowerSources.h"
+#include "imagiro_processor/src/synth/MPESynth.h"
 #include "LFO/LFOGenerator.h"
 #include "Macro/MacroGenerator.h"
 #include "MultichannelValue/MultichannelValueGenerator.h"
@@ -11,14 +13,26 @@ enum class GeneratorType {
     LFO = 0,
     Macro = 1,
     EnvelopeFollower = 2,
-    MIDI = 3
+    MIDI = 3,
+    Envelope = 4,
 };
 
 class GeneratorChainManager : public ChainManager<GeneratorType, ModGenerator> {
 public:
-    GeneratorChainManager(MultichannelValueSources &midiSources_, EnvelopeFollowerSources &envSources, ModMatrix &m)
-        : ChainManager(false, 0), modMatrix(m),
-          envSources(envSources), midiSources(midiSources_) {
+    explicit GeneratorChainManager(ModMatrix &m)
+        : ChainManager(false, 0), modMatrix(m) {
+    }
+
+    void setEnvelopeSynth(MPESynth& synth) {
+        this->synth = &synth;
+    }
+
+    void setMIDISources(MultichannelValueSources& sources) {
+        midiSources = &sources;
+    }
+
+    void setEnvelopeFollowerSources(EnvelopeFollowerSources& sources) {
+        envSources = &sources;
     }
 
     static std::string to_string(const GeneratorType type) {
@@ -26,6 +40,7 @@ public:
             case GeneratorType::LFO: return "LFO";
             case GeneratorType::Macro: return "Macro";
             case GeneratorType::EnvelopeFollower: return "Env Follow";
+            case GeneratorType::Envelope: return "Envelope";
             case GeneratorType::MIDI: return "MIDI";
         }
         return "";
@@ -37,10 +52,15 @@ protected:
         const std::string name = to_string(type) + " " + std::to_string(id);
         if (type == GeneratorType::LFO) return std::make_shared<LFOGenerator>(modMatrix, uid, name);
         if (type == GeneratorType::Macro) return std::make_shared<MacroGenerator>(modMatrix, uid, name);
-        if (type == GeneratorType::EnvelopeFollower) return std::make_shared<EnvelopeFollowerGenerator>(
-            envSources, modMatrix, uid, name);
-        if (type == GeneratorType::MIDI) return std::make_shared<MultichannelValueGenerator>(
-            midiSources, modMatrix, uid, name);
+        if (type == GeneratorType::EnvelopeFollower && envSources) {
+            return std::make_shared<EnvelopeFollowerGenerator>(*envSources, modMatrix, uid, name);
+        }
+        if (type == GeneratorType::MIDI && midiSources) {
+            return std::make_shared<MultichannelValueGenerator>(*midiSources, modMatrix, uid, name);
+        }
+        if (type == GeneratorType::Envelope && synth) {
+            return std::make_shared<EnvelopeGenerator>(*synth, modMatrix, uid, name);
+        }
         return nullptr;
     }
 
@@ -60,6 +80,7 @@ protected:
 
 private:
     ModMatrix& modMatrix;
-    EnvelopeFollowerSources& envSources;
-    MultichannelValueSources& midiSources;
+    EnvelopeFollowerSources* envSources {nullptr};
+    MultichannelValueSources* midiSources {nullptr};
+    MPESynth* synth {nullptr};
 };

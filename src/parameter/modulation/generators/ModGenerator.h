@@ -18,7 +18,9 @@ public:
 
     void process(juce::AudioSampleBuffer& buffer, juce::MidiBuffer& midiMessages) override {
         source.setGlobalValue(advanceGlobalValue(buffer.getNumSamples()));
-        for (const auto &voiceIndex: activeVoices) {
+        // copy active voices in case they get deleted in the loop
+        auto activeVoicesCopy = activeVoices;
+        for (const auto &voiceIndex: activeVoicesCopy) {
             source.setVoiceValue(advanceVoiceValue(voiceIndex, buffer.getNumSamples()), voiceIndex);
         }
     }

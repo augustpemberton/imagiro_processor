@@ -8,9 +8,19 @@
 #include "imagiro_processor/src/parameter/modulation/ModMatrix.h"
 #include "imagiro_processor/src/parameter/modulation/MultichannelValue.h"
 
-
 class MPESynth : public juce::MPESynthesiserBase {
 public:
+    struct Listener {
+        virtual ~Listener() = default;
+
+        virtual void onVoiceStarted(size_t voiceIndex) {}
+        virtual void onVoiceReleased(size_t voiceIndex) {}
+        virtual void onVoiceFinished(size_t voiceIndex) {}
+    };
+
+    void addListener(Listener* l) { listeners.add(l); }
+    void removeListener(Listener* l) { listeners.remove(l); }
+
     void handleMidiEvent(const juce::MidiMessage &m) override {
         if (m.isController() && m.getControllerNumber() == 1) {
             const float modValue = static_cast<float>(m.getControllerValue()) / 127.f;
@@ -44,6 +54,8 @@ public:
     const auto& getActiveVoices() { return activeVoices; }
 
 protected:
+    juce::ListenerList<Listener> listeners;
+
     MultichannelValue<MAX_MOD_VOICES> pressureValue {false};
     MultichannelValue<MAX_MOD_VOICES> pitchbendValue {true};
     MultichannelValue<MAX_MOD_VOICES> initialNoteValue {true};
@@ -51,7 +63,19 @@ protected:
     MultichannelValue<MAX_MOD_VOICES> modWheelValue {false};
     std::unordered_set<size_t> activeVoices;
 
-    void setNoteForVoice(size_t voiceIndex, RetunedMPENote note,
+    void voiceStarted(size_t voiceIndex) {
+        listeners.call(&Listener::onVoiceStarted, voiceIndex);
+    }
+
+    void voiceReleased(size_t voiceIndex) {
+        listeners.call(&Listener::onVoiceReleased, voiceIndex);
+    }
+
+    void voiceFinished(size_t voiceIndex) {
+        listeners.call(&Listener::onVoiceFinished, voiceIndex);
+    }
+
+    void setNoteForVoice(const size_t voiceIndex, RetunedMPENote note,
                          const juce::NormalisableRange<float> &pitchRange = {-36, 36}) {
 
         const auto initialNoteOffset = note.getNote() - 60;
