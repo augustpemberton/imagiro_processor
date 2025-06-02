@@ -107,9 +107,6 @@ namespace imagiro {
         float getCpuLoad();
         juce::AudioProcessorParameter* getBypassParameter() const override;
 
-        void resetBypassMixSmoothers() {
-        }
-
     protected:
         juce::SharedResourcePointer<Resources> resources;
 

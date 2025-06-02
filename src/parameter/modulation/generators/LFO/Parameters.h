@@ -38,5 +38,10 @@ phase:
   default: 0
   range: {min: 0, max: 1}
 
+retrigger:
+  name: "retrigger"
+  type: toggle
+  default: 0
+
 )";
 };

@@ -31,10 +31,6 @@ namespace imagiro {
             matrix->resetSourceValue(id);
         }
 
-        void clearConnections() const {
-            matrix->removeConnectionsWithSource(id);
-        }
-
         void deregister() const {
             matrix->removeSource(id);
         }

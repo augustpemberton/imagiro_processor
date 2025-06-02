@@ -54,7 +54,7 @@ namespace imagiro {
                 v.addMember("bipolar", bipolar);
                 v.addMember("type", static_cast<int>(type));
                 v.addMember("name", name);
-                v.addMember("values", value.getState());
+                // v.addMember("values", value.getState());
                 return v;
             }
         };
@@ -66,7 +66,7 @@ namespace imagiro {
             choc::value::Value getState() const {
                 auto v = choc::value::createObject("TargetValue");
                 v.addMember("name", name);
-                v.addMember("values", value.getState());
+                // v.addMember("values", value.getState());
                 return v;
             }
         };
@@ -126,8 +126,6 @@ namespace imagiro {
 
         void setConnection(const SourceID& sourceID, const TargetID& targetID, Connection::Settings connectionSettings);
         void removeConnection(const SourceID& sourceID, TargetID targetID);
-        void removeConnectionsWithSource(const SourceID& sourceID);
-        void removeConnectionsWithTarget(const TargetID& targetID);
 
         float getModulatedValue(const TargetID& targetID, int voiceIndex = -1);
 
@@ -163,10 +161,11 @@ namespace imagiro {
             // if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
         }
 
-        std::unordered_map<SourceID, SourceValue>& getSourceValues() { return sourceValues; }
-        std::unordered_map<TargetID, TargetValue>& getTargetValues() { return targetValues; }
+        std::unordered_map<SourceID, std::shared_ptr<SourceValue>>& getSourceValues() { return sourceValues; }
+        std::unordered_map<TargetID, std::shared_ptr<TargetValue>>& getTargetValues() { return targetValues; }
 
         size_t getMostRecentVoiceIndex() { return mostRecentVoiceIndex; }
+        void processMatrixUpdates();
 
     private:
         std::atomic<size_t> mostRecentVoiceIndex {0};
@@ -177,16 +176,23 @@ namespace imagiro {
 
         MatrixType matrix{};
 
-        std::unordered_map<SourceID, SourceValue> sourceValues {};
-        std::unordered_map<TargetID, TargetValue> targetValues {};
+        std::unordered_map<SourceID, std::shared_ptr<SourceValue>> sourceValues {};
+        std::unordered_map<TargetID, std::shared_ptr<TargetValue>> targetValues {};
+
         std::unordered_set<SourceID> updatedSourcesSinceLastCalculate {};
 
-        void processMatrixUpdates();
+        void matrixUpdated();
 
         moodycamel::ReaderWriterQueue<SourceID> sourcesToDelete {48};
         moodycamel::ReaderWriterQueue<SourceID> targetsToDelete {48};
 
-        moodycamel::ReaderWriterQueue<std::pair<SourceID, SourceValue>> newSourcesQueue {48};
-        moodycamel::ReaderWriterQueue<std::pair<TargetID, TargetValue>> newTargetsQueue {48};
+        moodycamel::ReaderWriterQueue<std::shared_ptr<SourceValue>> sourcesToDeallocate {48};
+        moodycamel::ReaderWriterQueue<std::shared_ptr<TargetValue>> targetsToDeallocate {48};
+
+        moodycamel::ReaderWriterQueue<std::pair<SourceID, std::shared_ptr<SourceValue>>> newSourcesQueue {48};
+        moodycamel::ReaderWriterQueue<std::pair<TargetID, std::shared_ptr<TargetValue>>> newTargetsQueue {48};
+
+        std::atomic<bool> recacheSerializedMatrixFlag {false};
+        SerializedMatrix cachedSerializedMatrix;
     };
 }

@@ -21,7 +21,9 @@ namespace imagiro {
         juce::AudioProcessor::addListener(this);
 
         auto parameters = loader.loadParameters(parametersYAMLString, *this);
-        for (auto& param : parameters) this->addParam(std::move(param));
+        for (auto& param : parameters) {
+            this->addParam(std::move(param));
+        }
         dryBufferLatencyCompensationLine.reset();
     }
 
@@ -193,6 +195,10 @@ namespace imagiro {
             if (auto bypassParam = getParameter("bypass")) {
                 bypassGain.setCurrentAndTargetValue(1 - bypassParam->getProcessorValue());
             }
+
+            for (auto param : getPluginParameters()) {
+                param->callValueChangedListeners();
+            }
         }
 
         if (getTotalNumInputChannels() == 0) {
@@ -243,10 +249,7 @@ namespace imagiro {
             for(auto s=0; s<buffer.getNumSamples(); s++)
                 dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
-        // NOTE: we don't calculate the mod matrix here - it likely needs be calculated at a specific time
-        // (i.e. after MIDI processing - midi values might be mod sources that need to be processed)
-        // so we let the parent take care of it
-//        modMatrix.calculateTargetValues(buffer.getNumSamples());
+        modMatrix.processMatrixUpdates();
 
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);

@@ -52,10 +52,6 @@ namespace imagiro {
             matrix->addListener(this);
         }
 
-        void clearConnections() const {
-            matrix->removeConnectionsWithTarget(id);
-        }
-
         void deregister() const {
             matrix->removeTarget(id);
         }

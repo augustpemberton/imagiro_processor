@@ -21,7 +21,7 @@ public:
 
         activeSource = &sources.getSources()[0];
         sourceParam->addListener(this);
-        setSourceFromValue01(sourceParam->getProcessorValue());
+        setSourceFromValue01(sourceParam->getProcessorValue(), true);
     }
 
     ~MultichannelValueGenerator() override {
@@ -63,10 +63,10 @@ protected:
         return activeSource->value.getVoiceValue(voiceIndex);
     }
 
-    void setSourceFromValue01(const float sourceVal) {
+    void setSourceFromValue01(const float sourceVal, const bool force = false) {
         const auto sourceIndex = static_cast<size_t>((sources.getSources().size()-1) * sourceVal);
         const auto& source = sources.getSources()[sourceIndex];
-        if (&source != activeSource) {
+        if (&source != activeSource || force) {
             setSource(source);
         }
     }

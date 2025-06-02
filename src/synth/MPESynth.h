@@ -39,7 +39,7 @@ public:
 
     void notePitchbendChanged(const juce::MPENote n) override {
         for (auto i = 0u; i < MAX_MOD_VOICES; i++) {
-            const auto pitchBendRange = getZoneLayout().getLowerZone().perNotePitchbendRange;
+            const auto pitchBendRange = getLegacyModePitchbendRange();
             const auto pitchbendProportion = n.totalPitchbendInSemitones / pitchBendRange;
             pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion), i);
         }

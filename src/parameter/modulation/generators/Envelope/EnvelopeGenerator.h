@@ -43,7 +43,6 @@ public:
     }
 
     void onVoiceReleased(const size_t voiceIndex) override {
-        activeVoices.insert(voiceIndex);
         envelope[voiceIndex].noteOff();
     }
 
@@ -74,7 +73,7 @@ protected:
     float advanceVoiceValue(const size_t voiceIndex, const int numSamples = 1) override {
         float val = 0;
         for (int i=0; i<numSamples; i++) {
-            val = envelope[voiceIndex].getNextSample();
+            val = std::max(val, envelope[voiceIndex].getNextSample());
         }
 
         if (!envelope[voiceIndex].isActive()) {

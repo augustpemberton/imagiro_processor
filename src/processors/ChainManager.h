@@ -116,8 +116,10 @@ protected:
     virtual bool shouldPassInputToOutput() const { return true; }
     virtual int getChannelCount() const { return 0; }
 
+    bool fadeBetweenChains;
+
     ChainManager(const bool fadeBetweenChains, const unsigned int numChannels)
-        : processorGraph(fadeBetweenChains, numChannels) {
+        : fadeBetweenChains(fadeBetweenChains), processorGraph(fadeBetweenChains, numChannels) {
     }
 
 private:
@@ -146,7 +148,6 @@ private:
             performTypeSpecificCleanup(oldItem);
 
             for (auto [uid, param] : mappedProxyParameters[id]) {
-                param->getModTarget().clearConnections();
                 param->getModTarget().deregister();
                 param->clearProxyTarget();
             }
@@ -194,7 +195,13 @@ private:
             }
 
             auto currentItem = findItemInChain(currentChain, item.id);
-            if (currentItem) copyProcessorAndMoveProxyParams(item, *currentItem);
+            if (currentItem) {
+                if (fadeBetweenChains) copyProcessorAndMoveProxyParams(item, *currentItem);
+                else {
+                    item.processor = currentItem->processor;
+                    currentItem->processor.reset();
+                }
+            }
             else createNewProcessor(item, getMaxIDInChain(chain) + 1);
         }
     }
