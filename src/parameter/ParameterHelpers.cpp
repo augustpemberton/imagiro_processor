@@ -8,18 +8,18 @@
 
 namespace imagiro {
 
-    DisplayValue DisplayFunctions::midiChannelDisplay(float channel) {
+    DisplayValue DisplayFunctions::midiChannelDisplay(float channel, const Parameter*) {
         auto c = (int) channel;
         if (c == 0) return {"all"};
         else return {juce::String(c)};
     }
 
-    int DisplayFunctions::midiChannelInput(juce::String input) {
+    int DisplayFunctions::midiChannelInput(juce::String input, const Parameter*) {
         if (input.toLowerCase() == "all") return 0;
         return input.getIntValue();
     }
 
-    DisplayValue DisplayFunctions::timeDisplay(float seconds) {
+    DisplayValue DisplayFunctions::timeDisplay(float seconds, const Parameter*) {
         if (seconds == 0) return {"0", "ms"};
         std::stringstream ss;
         juce::String suf;
@@ -37,7 +37,7 @@ namespace imagiro {
         return {ss.str(), suf};
     }
 
-    float DisplayFunctions::timeInput(juce::String time) {
+    float DisplayFunctions::timeInput(juce::String time, const Parameter*) {
         float multiplier = 1;
         if (time.contains("ms")) {
             multiplier = 0.001f;
@@ -51,7 +51,7 @@ namespace imagiro {
 
     }
 
-    DisplayValue DisplayFunctions::dbDisplay(float db) {
+    DisplayValue DisplayFunctions::dbDisplay(float db, const Parameter*) {
         if (db <= -60) return {"-inf", ""};
         if (std::abs(db) < 0.0001) return {"0.00", "db"};
 
@@ -60,7 +60,7 @@ namespace imagiro {
         return {juce::String(oss.str()), "db"};
     }
 
-    DisplayValue DisplayFunctions::freqDisplay(float freq) {
+    DisplayValue DisplayFunctions::freqDisplay(float freq, const Parameter*) {
         std::ostringstream oss;
         if (freq >= 10000) {
             oss << std::fixed << std::setprecision(1) << freq / 1000 << "k";
@@ -75,37 +75,37 @@ namespace imagiro {
         return {oss.str(), "Hz"};
     }
 
-    float DisplayFunctions::freqInput(juce::String freq) {
+    float DisplayFunctions::freqInput(juce::String freq, const Parameter*) {
         freq = freq.replace("Hz", "", true);
         return freq.getFloatValue();
     }
 
-    float DisplayFunctions::dbInput(juce::String db) {
+    float DisplayFunctions::dbInput(juce::String db, const Parameter*) {
         db = db.replace("db", "", true);
         return db.getFloatValue();
     }
 
-    DisplayValue DisplayFunctions::gainToDbDisplay(float gain) {
+    DisplayValue DisplayFunctions::gainToDbDisplay(float gain, const Parameter* p) {
         auto db = juce::Decibels::gainToDecibels(gain);
-        return dbDisplay(db);
+        return dbDisplay(db, p);
     }
 
-    DisplayValue DisplayFunctions::midiNumberDisplay(float note) {
+    DisplayValue DisplayFunctions::midiNumberDisplay(float note, const Parameter*) {
         return {juce::String(Note::midiNumberToNote(note))};
     }
 
-    float DisplayFunctions::midiNumberInput(juce::String note) {
+    float DisplayFunctions::midiNumberInput(juce::String note, const Parameter*) {
         return Note::noteToMidiNumber(note);
     }
 
-    DisplayValue DisplayFunctions::centDisplay(float semitones) {
+    DisplayValue DisplayFunctions::centDisplay(float semitones, const Parameter*) {
         if (almostEqual(semitones, 0.f)) return {"0.00", "st"}; // prevent -0.00
         std::stringstream ss;
         ss << std::fixed << std::setprecision(2) << semitones;
         return {ss.str(), "st"};
     }
 
-    float DisplayFunctions::centInput(juce::String input) {
+    float DisplayFunctions::centInput(juce::String input, const Parameter*) {
         input = input.replace("st", "\n", true);
         input = input.replace("ct", "", true);
         auto tokens = juce::StringArray::fromLines(input);
@@ -118,7 +118,7 @@ namespace imagiro {
         return 0;
     }
 
-    DisplayValue DisplayFunctions::semitoneDisplay(float st) {
+    DisplayValue DisplayFunctions::semitoneDisplay(float st, const Parameter*) {
         int semis = static_cast<int>(round(st));
         int cents = static_cast<int>((st - semis) * 100);
 
@@ -126,19 +126,19 @@ namespace imagiro {
         return {juce::String(semis) + "st " + centString};
     }
 
-    float DisplayFunctions::semitoneInput(juce::String input) {
-        return centInput(input);
+    float DisplayFunctions::semitoneInput(juce::String input, const Parameter* p) {
+        return centInput(input, p);
     }
 
-    DisplayValue DisplayFunctions::percentDisplay(float pct) {
+    DisplayValue DisplayFunctions::percentDisplay(float pct, const Parameter* p) {
         return {juce::String(round(pct * 100)), "%"};
     }
 
-    DisplayValue DisplayFunctions::percentDisplayFrac(float pct) {
+    DisplayValue DisplayFunctions::percentDisplayFrac(float pct, const Parameter*) {
         return {juce::String(pct * 100, 1), "%"};
     }
 
-    float DisplayFunctions::percentInput(juce::String t) {
+    float DisplayFunctions::percentInput(juce::String t, const Parameter*) {
         t = t.replace("%", "");
         return t.getFloatValue() / 100;
     }
@@ -180,20 +180,20 @@ namespace imagiro {
         return s;
     }
 
-    DisplayValue DisplayFunctions::degreeDisplay(float v) {
+    DisplayValue DisplayFunctions::degreeDisplay(float v, const Parameter*) {
         return {juce::String((int)(v*360)), juce::CharPointer_UTF8("\u00B0")};
     }
 
-    float DisplayFunctions::degreeInput(juce::String deg) {
+    float DisplayFunctions::degreeInput(juce::String deg, const Parameter*) {
         deg = deg.replace("°", "", true);
         return deg.getFloatValue() / 360.f;
     }
 
-    DisplayValue DisplayFunctions::syncDisplay(float val) {
+    DisplayValue DisplayFunctions::syncDisplay(float val, const Parameter*) {
         auto f = fractionString(val);
         return {f, "note"};
     }
-    float DisplayFunctions::syncInput(juce::String frac) {
+    float DisplayFunctions::syncInput(juce::String frac, const Parameter*) {
         if (!frac.contains("/")) return frac.getFloatValue();
 
         juce::StringArray f;

@@ -36,7 +36,8 @@ protected:
     float advanceGlobalValue(const int numSamples = 1) override {
         lfo.setFrequency(frequency->getProcessorValue());
         lfo.setPhaseOffset(phase->getProcessorValue());
-        return lfo.process(numSamples) * depth->getProcessorValue();
+        auto depthVal = depth->getProcessorValue();
+        return lfo.process(numSamples) * depthVal;
     }
 
     float advanceVoiceValue(size_t voiceIndex, int numSamples = 1) override {

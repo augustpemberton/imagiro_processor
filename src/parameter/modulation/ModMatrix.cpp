@@ -38,11 +38,14 @@ namespace imagiro {
             return;
         }
 
+        // TODO make sure this happens on the audio thread
         if (matrix.contains({sourceID, targetID})) {
             matrix.at({sourceID, targetID}).setSettings(settings);
         } else {
             matrix.insert({{sourceID, targetID}, {sampleRate, settings}});
         }
+
+        updatedSourcesSinceLastCalculate.insert(sourceID);
         listeners.call(&Listener::OnMatrixUpdated);
     }
 
@@ -73,22 +76,28 @@ namespace imagiro {
 
     void ModMatrix::calculateTargetValues(int numSamples) {
 
-        // reset all target values
-        for (auto& [targetID, targetValue] : targetValues) {
-            targetValue.value.setGlobalValue(0);
-            auto alteredVoices = targetValue.value.getAlteredVoices();
-            for (const auto& v: alteredVoices) {
-                targetValue.value.setVoiceValue(v, 0);
-            }
-        }
+        processMatrixUpdates();
 
         std::unordered_set<TargetID> updatedTargets;
         for (auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
             if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID)) continue;
 
-            if (!updatedSourcesSinceLastCalculate.contains(sourceID)) continue;
+            bool sourceValueUpdated = updatedSourcesSinceLastCalculate.contains(sourceID);
+            if (connection.getGlobalEnvelopeFollower().isSmoothing()) sourceValueUpdated = true;
+            for (size_t i : sourceValues[sourceID].value.getAlteredVoices()) {
+                if (connection.getVoiceEnvelopeFollower(i).isSmoothing()) sourceValueUpdated = true;
+            }
+
+            if (!sourceValueUpdated) continue;
+
+            // if we haven't processed this target yet, reset it to 0 first
+            if (!updatedTargets.contains(targetID)) {
+                targetValues[targetID].value.resetValue();
+            }
+
             updatedTargets.insert(targetID);
+
 
             auto connectionSettings = connection.getSettings();
 
@@ -107,7 +116,7 @@ namespace imagiro {
                 connection.getVoiceEnvelopeFollower(i).skip(numSamples);
                 auto va = connection.getVoiceEnvelopeFollower(i).getCurrentValue() * connectionSettings.depth;
                 if (connectionSettings.bipolar) va *= 0.5f;
-                targetValues[targetID].value.setVoiceValue(i, targetValues[targetID].value.getVoiceValue(i) + va);
+                targetValues[targetID].value.setVoiceValue(targetValues[targetID].value.getVoiceValue(i) + va, i);
             }
         }
 
@@ -126,7 +135,7 @@ namespace imagiro {
 
     void ModMatrix::setVoiceSourceValue(const SourceID& sourceID, size_t voiceIndex, float value) {
         const auto oldVal = sourceValues[sourceID].value.getVoiceValue(voiceIndex);
-        sourceValues[sourceID].value.setVoiceValue(voiceIndex, value);
+        sourceValues[sourceID].value.setVoiceValue(value, voiceIndex);
         if (oldVal != value) updatedSourcesSinceLastCalculate.insert(sourceID);
     }
 
@@ -135,11 +144,42 @@ namespace imagiro {
         updatedSourcesSinceLastCalculate.insert(sourceID);
     }
 
-    void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
-        if (sourceValues.contains(id)) {
-            sourceValues.erase(id);
+    void ModMatrix::processMatrixUpdates() {
+        bool updated = false;
+        std::pair<SourceID, SourceValue> newSource;
+        while (newSourcesQueue.try_dequeue(newSource)) {
+            updated = true;
+            if (sourceValues.contains(newSource.first)) {
+                sourceValues.erase(newSource.first);
+            }
+            sourceValues.insert(newSource);
         }
 
+        std::pair<TargetID, TargetValue> newTarget;
+        while (newTargetsQueue.try_dequeue(newTarget)) {
+            updated = true;
+            if (targetValues.contains(newTarget.first)) {
+                targetValues.erase(newTarget.first);
+            }
+            targetValues.insert(newTarget);
+        }
+
+        SourceID deleteSource;
+        while (sourcesToDelete.try_dequeue(deleteSource)) {
+            updated = true;
+            sourceValues.erase(deleteSource);
+        }
+
+        TargetID deleteTarget;
+        while (targetsToDelete.try_dequeue(deleteTarget)) {
+            updated = true;
+            targetValues.erase(deleteTarget);
+        }
+
+        if (updated) listeners.call(&Listener::OnMatrixUpdated);
+    }
+
+    void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
         if (name.empty()) {
             name = id;
         }
@@ -148,14 +188,10 @@ namespace imagiro {
         sourceValue.bipolar = isBipolar;
         sourceValue.type = type;
         sourceValue.name = name;
-        sourceValues.insert({id, sourceValue});
-        listeners.call(&Listener::OnMatrixUpdated);
+        newSourcesQueue.enqueue({id, sourceValue});
     }
 
     void ModMatrix::registerTarget(const TargetID& id, std::string name) {
-        if (targetValues.contains(id)) {
-            targetValues.erase(id);
-        }
 
         if (name.empty()) {
             name = id;
@@ -163,8 +199,7 @@ namespace imagiro {
 
         TargetValue targetValue;
         targetValue.name = name;
-        targetValues.insert({id, targetValue});
-        listeners.call(&Listener::OnMatrixUpdated);
+        newTargetsQueue.enqueue({id, targetValue});
     }
 
     SerializedMatrix ModMatrix::getSerializedMatrix() {

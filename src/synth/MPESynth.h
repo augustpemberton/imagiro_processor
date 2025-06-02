@@ -18,6 +18,7 @@ public:
         }
 
         MPESynthesiserBase::handleMidiEvent(m);
+        activeVoices.reserve(MAX_MOD_VOICES);
     }
 
     void notePressureChanged(const juce::MPENote n) override {
@@ -40,12 +41,15 @@ public:
     const auto &getInitialVelocity() { return initialVelocityValue; }
     const auto &getModWheel() { return modWheelValue; }
 
+    const auto& getActiveVoices() { return activeVoices; }
+
 protected:
-    MultichannelValue<MAX_MOD_VOICES> pressureValue;
-    MultichannelValue<MAX_MOD_VOICES> pitchbendValue;
-    MultichannelValue<MAX_MOD_VOICES> initialNoteValue;
-    MultichannelValue<MAX_MOD_VOICES> initialVelocityValue;
-    MultichannelValue<MAX_MOD_VOICES> modWheelValue;
+    MultichannelValue<MAX_MOD_VOICES> pressureValue {false};
+    MultichannelValue<MAX_MOD_VOICES> pitchbendValue {true};
+    MultichannelValue<MAX_MOD_VOICES> initialNoteValue {true};
+    MultichannelValue<MAX_MOD_VOICES> initialVelocityValue {false};
+    MultichannelValue<MAX_MOD_VOICES> modWheelValue {false};
+    std::unordered_set<size_t> activeVoices;
 
     void setNoteForVoice(size_t voiceIndex, RetunedMPENote note,
                          const juce::NormalisableRange<float> &pitchRange = {-36, 36}) {
@@ -61,6 +65,8 @@ protected:
         const auto pitchBendRange = getZoneLayout().getLowerZone().perNotePitchbendRange;
         const auto pitchbendProportion = note.totalPitchbendInSemitones / pitchBendRange;
         pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion), voiceIndex);
+
+        activeVoices.insert(voiceIndex);
     }
 
     void clearNoteForVoice(const size_t voiceIndex) {
@@ -68,5 +74,6 @@ protected:
         initialVelocityValue.setVoiceValue(0, voiceIndex);
         pressureValue.setVoiceValue(0, voiceIndex);
         pitchbendValue.setVoiceValue(0, voiceIndex);
+        activeVoices.erase(voiceIndex);
     }
 };

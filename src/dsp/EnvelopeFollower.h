@@ -12,13 +12,13 @@ public:
     }
 
     void setAttackMs(float attackMS) {
-        if (imagiro::almostEqual(attackMS, this->attackMs)) return;
+        if (imagiro::almostEqual(attackMS, this->attackMs.load())) return;
         this->attackMs = attackMS;
         recalculateCoefficients();
     }
 
     void setReleaseMs(float releaseMS) {
-        if (imagiro::almostEqual(releaseMS, this->releaseMs)) return;
+        if (imagiro::almostEqual(releaseMS, this->releaseMs.load())) return;
         this->releaseMs = releaseMS;
         recalculateCoefficients();
     }
@@ -58,17 +58,19 @@ public:
     float getAttackMS() const { return attackMs; }
     float getReleaseMS() const { return releaseMs; }
 
+    bool isSmoothing() { return !imagiro::almostEqual(envelope, targetValue); }
+
 private:
     void recalculateCoefficients() {
         attackCoeff = std::pow(0.01f, 1.0f / (attackMs * (float)sampleRate * 0.001f));
         releaseCoeff = std::pow(0.01f, 1.0f / (releaseMs * (float)sampleRate * 0.001f));
     }
 
-    float attackCoeff{0};
-    float releaseCoeff{0};
+    std::atomic<float> attackCoeff{0};
+    std::atomic<float> releaseCoeff{0};
     T envelope{0};
     T targetValue{0};
     double sampleRate{0};
-    float attackMs{0};
-    float releaseMs{0};
+    std::atomic<float> attackMs{0};
+    std::atomic<float> releaseMs{0};
 };

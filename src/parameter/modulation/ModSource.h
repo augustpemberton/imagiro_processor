@@ -22,6 +22,11 @@ namespace imagiro {
             matrix->registerSource(id, name, type, isBipolar);
         }
 
+        void setBipolar(bool bipolar) {
+            isBipolar = bipolar;
+            matrix->registerSource(id, name, type, isBipolar);
+        }
+
         void resetValue() const {
             matrix->resetSourceValue(id);
         }

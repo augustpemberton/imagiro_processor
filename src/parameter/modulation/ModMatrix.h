@@ -40,8 +40,8 @@ namespace imagiro {
                             SourceType type = SourceType::Misc, bool isBipolar = false);
         void registerTarget(const TargetID& id, std::string name = "");
 
-        void removeSource(const SourceID& id) { sourceValues.erase(id); }
-        void removeTarget(const TargetID& id) { targetValues.erase(id); }
+        void removeSource(const SourceID& id) { sourcesToDelete.enqueue(id); }
+        void removeTarget(const TargetID& id) { targetsToDelete.enqueue(id); }
 
         struct SourceValue {
             std::string name;
@@ -153,12 +153,14 @@ namespace imagiro {
         }
 
         void setVoiceOff(size_t index) {
-            std::erase_if(noteOnStack, [&, index](const size_t e) {
-                return e == index;
-            });
-            auto oldRecentVoice = mostRecentVoiceIndex.load();
-            mostRecentVoiceIndex = noteOnStack.back();
-            if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
+            // NOTE: commented this out for now as i don't think its desirable behaviour.
+
+            // std::erase_if(noteOnStack, [&, index](const size_t e) {
+            //     return e == index;
+            // });
+            // auto oldRecentVoice = mostRecentVoiceIndex.load();
+            // mostRecentVoiceIndex = noteOnStack.back();
+            // if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
         }
 
         std::unordered_map<SourceID, SourceValue>& getSourceValues() { return sourceValues; }
@@ -168,7 +170,7 @@ namespace imagiro {
 
     private:
         std::atomic<size_t> mostRecentVoiceIndex {0};
-        juce::ListenerList<Listener> listeners;
+        juce::ThreadSafeListenerList<Listener> listeners;
         double sampleRate {48000};
 
         std::list<size_t> noteOnStack;
@@ -178,5 +180,13 @@ namespace imagiro {
         std::unordered_map<SourceID, SourceValue> sourceValues {};
         std::unordered_map<TargetID, TargetValue> targetValues {};
         std::unordered_set<SourceID> updatedSourcesSinceLastCalculate {};
+
+        void processMatrixUpdates();
+
+        moodycamel::ReaderWriterQueue<SourceID> sourcesToDelete {48};
+        moodycamel::ReaderWriterQueue<SourceID> targetsToDelete {48};
+
+        moodycamel::ReaderWriterQueue<std::pair<SourceID, SourceValue>> newSourcesQueue {48};
+        moodycamel::ReaderWriterQueue<std::pair<TargetID, TargetValue>> newTargetsQueue {48};
     };
 }

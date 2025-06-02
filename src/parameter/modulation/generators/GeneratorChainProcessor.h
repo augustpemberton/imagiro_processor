@@ -77,8 +77,8 @@ private:
     void prepareGenerator(ModGenerator &g) const {
         g.setPlayConfigDetails(
             0, 1,
-            getSampleRate(), getBlockSize());
-        g.prepareToPlay(getSampleRate(), getBlockSize());
+            lastSampleRate, getBlockSize());
+        g.prepareToPlay(lastSampleRate, getBlockSize());
     }
 
     static void processGenerator(ModGenerator& g, juce::AudioSampleBuffer &buffer, juce::MidiBuffer &m) {

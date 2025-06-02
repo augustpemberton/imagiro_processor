@@ -55,6 +55,19 @@ public:
     void addListener(Listener* l) { listeners.add(l); }
     void removeListener(Listener* l) { listeners.remove(l); }
 
+    void processBlock(juce::AudioSampleBuffer& b, juce::MidiBuffer& midi) {
+        processorGraph.processBlock(b, midi);
+        ProxyParameter* p;
+
+        bool updated = false;
+        while (proxyParamsToUpdate.try_dequeue(p)) {
+            p->processQueuedTarget();
+            updated = true;
+         }
+
+        if (updated) clearWaitingProxiesFlag = true;
+    }
+
     /* Allocates - call from message thread */
     void setChain(EffectChain chain) {
         updateProcessors(chain);
@@ -199,7 +212,9 @@ private:
             if (mappedProxyParameters[oldEffect.id].contains(param->getUID())) {
                 auto proxy = mappedProxyParameters[oldEffect.id][param->getUID()];
                 param->setModTarget(proxy->getModTarget());
-                proxy->setProxyTarget(*param);
+                proxy->queueProxyTarget(*param);
+                proxyParamsToUpdate.enqueue(proxy);
+                proxiesWaitingToUpdate.insert(proxy);
             }
         }
     }
@@ -230,7 +245,9 @@ private:
             }
 
             param->setModTarget(ModTarget("param-fx-"+std::to_string(e.id)+param->getUID()));
-            proxyParam->setProxyTarget(*param);
+            proxyParam->queueProxyTarget(*param);
+            proxyParamsToUpdate.enqueue(proxyParam);
+            proxiesWaitingToUpdate.insert(proxyParam);
             mappedProxyParameters[e.id][param->getUID()] = proxyParam;
         }
     }
@@ -239,8 +256,13 @@ private:
         if (!proxyParameters) return nullptr;
         for (auto param : *proxyParameters) {
             if (param->isProxySet()) continue;
+            if (proxiesWaitingToUpdate.contains(param)) continue;
             return param;
         }
         return nullptr;
     }
+
+    moodycamel::ReaderWriterQueue<ProxyParameter *> proxyParamsToUpdate{200};
+    std::unordered_set<ProxyParameter*> proxiesWaitingToUpdate;
+    std::atomic<bool> clearWaitingProxiesFlag {false};
 };

@@ -66,7 +66,7 @@ namespace imagiro {
     }
 
     float Parameter::getProcessorValue(int voiceIndex) const {
-        if (auto conversionFunction = getConfig()->processorConversionFunction)
+        if (const auto conversionFunction = getConfig()->processorConversionFunction)
             return conversionFunction(getModUserValue(voiceIndex));
 
         return getModUserValue(voiceIndex);
@@ -133,7 +133,7 @@ namespace imagiro {
 
     DisplayValue Parameter::getDisplayValueForUserValue(float userValue) const {
         if (getConfig()->textFunction) {
-            return getConfig()->textFunction (userValue);
+            return getConfig()->textFunction (userValue, this);
         }
         return {getUserValueText()};
     }
@@ -231,7 +231,7 @@ namespace imagiro {
         if (getConfig()->textFunction) {
             auto userValueValidated = convertFrom0to1(val, true);
             auto val01Validated = convertTo0to1(userValueValidated);
-            auto displayVal = getConfig()->textFunction (getConfig()->range.convertFrom0to1 (val01Validated));
+            auto displayVal = getConfig()->textFunction (getConfig()->range.convertFrom0to1 (val01Validated), this);
             return displayVal.withSuffix();
         }
 
@@ -240,7 +240,7 @@ namespace imagiro {
     }
 
     float Parameter::getValueForText (const juce::String& text) const {
-        if (getConfig()->valueFunction) return getConfig()->valueFunction(text);
+        if (getConfig()->valueFunction) return getConfig()->valueFunction(text, this);
         return getConfig()->range.convertTo0to1 (text.getFloatValue());
 
     }
@@ -265,6 +265,10 @@ namespace imagiro {
 
     int Parameter::getConfigIndex() {
         return configIndex;
+    }
+
+    ParameterConfig* Parameter::getConfig() {
+        return &configs[configIndex];
     }
 
     const ParameterConfig* Parameter::getConfig() const {

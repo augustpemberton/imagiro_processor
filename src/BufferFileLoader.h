@@ -20,9 +20,10 @@ public:
      * Loads a file into the given buffer on a background thread.
      * Note - this will resize the given buffer to match the file.
      */
-    void loadFileIntoBuffer(juce::File fileToLoad, double targetSampleRate) {
+    void loadFileIntoBuffer(juce::File fileToLoad, double targetSampleRate, bool normalizeFile) {
         this->fileToLoad = fileToLoad;
         this->targetSampleRate = targetSampleRate;
+        this->normalizeFile = normalizeFile;
 
         startThread();
     }
@@ -44,6 +45,7 @@ private:
 
     juce::File fileToLoad;
     double targetSampleRate;
+    bool normalizeFile {false};
 
     void run() override {
         auto buffer = std::make_shared<juce::AudioSampleBuffer>();
@@ -111,7 +113,11 @@ private:
             listeners.call(&Listener::OnFileLoadProgress, outN / (float) nInterpSamples);
         }
 
-        listeners.call(&Listener::OnFileLoadComplete, buffer, magnitude);
+        if (normalizeFile) {
+            buffer->applyGain(1.f / magnitude);
+        }
+
+        listeners.call(&Listener::OnFileLoadComplete, buffer, normalizeFile ? 1.f : magnitude);
     }
 
 };

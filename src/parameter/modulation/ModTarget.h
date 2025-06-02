@@ -65,6 +65,7 @@ namespace imagiro {
         }
 
         float getModulatedValue(float baseValue, int voiceIndex = -1) const {
+            if (!matrix) return 0.f;
             return std::clamp(baseValue + matrix->getModulatedValue(id, voiceIndex), 0.f, 1.f);
         }
 
@@ -84,7 +85,7 @@ namespace imagiro {
     private:
         TargetID id;
         std::string name;
-        ModMatrix* matrix;
+        ModMatrix* matrix {nullptr};
 
         juce::ListenerList<Listener> listeners;
     };

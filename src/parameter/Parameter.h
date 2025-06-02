@@ -5,7 +5,6 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "ParameterConfig.h"
-#include "ParameterHelpers.h"
 #include "choc/containers/choc_Value.h"
 #include "modulation/ModTarget.h"
 #include "modulation/ModTarget.h"
@@ -196,17 +195,17 @@ namespace imagiro {
 
         const juce::NormalisableRange<float>& getNormalisableRange() const override;
 
-        unsigned int configIndex {0};
-        virtual const ParameterConfig* getConfig() const;
+        virtual ParameterConfig* getConfig();
+        const virtual ParameterConfig* getConfig() const;
         virtual std::vector<ParameterConfig> getAllConfigs() const {
             return configs;
         }
 
-        int getConfigIndex();
-        void setConfig(int index);
+        virtual int getConfigIndex();
+        virtual void setConfig(int index);
 
-        void setLocked(bool locked);
-        bool isLocked() const;
+        virtual void setLocked(bool locked);
+        virtual bool isLocked() const;
 
         void startBlock(int samples);
         float getSmoothedValue(int blockIndex);
@@ -222,6 +221,7 @@ namespace imagiro {
 
         bool internal {false};
         int modIndex = -1;
+        unsigned int configIndex {0};
 
         virtual void valueChanged();
 
@@ -234,7 +234,7 @@ namespace imagiro {
         std::atomic<float> value01 {0};
         float cachedUserValue {0};
 
-        juce::ListenerList<Listener> listeners;
+        juce::LightweightListenerList<Listener> listeners;
 
         std::atomic<bool> locked {false};
 

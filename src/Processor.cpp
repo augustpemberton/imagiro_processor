@@ -58,6 +58,8 @@ namespace imagiro {
         if (p->isInternal()) internalParameters.add (p.release());
         else addParameter (p.release()->asJUCEParameter());
 
+        parameterListeners.call(&ParameterListener::onParameterAdded, *rawPtr);
+
         return rawPtr;
     }
 

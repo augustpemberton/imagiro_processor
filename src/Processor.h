@@ -41,6 +41,14 @@ namespace imagiro {
 
         void reset() override;
 
+        struct ParameterListener {
+            virtual ~ParameterListener() = default;
+            virtual void onParameterAdded(Parameter& p) {}
+        };
+
+        void addParameterListener(ParameterListener* l) { parameterListeners.add(l); }
+        void removeParameterListener(ParameterListener* l) { parameterListeners.remove(l); }
+
         Parameter* addParam (std::unique_ptr<Parameter> p);
         Parameter* getParameter (const juce::String& uid);
         const juce::Array<Parameter*>& getPluginParameters();
@@ -124,6 +132,7 @@ namespace imagiro {
 
         juce::Array<Parameter*> allParameters;
         juce::OwnedArray<Parameter> internalParameters;
+        juce::ListenerList<ParameterListener> parameterListeners;
 
         juce::SmoothedValue<float> mixGain {0};
         juce::SmoothedValue<float> bypassGain {0};

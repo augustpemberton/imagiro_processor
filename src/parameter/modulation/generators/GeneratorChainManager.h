@@ -4,19 +4,25 @@
 
 #pragma once
 #include "GeneratorChainProcessor.h"
-#include "imagiro_processor/src/parameter/ProxyParameter.h"
 #include "LFO/LFOGenerator.h"
 #include "Macro/MacroGenerator.h"
+#include "EnvelopeFollower/EnvelopeFollowerGenerator.h"
+#include "../../ProxyParameter.h"
+#include "MultichannelValue/MultichannelValueGenerator.h"
+#include "MultichannelValue/MultichannelValueSources.h"
 
 class GeneratorChainManager {
 public:
-    GeneratorChainManager(ModMatrix& m) : modMatrix(m) {
-
+    GeneratorChainManager(MultichannelValueSources &midiSources_, EnvelopeFollowerSources &envSources,
+                          ModMatrix &m)
+        : modMatrix(m), envSources(envSources), midiSources(midiSources_) {
     }
 
     enum class GeneratorType {
         LFO = 0,
-        Macro = 1
+        Macro = 1,
+        EnvelopeFollower = 2,
+        MIDI = 3
     };
 
     static std::string to_string(const GeneratorType type) {
@@ -25,6 +31,10 @@ public:
                 return "LFO";
             case GeneratorType::Macro:
                 return "Macro";
+            case GeneratorType::EnvelopeFollower:
+                return "Env Follow";
+            case GeneratorType::MIDI:
+                return "MIDI";
         }
         return "";
     }
@@ -34,11 +44,15 @@ public:
         const std::string name = to_string(type) + " " + std::to_string(id);
         if (type == GeneratorType::LFO) return std::make_shared<LFOGenerator>(modMatrix, uid, name);
         if (type == GeneratorType::Macro) return std::make_shared<MacroGenerator>(modMatrix, uid, name);
+        if (type == GeneratorType::EnvelopeFollower) return std::make_shared<EnvelopeFollowerGenerator>(
+            envSources, modMatrix, uid, name);
+        if (type == GeneratorType::MIDI) return std::make_shared<MultichannelValueGenerator>(
+            midiSources, modMatrix, uid, name);
         return nullptr;
     }
 
     struct Generator {
-        int id {-1};
+        int id{-1};
         GeneratorType type;
         std::shared_ptr<ModGenerator> generator;
     };
@@ -48,14 +62,33 @@ public:
 
     struct Listener {
         virtual ~Listener() = default;
-        virtual void OnChainUpdated() {}
+
+        virtual void OnChainUpdated() {
+        }
     };
 
-    void addListener(Listener* l) { listeners.add(l); }
-    void removeListener(Listener* l) { listeners.remove(l); }
+    void addListener(Listener *l) { listeners.add(l); }
+    void removeListener(Listener *l) { listeners.remove(l); }
+
+    void processBlock(juce::AudioSampleBuffer &b, juce::MidiBuffer &midi) {
+        processor.processBlock(b, midi);
+        ProxyParameter* p;
+
+        bool updated = false;
+        while (proxyParamsToUpdate.try_dequeue(p)) {
+            p->processQueuedTarget();
+            updated = true;
+        }
+
+        if (updated) clearWaitingProxiesFlag = true;
+    }
 
     /* Allocates - call from message thread */
     void setChain(GeneratorChain chain) {
+        if (clearWaitingProxiesFlag) {
+            proxiesWaitingToUpdate.clear();
+            clearWaitingProxiesFlag = false;
+        }
         updateModGenerators(chain);
 
         // hold onto existing processors until after we call cleanup old proxy params
@@ -63,8 +96,8 @@ public:
 
         currentChain = chain;
 
-        std::vector<std::shared_ptr<ModGenerator>> processorList;
-        for (auto& effect : currentChain) {
+        std::vector<std::shared_ptr<ModGenerator> > processorList;
+        for (auto &effect: currentChain) {
             processorList.push_back(effect.generator);
         }
         processor.queueChain(processorList);
@@ -73,18 +106,18 @@ public:
         listeners.call(&Listener::OnChainUpdated);
     }
 
-    Processor& getProcessor() { return processor; }
-    const GeneratorChain& getCurrentChain() { return currentChain; }
+    Processor &getProcessor() { return processor; }
+    const GeneratorChain &getCurrentChain() { return currentChain; }
 
-    void setProxyParameters(std::vector<ProxyParameter*>& p) {
+    void setProxyParameters(std::vector<ProxyParameter *> &p) {
         this->proxyParameters = &p;
     }
 
-    auto& getProxyParameterMap() { return mappedProxyParameters; }
+    auto &getProxyParameterMap() { return mappedProxyParameters; }
 
     choc::value::Value getState() {
         auto states = choc::value::createEmptyArray();
-        for (auto& effect : currentChain) {
+        for (auto &effect: currentChain) {
             auto state = choc::value::createObject("GeneratorState");
             state.addMember("GeneratorType", static_cast<int>(effect.type));
 
@@ -95,14 +128,14 @@ public:
         return states;
     }
 
-    void loadState(const choc::value::ValueView& state) {
+    void loadState(const choc::value::ValueView &state) {
         GeneratorChain chain;
-        int id=0;
-        for (const auto& effectState : state) {
+        int id = 0;
+        for (const auto &effectState: state) {
             auto effectType = static_cast<GeneratorType>(effectState["GeneratorType"].getWithDefault(0));
             auto processorState = Preset::fromState(effectState["ModGeneratorState"]);
 
-            Generator g {id, effectType};
+            Generator g{id, effectType};
             createNewModGenerator(g, ++id);
             g.generator->loadPreset(processorState);
             chain.push_back(g);
@@ -113,18 +146,21 @@ public:
 
 private:
     GeneratorChainProcessor processor;
-    ModMatrix& modMatrix;
+    ModMatrix &modMatrix;
 
     GeneratorChain currentChain;
 
-    std::set<ProxyParameter*> usedProxyParams;
-    std::vector<ProxyParameter*>* proxyParameters {nullptr};
-    std::map<int, std::map<std::string, ProxyParameter*>> mappedProxyParameters;
+    std::set<ProxyParameter *> usedProxyParams;
+    std::vector<ProxyParameter *> *proxyParameters{nullptr};
+    std::map<int, std::map<std::string, ProxyParameter *> > mappedProxyParameters;
+
+    EnvelopeFollowerSources& envSources;
+    MultichannelValueSources& midiSources;
 
     juce::ListenerList<Listener> listeners;
 
-    void cleanupDeletedGenerators(const GeneratorChain& oldChain) {
-        for (const auto& oldGenerator : oldChain) {
+    void cleanupDeletedGenerators(const GeneratorChain &oldChain) {
+        for (const auto &oldGenerator: oldChain) {
             auto id = oldGenerator.id;
             auto newVersion = std::ranges::find_if(currentChain,
                                                    [id](const Generator &g) {
@@ -140,25 +176,24 @@ private:
             oldGenerator.generator->getSource().clearConnections();
             oldGenerator.generator->getSource().deregister();
 
-            for (auto [uid, param] : mappedProxyParameters[id]) {
+            for (auto [uid, param]: mappedProxyParameters[id]) {
                 param->getModTarget().clearConnections();
                 param->getModTarget().deregister();
                 param->clearProxyTarget();
             }
             mappedProxyParameters.erase(id);
-
         }
     }
 
-    bool isIDInChain(const GeneratorChain& chain, int id) {
-        for (const auto& effect : chain) {
+    bool isIDInChain(const GeneratorChain &chain, int id) {
+        for (const auto &effect: chain) {
             if (effect.id == id) return true;
         }
         return false;
     }
 
-    std::pair<Generator*, int> findModGeneratorOfTypeFromCurrentChain(GeneratorType type, int startIndex) {
-        for (auto i = startIndex; i<currentChain.size(); i++) {
+    std::pair<Generator *, int> findModGeneratorOfTypeFromCurrentChain(GeneratorType type, int startIndex) {
+        for (auto i = startIndex; i < currentChain.size(); i++) {
             if (currentChain[i].type == type) {
                 return {&currentChain[i], i};
             }
@@ -168,21 +203,21 @@ private:
 
     static int getMaxIDInChain(const GeneratorChain &chain) {
         int maxID = 0;
-        for (auto& effect : chain) {
+        for (auto &effect: chain) {
             maxID = std::max(effect.id, maxID);
         }
         return maxID;
     }
 
-    static Generator* findGeneratorInChain(GeneratorChain& chain, const int id) {
-        for (auto& effect : chain) {
+    static Generator *findGeneratorInChain(GeneratorChain &chain, const int id) {
+        for (auto &effect: chain) {
             if (effect.id == id) return &effect;
         }
         return nullptr;
     }
 
     void updateModGenerators(GeneratorChain &chain) {
-        for (auto& effect : chain) {
+        for (auto &effect: chain) {
             if (effect.generator) continue;
             if (effect.id < 0) {
                 createNewModGenerator(effect, getMaxIDInChain(chain) + 1);
@@ -195,39 +230,41 @@ private:
         }
     }
 
-    void copyModGeneratorAndMoveProxyParams(Generator& newGenerator, Generator& oldGenerator) {
+    void copyModGeneratorAndMoveProxyParams(Generator &newGenerator, Generator &oldGenerator) {
         newGenerator.id = oldGenerator.id;
         newGenerator.generator = getModGeneratorForGeneratorType(oldGenerator.type, oldGenerator.id);
-        for (auto& param : newGenerator.generator->getPluginParameters()) {
+        for (auto &param: newGenerator.generator->getPluginParameters()) {
             auto oldParam = oldGenerator.generator->getParameter(param->getUID());
             param->setState(oldParam->getState());
 
             if (mappedProxyParameters[oldGenerator.id].contains(param->getUID())) {
                 auto proxy = mappedProxyParameters[oldGenerator.id][param->getUID()];
                 param->setModTarget(proxy->getModTarget());
-                proxy->setProxyTarget(*param);
+                proxy->queueProxyTarget(*param);
+                proxyParamsToUpdate.enqueue(proxy);
+                proxiesWaitingToUpdate.insert(proxy);
             }
         }
     }
 
-    void createNewModGenerator(Generator& e, int id) {
+    void createNewModGenerator(Generator &e, int id) {
         e.generator = getModGeneratorForGeneratorType(e.type, id);
         e.id = id;
         proxyMapGenerator(e);
     }
 
-    void proxyMapGenerator(Generator& e) {
+    void proxyMapGenerator(Generator &e) {
         // cleanup existing params
         if (mappedProxyParameters.contains(e.id)) {
             auto existingProxyMap = mappedProxyParameters[e.id];
-            for (auto [id, param] : existingProxyMap) {
+            for (auto [id, param]: existingProxyMap) {
                 param->clearProxyTarget();
             }
-            mappedProxyParameters[e.id] = std::map<std::string, ProxyParameter*>();
+            mappedProxyParameters[e.id] = std::map<std::string, ProxyParameter *>();
         }
 
 
-        for (auto& param : e.generator->getPluginParameters()) {
+        for (auto &param: e.generator->getPluginParameters()) {
             if (param->isInternal()) continue;
             auto proxyParam = getFreeProxyParameter();
             if (!proxyParam) {
@@ -235,20 +272,26 @@ private:
                 break;
             }
 
-            param->setModTarget(ModTarget("param-generator-"+std::to_string(e.id)+param->getUID()));
-            proxyParam->setProxyTarget(*param);
+            param->setModTarget(ModTarget("param-generator-" + std::to_string(e.id) + param->getUID()));
+
+            proxyParam->queueProxyTarget(*param);
+            proxyParamsToUpdate.enqueue(proxyParam);
+
+            proxiesWaitingToUpdate.insert(proxyParam);
             mappedProxyParameters[e.id][param->getUID()] = proxyParam;
         }
     }
 
-    ProxyParameter* getFreeProxyParameter() const {
+    ProxyParameter *getFreeProxyParameter() const {
         if (!proxyParameters) return nullptr;
-        for (auto param : *proxyParameters) {
+        for (auto param: *proxyParameters) {
             if (param->isProxySet()) continue;
             return param;
         }
         return nullptr;
     }
 
-
+    moodycamel::ReaderWriterQueue<ProxyParameter *> proxyParamsToUpdate{200};
+    std::unordered_set<ProxyParameter *> proxiesWaitingToUpdate;
+    std::atomic<bool> clearWaitingProxiesFlag{false};
 };
