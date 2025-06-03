@@ -80,6 +80,7 @@ public:
         for (auto& item : currentChain) {
             auto state = choc::value::createObject(getStateObjectName());
             state.addMember(getTypeFieldName(), static_cast<int>(item.type));
+            state.addMember("id", item.id);
 
             auto processorPreset = item.processor->createPreset("", true);
             state.addMember(getProcessorStateFieldName(), processorPreset.getState());
@@ -90,13 +91,13 @@ public:
 
     void loadState(const choc::value::ValueView& state) {
         Chain chain;
-        int id = 0;
         for (const auto& itemState : state) {
             auto itemType = static_cast<ItemType>(itemState[getTypeFieldName()].getWithDefault(0));
+            auto id = itemState["id"].getWithDefault(-1);
             auto processorState = Preset::fromState(itemState[getProcessorStateFieldName()]);
 
             Item item{id, itemType};
-            createNewProcessor(item, ++id);
+            createNewProcessor(item, id);
             item.processor->loadPreset(processorState);
             chain.push_back(item);
         }

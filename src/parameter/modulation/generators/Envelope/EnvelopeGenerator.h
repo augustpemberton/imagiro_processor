@@ -58,10 +58,10 @@ protected:
     void parameterChanged(Parameter *) override {
         for (int i=0; i<MAX_MOD_VOICES; i++) {
             envelope[i].setParameters({
-                attack->getProcessorValue(),
+                attack->getProcessorValue(i),
                 decay->getProcessorValue(),
-                sustain->getProcessorValue(),
-                release->getProcessorValue()
+                sustain->getProcessorValue(i),
+                release->getProcessorValue(i)
             });
         }
     }

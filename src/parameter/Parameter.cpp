@@ -30,7 +30,7 @@ namespace imagiro {
         this->value01 = convertTo0to1(this->getConfig()->defaultValue);
         this->valueSmoother.setCurrentAndTargetValue(getProcessorValue());
         this->modTarget.addListener(this);
-        startTimerHz(30);
+        startTimerHz(120);
     }
 
     Parameter::~Parameter() noexcept {
@@ -70,11 +70,6 @@ namespace imagiro {
             return conversionFunction(getModUserValue(voiceIndex));
 
         return getModUserValue(voiceIndex);
-    }
-
-    float Parameter::getProcessorValue(float userValue) const {
-        if (!getConfig()->processorConversionFunction) return userValue;
-        else return getConfig()->processorConversionFunction(userValue);
     }
 
     bool Parameter::getBoolValue() const {

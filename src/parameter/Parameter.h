@@ -59,7 +59,6 @@ namespace imagiro {
          * note - does not map back to value01
          */
         float getProcessorValue(int voiceIndex = -1) const;
-        float getProcessorValue(float userValue) const;
 
         /*!
          * @return the user value - what the user sees

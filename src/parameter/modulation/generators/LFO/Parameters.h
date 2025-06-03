@@ -38,6 +38,11 @@ phase:
   default: 0
   range: {min: 0, max: 1}
 
+pervoice:
+  name: "per voice"
+  type: toggle
+  default: 0
+
 retrigger:
   name: "retrigger"
   type: toggle

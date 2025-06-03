@@ -135,6 +135,8 @@ namespace imagiro {
 
     void ModMatrix::processMatrixUpdates() {
         bool updated = false;
+        std::unordered_set<TargetID> updatedTargets;
+
         std::pair<SourceID, std::shared_ptr<SourceValue>> newSource;
         while (newSourcesQueue.try_dequeue(newSource)) {
             updated = true;
@@ -159,8 +161,16 @@ namespace imagiro {
             sourcesToDeallocate.enqueue(sourceValues.at(deleteSource));
             sourceValues.erase(deleteSource);
 
-            erase_if(matrix, [deleteSource](const auto& entry) {
-                return entry.first.first == deleteSource;
+            erase_if(matrix, [&, deleteSource](const auto& entry) {
+                if (entry.first.first == deleteSource) {
+                    // reset any linked target values here, as if we are deleting the last connected source to that target,
+                    // it won't get recalculated to 0 as it's not in the matrix anymore
+                    if (targetValues.contains(entry.first.second)) {
+                        targetValues.at(entry.first.second)->value.resetValue();
+                        updatedTargets.insert(entry.first.second);
+                    }
+                    return true;
+                }
             });
         }
 
@@ -175,7 +185,13 @@ namespace imagiro {
             });
         }
 
+        // update matrix before calling target value updated listeners
+        // as we use the matrix to get the value after the listener is called,
+        // so the matrix needs to be up to date first
         if (updated) matrixUpdated();
+        for (const auto& target : updatedTargets) {
+            listeners.call(&Listener::OnTargetValueUpdated, target);
+        }
     }
 
     void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {

@@ -25,8 +25,19 @@ public:
     }
 
     void onVoiceStarted(size_t voiceIndex) override {
+        // if we haven't started this per-voice LFO yet, initialize it to a random phase
+        if (!activeVoices.contains(voiceIndex)) {
+            voiceLFOs[voiceIndex].setPhase(rand01());
+        }
+
         activeVoices.insert(voiceIndex);
-        voiceLFOs[voiceIndex].setPhase(0);
+
+        if (!retrigger->getBoolValue()) return;
+        if (perVoice->getBoolValue()) {
+            voiceLFOs[voiceIndex].setPhase(0);
+        } else {
+            lfo.setPhase(0);
+        }
     }
 
     void onVoiceFinished(const size_t voiceIndex) override {
@@ -44,9 +55,10 @@ protected:
     Parameter* frequency { getParameter("frequency") };
     Parameter* phase { getParameter("phase") };
     Parameter* retrigger { getParameter("retrigger") };
+    Parameter* perVoice { getParameter("pervoice") };
 
     float advanceGlobalValue(const int numSamples = 1) override {
-        if (retrigger->getProcessorValue()) return 0.f;
+        if (perVoice->getBoolValue()) return 0.f;
         lfo.setFrequency(frequency->getProcessorValue());
         lfo.setPhaseOffset(phase->getProcessorValue());
         auto depthVal = depth->getProcessorValue();
@@ -54,11 +66,11 @@ protected:
     }
 
     float advanceVoiceValue(size_t voiceIndex, int numSamples = 1) override {
-        if (!retrigger->getProcessorValue()) return 0.f;
+        if (!perVoice->getBoolValue()) return 0.f;
 
-        voiceLFOs[voiceIndex].setFrequency(frequency->getProcessorValue());
-        voiceLFOs[voiceIndex].setPhaseOffset(phase->getProcessorValue());
-        auto depthVal = depth->getProcessorValue();
+        voiceLFOs[voiceIndex].setFrequency(frequency->getProcessorValue((int)voiceIndex));
+        voiceLFOs[voiceIndex].setPhaseOffset(phase->getProcessorValue((int)voiceIndex));
+        auto depthVal = depth->getProcessorValue((int)voiceIndex);
         auto voiceVal = voiceLFOs[voiceIndex].process(numSamples) * depthVal;
 
         return voiceVal;
