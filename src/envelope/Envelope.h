@@ -25,7 +25,7 @@ public:
         adsr.setSustainLevel(params.sustain);
 
         adsr.setTargetRatioA(0.3f * params.attack);
-        adsr.setTargetRatioDR(0.001f);
+        adsr.setTargetRatioDR(0.02f);
     }
 
     void noteOn() {

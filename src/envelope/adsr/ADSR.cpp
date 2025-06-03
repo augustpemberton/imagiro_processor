@@ -31,7 +31,7 @@ ADSR::ADSR() {
     setReleaseRate(0);
     setSustainLevel(1.0);
     setTargetRatioA(0.3);
-    setTargetRatioDR(0.3);
+    setTargetRatioDR(0.001f);
 }
 
 void ADSR::setAttackRate(double rate) {
