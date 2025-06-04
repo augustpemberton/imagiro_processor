@@ -25,6 +25,9 @@ namespace imagiro {
             this->addParam(std::move(param));
         }
         dryBufferLatencyCompensationLine.reset();
+
+        stringData.addListener(this);
+
     }
 
     Processor::~Processor() {
@@ -33,6 +36,7 @@ namespace imagiro {
             if (p->getUID() == "mix") p->removeListener(this);
         }
         juce::AudioProcessor::removeListener(this);
+        stringData.removeListener(this);
     }
 
     void Processor::reset() {
@@ -75,6 +79,28 @@ namespace imagiro {
 
     const juce::Array<Parameter*>& Processor::getPluginParameters() { return allParameters; }
 
+    choc::value::Value Processor::handleMessage(const std::string& type, const choc::value::ValueView& data) {
+        if (type == "SetStringData") {
+            const auto key = data["key"].getWithDefault("");
+            const auto value = data["key"].getWithDefault("");
+            const auto saveInPreset = data["saveInPreset"].getWithDefault(false);
+
+            stringData.set(key, value, saveInPreset);
+            return {};
+        }
+
+        if (type == "test") {
+            auto response = choc::value::createObject("data");
+            response.setMember("hi", "mom");
+            return response;
+        }
+
+        return OnMessageReceived(type, data);
+    }
+
+    void Processor::emitMessage(const std::string &type, choc::value::Value data = {}) {
+        messageListeners.call(&MessageListener::OnProcessorMessage, *this, type, data);
+    }
 
     //================================================
     void Processor::addPresetListener(PresetListener *l) { presetListeners.add(l); }
@@ -301,7 +327,10 @@ namespace imagiro {
             p.addParamState(paramState);
         }
 
+
         p.setModMatrix(modMatrix.getSerializedMatrix());
+
+        p.getData().addMember("stringData", getStringData().getState(!isDAWSaveState));
 
         return p;
     }
@@ -319,6 +348,12 @@ namespace imagiro {
         }
 
         modMatrix.loadSerializedMatrix(preset.getModMatrix());
+
+        if (preset.getData().hasObjectMember("stringData")) {
+            stringData.loadState(preset.getData()["stringData"], !preset.isDAWSaveState());
+        } else if (preset.getData().hasObjectMember("webviewData")) { // compatibility
+            stringData.loadState(preset.getData()["webviewData"], !preset.isDAWSaveState());
+        }
 
         presetListeners.call([&](PresetListener &l) { l.OnPresetChange(preset); });
     }

@@ -22,3 +22,6 @@
 #include "src/processors/EffectChainProcessor.h"
 #include "src/parameter/ProxyParameter.h"
 #include "src/parameter/modulation/generators/GeneratorChainManager.h"
+
+#include "src/grain/GrainBuffer.h"
+#include "src/grain/Grain.h"

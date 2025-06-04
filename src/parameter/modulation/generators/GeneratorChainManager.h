@@ -46,6 +46,12 @@ public:
         return "";
     }
 
+    choc::value::Value getItemState (const Item& item) override {
+        auto state = ChainManager::getItemState(item);
+        state.addMember("modSourceID", item.processor->getSource().getID());
+        return state;
+    }
+
 protected:
     std::shared_ptr<ModGenerator> createProcessorForType(const GeneratorType type, const int id) const override {
         const std::string uid = "mod-" + std::to_string(id);
@@ -69,13 +75,7 @@ protected:
         item.processor->getSource().deregister();
     }
 
-    std::string getModTargetPrefix() const override { return "param-generator-"; }
-    std::string getStateObjectName() const override { return "GeneratorState"; }
-    std::string getTypeFieldName() const override { return "GeneratorType"; }
-    std::string getProcessorStateFieldName() const override { return "ModGeneratorState"; }
-    bool shouldClearWaitingProxiesOnSetChain() const override { return true; }
-    bool shouldPassInputToOutput() const override { return false; }
-    int getChannelCount() const override { return 0; }
+    std::string getPrefix() const override { return "generator"; }
 
 private:
     ModMatrix& modMatrix;

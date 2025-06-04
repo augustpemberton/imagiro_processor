@@ -37,9 +37,5 @@ protected:
         return nullptr;
     }
 
-    std::string getModTargetPrefix() const override { return "param-fx-"; }
-    std::string getStateObjectName() const override { return "EffectState"; }
-    std::string getTypeFieldName() const override { return "EffectType"; }
-    std::string getProcessorStateFieldName() const override { return "ProcessorState"; }
-    bool shouldPassInputToOutput() const override { return true; }
+    std::string getPrefix() const override { return "fx"; }
 };

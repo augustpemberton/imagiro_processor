@@ -41,11 +41,12 @@ void ADSR::setAttackRate(double rate) {
     attackCoef = calcCoef(rate, targetRatioA);
 
     // Recalculate attack base relative to current output
-    if (state == EnvState::env_attack) {
-        attackBase = (1.0 - output) * (1.0 - attackCoef);
-    } else {
-        attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
-    }}
+    // if (state == EnvState::env_attack) {
+    //     attackBase = (1.0 - output) * (1.0 - attackCoef);
+    // } else {
+    attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
+    // }
+}
 
 void ADSR::setDecayRate(double rate) {
     decayRate = rate;
@@ -56,7 +57,8 @@ void ADSR::setDecayRate(double rate) {
         decayBase = (sustainLevel - output) * (1.0 - decayCoef);
     } else {
         decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
-    }}
+    }
+}
 
 void ADSR::setReleaseRate(double rate) {
     releaseRate = rate;
@@ -67,7 +69,8 @@ void ADSR::setReleaseRate(double rate) {
         releaseBase = -output * (1.0 - releaseCoef);
     } else {
         releaseBase = -targetRatioDR * (1.0 - releaseCoef);
-    }}
+    }
+}
 
 double ADSR::calcCoef(double rate, double targetRatio) {
     return (rate <= 0) ? 0.0 : exp(-log((1.0 + targetRatio) / targetRatio) / rate);
@@ -87,7 +90,8 @@ void ADSR::setSustainLevel(double level) {
         decayBase = (sustainLevel - output) * (1.0 - decayCoef);
     } else {
         decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
-    }}
+    }
+}
 
 void ADSR::setTargetRatioA(double targetRatio) {
     if (targetRatio < 0.000000001)
@@ -96,11 +100,11 @@ void ADSR::setTargetRatioA(double targetRatio) {
     attackCoef = calcCoef(attackRate, targetRatioA);
 
     // Update attack base considering current state
-    if (state == EnvState::env_attack) {
-        attackBase = (1.0 - output) * (1.0 - attackCoef);
-    } else {
+    // if (state == EnvState::env_attack) {
+    //     attackBase = (1.0 - output) * (1.0 - attackCoef);
+    // } else {
         attackBase = (1.0 + targetRatioA) * (1.0 - attackCoef);
-    }
+    // }
 }
 
 void ADSR::setTargetRatioDR(double targetRatio) {

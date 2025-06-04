@@ -7,6 +7,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 #include "ProcessorBase.h"
+#include "StringData.h"
+#include "StringData.h"
 #include "parameter/Parameter.h"
 #include "preset/Preset.h"
 #include "config/AuthorizationManager.h"
@@ -17,7 +19,7 @@
 class Preset;
 
 namespace imagiro {
-    class Processor : public ProcessorBase, public Parameter::Listener, private juce::AudioProcessorListener {
+    class Processor : public ProcessorBase, StringData::Listener, public Parameter::Listener, private juce::AudioProcessorListener {
     public:
         Processor(juce::String parametersYAMLString,
                   const ParameterLoader& loader = ParameterLoader(),
@@ -52,6 +54,20 @@ namespace imagiro {
         Parameter* addParam (std::unique_ptr<Parameter> p);
         Parameter* getParameter (const juce::String& uid);
         const juce::Array<Parameter*>& getPluginParameters();
+
+        // =================================================================
+        choc::value::Value handleMessage(const std::string& type, const choc::value::ValueView& data);
+        virtual choc::value::Value OnMessageReceived(std::string type, const choc::value::ValueView& data) {return {};}
+
+        struct MessageListener {
+            virtual ~MessageListener() = default;
+            virtual void OnProcessorMessage(Processor& processor, const std::string& type, const choc::value::ValueView& data) {}
+        };
+
+        void addMessageListener(MessageListener* l) {messageListeners.add(l);}
+        void removeMessageListener(MessageListener* l) {messageListeners.remove(l);}
+
+        StringData& getStringData() { return stringData; }
 
         // =================================================================
         struct PresetListener {
@@ -109,6 +125,7 @@ namespace imagiro {
 
     protected:
         juce::SharedResourcePointer<Resources> resources;
+        StringData stringData;
 
         bool firstBufferFlag {true};
 
@@ -140,6 +157,9 @@ namespace imagiro {
         std::atomic<float> cpuLoad;
 
         ModMatrix modMatrix;
+
+        void emitMessage(const std::string& type, choc::value::Value data);
+        juce::ListenerList<MessageListener> messageListeners;
 
     private:
         void audioProcessorChanged(AudioProcessor *processor, const juce::AudioProcessorListener::ChangeDetails &details) override;

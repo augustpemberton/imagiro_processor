@@ -13,7 +13,7 @@ public:
     { }
 
     ~ProxyParameter() override {
-        if (proxyTarget) proxyTarget.load()->removeListener(this);
+        if (proxyTarget != nullptr) proxyTarget.load()->removeListener(this);
     }
 
     bool isProxySet() const { return proxyTarget != nullptr || queuedProxyTarget != nullptr; }

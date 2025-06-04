@@ -12,7 +12,7 @@ gain:
   name: "gain"
   type: db
   default: 0
-  range: {min: -60, max: 12, step: 0.1}
+  range: {min: -60, max: 24, step: 0.1}
 
 width:
   name: "width"

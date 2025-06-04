@@ -37,6 +37,7 @@ choc::value::Value Preset::getUIState() const {
     for (const auto& p: paramStates) {
         paramStatesValue.addArrayElement(p.getState(isDAWSaveState()));
     }
+
     state.addMember("paramStates", paramStatesValue);
     state.addMember("modMatrix", serializedModMatrix.getState());
 

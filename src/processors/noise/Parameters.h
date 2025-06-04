@@ -11,7 +11,6 @@ bypass:
 
 type:
     name: "type"
-    internal: true
     type: choice
     choices: ['white', 'file']
 
@@ -25,7 +24,7 @@ gain:
   name: "gain"
   type: db
   default: -15
-  range: {min: -60, max: 12, step: 0.1}
+  range: {min: -60, max: 24, step: 0.1}
 
 lowpass:
     name: "lp"

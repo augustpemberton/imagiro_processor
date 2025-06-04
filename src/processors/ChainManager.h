@@ -25,6 +25,8 @@ public:
     struct Listener {
         virtual ~Listener() = default;
         virtual void OnChainUpdated() {}
+        virtual void OnItemAdded(const Item& item) {}
+        virtual void OnItemRemoved(const Item& item) {}
     };
 
     void addListener(Listener* l) { listeners.add(l); }
@@ -43,18 +45,32 @@ public:
         if (updated) clearWaitingProxiesFlag = true;
     }
 
+    Item* getItem(int id) {
+        if (!itemsByID.contains(id)) return nullptr;
+        return itemsByID[id];
+    }
+
     /* Allocates - call from message thread */
     void setChain(Chain chain) {
         if (clearWaitingProxiesFlag) {
             proxiesWaitingToUpdate.clear();
             clearWaitingProxiesFlag = false;
         }
+
+        for (const auto& item : currentChain) {
+            listeners.call(&Listener::OnItemRemoved, item);
+        }
+
         updateProcessors(chain);
 
-        // hold onto existing processors until after we call cleanup old proxy params
         auto oldChain = currentChain;
-
         currentChain = chain;
+
+        itemsByID.clear();
+        for (auto& item : currentChain) {
+            listeners.call(&Listener::OnItemAdded, item);
+            itemsByID.insert({item.id, &item});
+        }
 
         std::vector<std::shared_ptr<Processor>> processorList;
         for (auto& item : currentChain) {
@@ -78,12 +94,12 @@ public:
     choc::value::Value getState() {
         auto states = choc::value::createEmptyArray();
         for (auto& item : currentChain) {
-            auto state = choc::value::createObject(getStateObjectName());
-            state.addMember(getTypeFieldName(), static_cast<int>(item.type));
+            auto state = choc::value::createObject("ChainItem");
+            state.addMember("type", static_cast<int>(item.type));
             state.addMember("id", item.id);
 
             auto processorPreset = item.processor->createPreset("", true);
-            state.addMember(getProcessorStateFieldName(), processorPreset.getState());
+            state.addMember("ProcessorState", processorPreset.getState());
             states.addArrayElement(state);
         }
         return states;
@@ -92,12 +108,12 @@ public:
     void loadState(const choc::value::ValueView& state) {
         Chain chain;
         for (const auto& itemState : state) {
-            auto itemType = static_cast<ItemType>(itemState[getTypeFieldName()].getWithDefault(0));
+            auto itemType = static_cast<ItemType>(itemState["type"].getWithDefault(0));
             auto id = itemState["id"].getWithDefault(-1);
-            auto processorState = Preset::fromState(itemState[getProcessorStateFieldName()]);
+            auto processorState = Preset::fromState(itemState["ProcessorState"]);
 
             Item item{id, itemType};
-            createNewProcessor(item, id);
+            createAndMapNewProcessor(item, id);
             item.processor->loadPreset(processorState);
             chain.push_back(item);
         }
@@ -105,17 +121,20 @@ public:
         setChain(chain);
     }
 
+    virtual std::string getPrefix() const = 0;
+
+    virtual choc::value::Value getItemState(const Item& item) {
+        auto chainValue = choc::value::createObject("item");
+        chainValue.setMember("type", static_cast<int>(item.type));
+        chainValue.setMember("id", item.id);
+        return chainValue;
+    }
+
 protected:
     // Pure virtual methods to be implemented by derived classes
     virtual std::shared_ptr<ProcessorType> createProcessorForType(ItemType type, int id) const = 0;
-    virtual std::string getModTargetPrefix() const = 0;
-    virtual std::string getStateObjectName() const = 0;
-    virtual std::string getTypeFieldName() const = 0;
-    virtual std::string getProcessorStateFieldName() const = 0;
     virtual void performTypeSpecificCleanup(const Item& item) {}
-    virtual bool shouldClearWaitingProxiesOnSetChain() const { return false; }
-    virtual bool shouldPassInputToOutput() const { return true; }
-    virtual int getChannelCount() const { return 0; }
+
 
     bool fadeBetweenChains;
 
@@ -131,6 +150,7 @@ private:
     std::set<ProxyParameter*> usedProxyParams;
     std::vector<ProxyParameter*>* proxyParameters{nullptr};
     std::map<int, std::map<std::string, ProxyParameter*>> mappedProxyParameters;
+    std::map<int, Item*> itemsByID;
 
     juce::ListenerList<Listener> listeners;
 
@@ -142,17 +162,17 @@ private:
                                                        return item.id == id;
                                                    });
 
-            // if the new version has that id we aren't deleting it
+            // if the new version has that processor we aren't deleting it
             if (newVersion != currentChain.end()) continue;
 
             // Perform type-specific cleanup
             performTypeSpecificCleanup(oldItem);
 
-            for (auto [uid, param] : mappedProxyParameters[id]) {
+            for (auto [uid, param] : mappedProxyParameters[oldItem.id]) {
                 param->getModTarget().deregister();
                 param->clearProxyTarget();
             }
-            mappedProxyParameters.erase(id);
+            mappedProxyParameters.erase(oldItem.id);
         }
     }
 
@@ -191,7 +211,7 @@ private:
         for (auto& item : chain) {
             if (item.processor) continue;
             if (item.id < 0) {
-                createNewProcessor(item, getMaxIDInChain(chain) + 1);
+                createAndMapNewProcessor(item, getMaxIDInChain(chain) + 1);
                 continue;
             }
 
@@ -203,16 +223,18 @@ private:
                     currentItem->processor.reset();
                 }
             }
-            else createNewProcessor(item, getMaxIDInChain(chain) + 1);
+            else createAndMapNewProcessor(item, getMaxIDInChain(chain) + 1);
         }
     }
 
     void copyProcessorAndMoveProxyParams(Item& newItem, Item& oldItem) {
-        newItem.processor = createProcessorForType(oldItem.type, oldItem.id);
+        newItem.processor = createNewProcessor(newItem.type, oldItem.id);
         newItem.id = oldItem.id;
+
+        newItem.processor->loadPreset(oldItem.processor->createPreset("",true));
         for (auto& param : newItem.processor->getPluginParameters()) {
             auto oldParam = oldItem.processor->getParameter(param->getUID());
-            param->setState(oldParam->getState());
+            // param->setState(oldParam->getState());
 
             if (mappedProxyParameters[oldItem.id].contains(param->getUID())) {
                 auto proxy = mappedProxyParameters[oldItem.id][param->getUID()];
@@ -224,10 +246,15 @@ private:
         }
     }
 
-    void createNewProcessor(Item& item, int id) {
-        item.processor = createProcessorForType(item.type, id);
+    void createAndMapNewProcessor(Item& item, int id) {
+        item.processor = createNewProcessor(item.type, id);
         item.id = id;
         proxyMapItem(item);
+    }
+
+    std::shared_ptr<ProcessorType> createNewProcessor(ItemType& type, int id) {
+        const auto processor = createProcessorForType(type, id);
+        return processor;
     }
 
     void proxyMapItem(Item& item) {
@@ -248,7 +275,7 @@ private:
                 break;
             }
 
-            param->setModTarget(ModTarget(getModTargetPrefix() + std::to_string(item.id) + param->getUID()));
+            param->setModTarget(ModTarget("param" + getPrefix() + std::to_string(item.id) + param->getUID()));
             proxyParam->queueProxyTarget(*param);
             proxyParamsToUpdate.enqueue(proxyParam);
             proxiesWaitingToUpdate.insert(proxyParam);

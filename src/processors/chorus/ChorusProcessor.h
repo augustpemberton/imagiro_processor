@@ -55,9 +55,13 @@ public:
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
         for (auto s = 0; s < buffer.getNumSamples(); s++) {
-            const auto depthSamples = depthParam->getSmoothedValue(s) * maxDelayDepthSamples;
+            auto depthSamples = depthParam->getSmoothedValue(s) * maxDelayDepthSamples;
             const auto rate = rateParam->getSmoothedValue(s);
             const auto feedback = feedbackParam->getSmoothedValue(s);
+
+            // normalize depth to rate
+            // otherwise high rate has higher depth, as we are moving the delay line faster
+            depthSamples /= rate;
 
             const int numVoices = static_cast<int>(voicesParam->getSmoothedValue(s) + 0.5f);
             
