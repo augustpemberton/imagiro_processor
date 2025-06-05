@@ -58,6 +58,8 @@ public:
     bool isPlaying() const { return playing; }
 
     struct Listener {
+        virtual ~Listener() = default;
+
         virtual void OnGrainStarted (Grain&) {}
         virtual void OnGrainFinished(Grain&) {}
     };

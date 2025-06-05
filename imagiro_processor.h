@@ -25,3 +25,4 @@
 
 #include "src/grain/GrainBuffer.h"
 #include "src/grain/Grain.h"
+#include "src/dsp/filter/CascadedOnePoleFilter.h"

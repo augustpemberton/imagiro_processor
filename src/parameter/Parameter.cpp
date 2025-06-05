@@ -343,6 +343,11 @@ namespace imagiro {
     }
 
     void Parameter::startBlock(int samples) {
+        // if we didn't generate buffer last block, move smoother along
+        if (!hasGeneratedSmoothBufferThisBlock) {
+            valueSmoother.skip(samplesThisBlock);
+        }
+
         samplesThisBlock = samples;
         hasGeneratedSmoothBufferThisBlock = false;
     }
