@@ -71,7 +71,6 @@ namespace imagiro {
          */
         float getValue() const override;
 
-        int getChoiceIndexValue(int voiceIndex = -1) const;
         bool getBoolValue() const;
 
         float getModValue(int voiceIndex = -1) const;

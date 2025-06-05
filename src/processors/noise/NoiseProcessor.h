@@ -112,7 +112,7 @@ public:
     }
 
     void fillNoiseBuffer(const int numSamples) {
-        if (typeParam->getChoiceIndexValue() == 0) {
+        if (typeParam->getProcessorValue() == 0) {
             for (auto c = 0; c < noiseBuffer.getNumChannels(); c++) {
                 for (auto s = 0; s < numSamples; s++) {
                     const auto noiseSample = randomInRange(-0.1, 0.1);
@@ -133,7 +133,7 @@ public:
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
         // if we're on file mode but no file loaded, don't do anything
-        if (typeParam->getProcessorValue() > 0 &&  grainBuffer.getBuffer()->getNumSamples() == 0) {
+        if (typeParam->getProcessorValue() == 1 &&  grainBuffer.getBuffer()->getNumSamples() == 0) {
             return;
         }
 

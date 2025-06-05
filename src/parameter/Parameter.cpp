@@ -27,8 +27,8 @@ namespace imagiro {
               modTarget("param-" + uid, name),
               jitterAmount(jitter)
     {
-        this->value01 = convertTo0to1(this->getConfig()->defaultValue);
-        this->valueSmoother.setCurrentAndTargetValue(getProcessorValue());
+        this->value01 = convertTo0to1(this->Parameter::getConfig()->defaultValue);
+        this->valueSmoother.setCurrentAndTargetValue(getProcessorValue(-1));
         this->modTarget.addListener(this);
         startTimerHz(120);
     }
@@ -67,7 +67,7 @@ namespace imagiro {
 
     float Parameter::getProcessorValue(int voiceIndex) const {
         if (const auto conversionFunction = getConfig()->processorConversionFunction)
-            return conversionFunction(getModUserValue(voiceIndex));
+            return conversionFunction(getModUserValue(voiceIndex), this);
 
         return getModUserValue(voiceIndex);
     }
@@ -199,14 +199,6 @@ namespace imagiro {
         return juce::jlimit(0.f, 1.f, value01.load());
     }
 
-    int Parameter::getChoiceIndexValue(int voiceIndex) const {
-        const auto& choices = getConfig()->choices;
-        if (choices.size() <= 1) return 0;
-
-        const auto val = getProcessorValue(voiceIndex);
-        return static_cast<int>(val * (choices.size()-1));
-    }
-
     float Parameter::getDefaultValue() const {
         return getConfig()->range.convertTo0to1 (getConfig()->defaultValue);
     }
@@ -245,7 +237,6 @@ namespace imagiro {
     float Parameter::getValueForText (const juce::String& text) const {
         if (getConfig()->valueFunction) return getConfig()->valueFunction(text, this);
         return getConfig()->range.convertTo0to1 (text.getFloatValue());
-
     }
 
     bool Parameter::isOrientationInverted() const { return false; }
@@ -255,8 +246,7 @@ namespace imagiro {
     }
 
     float Parameter::convertTo0to1 (float v) const {
-        return getConfig()->range.convertTo0to1(
-                getConfig()->range.getRange().clipValue(v));
+        return getConfig()->range.convertTo0to1(getConfig()->range.getRange().clipValue(v));
     }
 
     float Parameter::convertFrom0to1 (float v, bool snapToLegalValue) const {
@@ -277,10 +267,6 @@ namespace imagiro {
     const ParameterConfig* Parameter::getConfig() const {
         return &configs[configIndex];
     }
-
-    // ParameterConfig* Parameter::getConfig() {
-    //     return &configs[configIndex];
-    // }
 
     void Parameter::setConfig(int index) {
         if (index == static_cast<int>(configIndex)) return;
@@ -306,9 +292,6 @@ namespace imagiro {
             valueSmoother.reset(sampleRate, smoothTimeSeconds);
             smootherNeedsUpdate = false;
         }
-
-        auto target = getProcessorValue();
-        valueSmoother.setTargetValue(target);
 
         auto blockStart = valueSmoother.getCurrentValue();
         valueSmoother.skip(samples);
@@ -344,6 +327,9 @@ namespace imagiro {
 
     void Parameter::startBlock(int samples) {
         // if we didn't generate buffer last block, move smoother along
+        auto target = getProcessorValue(-1);
+        valueSmoother.setTargetValue(target);
+
         if (!hasGeneratedSmoothBufferThisBlock) {
             valueSmoother.skip(samplesThisBlock);
         }

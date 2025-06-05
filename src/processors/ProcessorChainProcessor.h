@@ -61,7 +61,7 @@ private:
     std::optional<ProcessorChain> oldChain;
 
     std::atomic<bool> fadingOut { false };
-    juce::SmoothedValue<float> chainFadeGain;
+    juce::SmoothedValue<float> chainFadeGain {1};
 
     moodycamel::ConcurrentQueue<ProcessorChain> chainsToPrepare{4};
     moodycamel::ReaderWriterQueue<ProcessorChain> preparedChains {4};

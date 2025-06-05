@@ -75,7 +75,7 @@ namespace imagiro {
         } else if (type == "db") {
             config.textFunction = DisplayFunctions::dbDisplay;
             config.valueFunction = DisplayFunctions::dbInput;
-            config.processorConversionFunction = [](float val) {
+            config.processorConversionFunction = [](float val, const Parameter*) {
                 if (val <= -60) return 0.f;
                 return juce::Decibels::decibelsToGain(val);
             };
@@ -110,7 +110,7 @@ namespace imagiro {
             config.textFunction = DisplayFunctions::syncDisplay;
             config.valueFunction = DisplayFunctions::syncInput;
             config.processorValueChangesWithBPM = true;
-            config.processorConversionFunction = [&, syncType](float proportion) {
+            config.processorConversionFunction = [&, syncType](float proportion, const Parameter*) {
                 auto v = (processor.getSyncTimeSeconds(proportion));
                 return (syncType == "inverse") ? 1.f / v : v;
             };
@@ -123,7 +123,7 @@ namespace imagiro {
             };
 
             config.processorValueChangesWithBPM = true;
-            config.processorConversionFunction = [&, syncType](float proportion) {
+            config.processorConversionFunction = [&, syncType](float proportion, const Parameter*) {
                 auto v = (processor.getSyncTimeSeconds(proportion) * (3.f/2.f));
                 return (syncType == "inverse") ? 1.f / v : v;
             };
@@ -136,17 +136,17 @@ namespace imagiro {
             };
 
             config.processorValueChangesWithBPM = true;
-            config.processorConversionFunction = [&, syncType](float proportion) {
+            config.processorConversionFunction = [&, syncType](float proportion, const Parameter*) {
                 auto v = (processor.getSyncTimeSeconds(proportion) * (2.f/3.f));
                 return (syncType == "inverse") ? 1.f / v : v;
             };
         } else if (type == "choice") {
-            config.textFunction = [](const float, const Parameter* param)->DisplayValue {
+            config.textFunction = [](const float v, const Parameter* param)->DisplayValue {
                 const auto choices = param->getConfig()->choices;
                 if (choices.size() == 0) return {"none"};
                 if (choices.size() == 1) return {choices[0]};
 
-                const auto index = static_cast<size_t>((choices.size()-1) * param->getValue());
+                const auto index = static_cast<size_t>((choices.size()-1) * v);
                 if (index >= choices.size()) { return {"none"}; }
 
                 return {choices[index]};
@@ -157,7 +157,13 @@ namespace imagiro {
             };
 
             auto choices = p["choices"].as<std::vector<std::string>>();
-            config.range = {0, std::max(1.f, static_cast<float>(choices.size())-1), 0};
+            config.range = {0, 1.f, 0};
+
+            config.processorConversionFunction = [&](float v, const Parameter* pa) {
+                const auto c = pa->getConfig()->choices;
+                return static_cast<int>(v * (c.size()-1));
+            };
+
             config.choices = choices;
         } else if (type == "ratio") {
             auto ratioParams = p["ratio"];
@@ -183,7 +189,7 @@ namespace imagiro {
                 return ratio[0].getFloatValue() / ratio[1].getFloatValue();
             };
 
-            config.processorConversionFunction = [&, ratioParam](float v) {
+            config.processorConversionFunction = [&, ratioParam](float v, const Parameter*) {
                 return ratioParam->getValue() * v;
             };
         }
