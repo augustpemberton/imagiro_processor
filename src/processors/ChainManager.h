@@ -131,16 +131,13 @@ public:
     }
 
 protected:
+    ChainManager(const unsigned int numChannels)
+        : processorGraph(numChannels) {
+    }
+
     // Pure virtual methods to be implemented by derived classes
     virtual std::shared_ptr<ProcessorType> createProcessorForType(ItemType type, int id) const = 0;
     virtual void performTypeSpecificCleanup(const Item& item) {}
-
-
-    bool fadeBetweenChains;
-
-    ChainManager(const bool fadeBetweenChains, const unsigned int numChannels)
-        : fadeBetweenChains(fadeBetweenChains), processorGraph(fadeBetweenChains, numChannels) {
-    }
 
 private:
     ProcessorChainProcessor processorGraph;
@@ -215,13 +212,9 @@ private:
                 continue;
             }
 
-            auto currentItem = findItemInChain(currentChain, item.id);
-            if (currentItem) {
-                if (fadeBetweenChains) copyProcessorAndMoveProxyParams(item, *currentItem);
-                else {
-                    item.processor = currentItem->processor;
-                    currentItem->processor.reset();
-                }
+            if (auto currentItem = findItemInChain(currentChain, item.id)) {
+                item.processor = currentItem->processor;
+                currentItem->processor.reset();
             }
             else createAndMapNewProcessor(item, getMaxIDInChain(chain) + 1);
         }

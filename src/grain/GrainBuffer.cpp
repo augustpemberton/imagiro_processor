@@ -11,6 +11,7 @@ GrainBuffer::GrainBuffer() {
 }
 
 GrainBuffer::~GrainBuffer() {
+    stopTimer();
     fileLoader.removeListener(this);
 }
 

@@ -199,6 +199,14 @@ namespace imagiro {
         return juce::jlimit(0.f, 1.f, value01.load());
     }
 
+    int Parameter::getChoiceIndexValue(int voiceIndex) const {
+        const auto& choices = getConfig()->choices;
+        if (choices.size() <= 1) return 0;
+
+        const auto val = getProcessorValue(voiceIndex);
+        return static_cast<int>(val * (choices.size()-1));
+    }
+
     float Parameter::getDefaultValue() const {
         return getConfig()->range.convertTo0to1 (getConfig()->defaultValue);
     }

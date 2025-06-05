@@ -21,7 +21,7 @@ enum class EffectType {
 class EffectChainProcessor : public ChainManager<EffectType, Processor> {
 public:
     EffectChainProcessor()
-        : ChainManager(true, 2) {
+        : ChainManager(2) {
     }
 
 protected:

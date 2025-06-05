@@ -11,3 +11,5 @@
 #include "src/note/env-shape/SegmentCurve.cpp"
 #include "src/envelope/adsr/ADSR.cpp"
 #include "src/parameter/modulation/ModMatrix.cpp"
+#include "src/grain/Grain.cpp"
+#include "src/grain/GrainBuffer.cpp"

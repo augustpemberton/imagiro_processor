@@ -10,9 +10,8 @@ class ProcessorChainProcessor : public Processor, juce::Timer {
 public:
     using ProcessorChain = std::vector<std::shared_ptr<Processor>>;
 
-    ProcessorChainProcessor(bool fadeBetweenChains, unsigned int numChannels = 2)
-        : Processor("", ParameterLoader(), getProperties(numChannels)),
-          fadeBetweenChains(fadeBetweenChains) {
+    ProcessorChainProcessor(unsigned int numChannels = 2)
+        : Processor("", ParameterLoader(), getProperties(numChannels)) {
         startTimerHz(20);
     }
 
@@ -35,88 +34,53 @@ public:
         for (const auto &processor: activeChain) {
             prepareProcessor(*processor);
         }
-        chainFadePerSample = static_cast<float>(1 / (chainFadeTime * getSampleRate()));
-        dryCopy.setSize(getTotalNumInputChannels(), blockSize);
+
+        chainFadeGain.reset(sampleRate, 0.1);
     }
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
-        bool newChainAvailable = false;
-        ProcessorChain newChain;
-        while (preparedChains.try_dequeue(newChain)) { newChainAvailable = true; }
-
-        if (newChainAvailable) {
-            if (fadeBetweenChains) {
-                oldChain = activeChain;
-                activeChain = newChain;
-                chainFadeRatio = 1;
-            } else {
-                chainsToDeallocate.enqueue(activeChain);
-                activeChain = newChain;
-            }
-        }
-
-        if (oldChain.has_value()) {
-            // copy dry buffer
-            for (auto c = 0; c < buffer.getNumChannels(); c++) {
-                dryCopy.copyFrom(c, 0,
-                                 buffer.getReadPointer(c), buffer.getNumSamples());
-            }
-        }
-
         for (const auto &processor: activeChain) {
             renderProcessor(*processor, buffer, midiMessages);
         }
 
-        if (oldChain.has_value()) {
-            // render old chain
-            for (const auto &processor: *oldChain) {
-                renderProcessor(*processor, dryCopy, midiMessages);
-            }
+        chainFadeGain.applyGain(buffer, buffer.getNumSamples());
 
-            // mix old chain with new chain
-            auto startRatio = chainFadeRatio;
-            auto fadeThisBlock = chainFadePerSample * buffer.getNumSamples();
-            chainFadeRatio = std::max(0.f, chainFadeRatio - fadeThisBlock);
+        if (fadingOut && chainFadeGain.getTargetValue() > 0.f) chainFadeGain.setTargetValue(0.f);
 
-            for (auto c = 0; c < buffer.getNumChannels(); c++) {
-                buffer.applyGainRamp(c, 0, buffer.getNumSamples(),
-                                     1 - startRatio, 1 - chainFadeRatio);
-                buffer.addFromWithRamp(c, 0,
-                                       dryCopy.getReadPointer(c), buffer.getNumSamples(),
-                                       startRatio, chainFadeRatio);
-            }
-
-            // push to fifo so we deallocate the old chain on the message thread
-            if (almostEqual(chainFadeRatio, 0.f)) {
-                chainsToDeallocate.enqueue(*oldChain);
-                oldChain.reset();
-            }
+        // if fade is finished, swap out chains
+        if (fadingOut && !chainFadeGain.isSmoothing() && chainFadeGain.getTargetValue() == 0.f) {
+            chainsToDeallocate.enqueue(activeChain);
+            while (preparedChains.try_dequeue(activeChain)) { }
+            chainFadeGain.setTargetValue(1.f);
+            fadingOut = false;
         }
     }
 
 private:
     ProcessorChain activeChain;
     std::optional<ProcessorChain> oldChain;
-    float chainFadeRatio{1};
-    float chainFadePerSample{0};
 
-    float chainFadeTime{0.02};
-
-    bool fadeBetweenChains{false};
+    std::atomic<bool> fadingOut { false };
+    juce::SmoothedValue<float> chainFadeGain;
 
     moodycamel::ConcurrentQueue<ProcessorChain> chainsToPrepare{4};
-    moodycamel::ReaderWriterQueue<ProcessorChain, 4> preparedChains;
+    moodycamel::ReaderWriterQueue<ProcessorChain> preparedChains {4};
 
-    juce::AudioSampleBuffer dryCopy;
-    moodycamel::ReaderWriterQueue<ProcessorChain, 4> chainsToDeallocate;
+    moodycamel::ReaderWriterQueue<ProcessorChain> chainsToDeallocate {4};
 
     void timerCallback() override {
         ProcessorChain tempChain;
         while (chainsToPrepare.try_dequeue(tempChain)) {
             for (auto &processor: tempChain) {
-                prepareProcessor(*processor);
+                // only prepare processor if it's not already in the current chain
+                // otherwise it's already prepared! and might click during fadeout
+                auto instanceInCurrentChain = std::ranges::find(activeChain, processor);
+                if (instanceInCurrentChain == activeChain.end()) {
+                    prepareProcessor(*processor);
+                }
             }
 
+            fadingOut = true;
             preparedChains.enqueue(tempChain);
         }
 
@@ -135,7 +99,7 @@ private:
         p.prepareToPlay(lastSampleRate, getBlockSize());
     }
 
-    void renderProcessor(Processor &p, juce::AudioSampleBuffer &buffer, juce::MidiBuffer &m) {
+    void renderProcessor(Processor &p, juce::AudioSampleBuffer &buffer, juce::MidiBuffer &m) const {
         p.setPlayHead(getPlayHead());
         p.processBlock(buffer, m);
     }

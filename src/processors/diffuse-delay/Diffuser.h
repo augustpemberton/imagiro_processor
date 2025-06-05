@@ -9,11 +9,11 @@
 
 using namespace imagiro;
 
-inline double randomInRange(double low, double high) {
+inline double randomInRange(const double low, const double high) {
     static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> dist(low, high);
-    return dist(gen);
+    static std::minstd_rand gen(rd());
+    static std::uniform_real_distribution<> dist;
+    return dist(gen, std::uniform_real_distribution<>::param_type(low, high));
 }
 
 template<int channels=8>

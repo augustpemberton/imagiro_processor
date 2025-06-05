@@ -111,11 +111,11 @@ public:
         grain.prepareToPlay(sampleRate, samplesPerBlock);
     }
 
-    void fillNoiseBuffer(int numSamples) {
-        if (typeParam->getProcessorValue() == 0) {
+    void fillNoiseBuffer(const int numSamples) {
+        if (typeParam->getChoiceIndexValue() == 0) {
             for (auto c = 0; c < noiseBuffer.getNumChannels(); c++) {
                 for (auto s = 0; s < numSamples; s++) {
-                    const auto noiseSample = rand01() * 2 - 1;
+                    const auto noiseSample = randomInRange(-0.1, 0.1);
                     noiseBuffer.setSample(c, s, noiseSample);
                 }
             }
@@ -145,6 +145,7 @@ public:
         fillNoiseBuffer(buffer.getNumSamples());
         filterNoiseBuffer();
 
+        static constexpr auto noiseNormalizationGain = 2.5;
         for (auto s = 0; s < buffer.getNumSamples(); s++) {
             float monoSample {0};
             float gateValue = gateGain.getNextValue();
@@ -155,6 +156,7 @@ public:
                 auto noiseSample = noiseBuffer.getSample(c, s);
                 noiseSample *= gateValue;
                 noiseSample *= gainParam->getSmoothedValue(s);
+                noiseSample *= noiseNormalizationGain;
 
                 auto outputSample = drySample + noiseSample;
                 buffer.setSample(c, s, outputSample);

@@ -11,25 +11,30 @@ struct LoopSettings {
     float loopCrossfade = 0;
     bool loopActive = false;
 
-    int getLoopStartSample(int bufferLength) const {
-        return loopStart * bufferLength + INTERP_PRE_SAMPLES;
+    int getLoopStartSample(const int bufferLength) const {
+        return std::max(static_cast<int>(loopStart * bufferLength), INTERP_PRE_SAMPLES);
     }
 
-    int getLoopLengthSamples(int bufferLength) const {
-        const int len = loopLength * bufferLength - INTERP_POST_SAMPLES - INTERP_PRE_SAMPLES;
-        return std::max(5, len);
+    int getLoopLengthSamples(const int bufferLength) const {
+        const int len = loopLength * bufferLength;
+        const auto maxLength = bufferLength - getLoopStartSample(bufferLength) - INTERP_POST_SAMPLES;
+        return std::clamp(len, 4, maxLength);
     }
 
-    int getLoopEndSample(int bufferLength) const {
+    int getLoopEndSample(const int bufferLength) const {
         return getLoopStartSample(bufferLength) + getLoopLengthSamples(bufferLength);
     }
 
-    int getCrossfadeSamples(int bufferLength) const {
+    int getCrossfadeSamples(const int bufferLength) const {
         return loopCrossfade * getLoopLengthSamples(bufferLength) * 0.5;
     }
 
-    int getCrossfadeStartSample(int bufferLength) const {
+    int getCrossfadeStartSample(const int bufferLength) const {
         return getLoopEndSample(bufferLength) - getCrossfadeSamples(bufferLength);
+    }
+
+    int getReverseCrossfadeStartSample(const int bufferLength) const {
+        return getLoopStartSample(bufferLength) + getCrossfadeSamples(bufferLength);
     }
 
 };

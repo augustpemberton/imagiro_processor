@@ -51,7 +51,6 @@ public:
     void updateFilter(float freq) const {
         const int type = std::round(typeParam->getProcessorValue());
 
-        DBG("setting up " << freq);
         if (type == 0) {
             *filter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), freq);
         } else if (type == 1) {

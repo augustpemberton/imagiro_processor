@@ -40,9 +40,9 @@ public:
     void parameterChanged(Parameter* p) override {
         Processor::parameterChanged(p);
         if (p == lowpassParam) {
-            lpFreq->setUserValue(p->getUserValue());
+            lpFreq->setUserValue(p->getModUserValue());
         } else if (p == highpassParam) {
-            hpFreq->setUserValue(p->getUserValue());
+            hpFreq->setUserValue(p->getModUserValue());
         }
     }
 

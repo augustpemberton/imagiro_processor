@@ -23,13 +23,13 @@ tightness:
 gain:
   name: "gain"
   type: db
-  default: -15
+  default: 0
   range: {min: -60, max: 24, step: 0.1}
 
 lowpass:
     name: "lp"
     type: freq
-    default: 10000
+    default: 20000
     range: {min: 20, max: 20000, type: freq}
 
 highpass:

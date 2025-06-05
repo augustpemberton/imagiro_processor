@@ -65,10 +65,13 @@ namespace imagiro {
          */
         float getUserValue() const;
 
+
         /*!
          * @return the internal 0-1 value
          */
         float getValue() const override;
+
+        int getChoiceIndexValue(int voiceIndex = -1) const;
         bool getBoolValue() const;
 
         float getModValue(int voiceIndex = -1) const;

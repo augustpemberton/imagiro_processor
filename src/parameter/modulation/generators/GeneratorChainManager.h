@@ -20,7 +20,7 @@ enum class GeneratorType {
 class GeneratorChainManager : public ChainManager<GeneratorType, ModGenerator> {
 public:
     explicit GeneratorChainManager(ModMatrix &m)
-        : ChainManager(false, 0), modMatrix(m) {
+        : ChainManager(0), modMatrix(m) {
     }
 
     void setEnvelopeSynth(MPESynth& synth) {
