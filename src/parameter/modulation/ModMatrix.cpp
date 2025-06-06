@@ -64,8 +64,12 @@ namespace imagiro {
     }
 
     void ModMatrix::calculateTargetValues(int numSamples) {
-
         std::unordered_set<TargetID> updatedTargets;
+
+        for (const auto& [uid, value] : targetValues) {
+            value->value.resetValue();
+        }
+
         for (auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
             if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID)) continue;
@@ -76,15 +80,14 @@ namespace imagiro {
                 if (connection.getVoiceEnvelopeFollower(i).isSmoothing()) sourceValueUpdated = true;
             }
 
-            if (!sourceValueUpdated) continue;
+            // if (!sourceValueUpdated && !updatedTargets.contains(targetID)) continue;
 
             // if we haven't processed this target yet, reset it to 0 first
-            if (!updatedTargets.contains(targetID)) {
-                targetValues[targetID]->value.resetValue();
-            }
+            // if (!updatedTargets.contains(targetID)) {
+            //     targetValues[targetID]->value.resetValue();
+            // }
 
             updatedTargets.insert(targetID);
-
 
             auto connectionSettings = connection.getSettings();
 

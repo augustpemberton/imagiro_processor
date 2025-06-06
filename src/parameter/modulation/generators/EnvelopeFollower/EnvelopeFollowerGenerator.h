@@ -29,7 +29,7 @@ public:
 
         env.setAttackMs(attackParam->getProcessorValue() * 1000);
         env.setReleaseMs(releaseParam->getProcessorValue() * 1000);
-        setSourceFromValue01(sourceParam->getProcessorValue());
+        setSourceFromIndex(sourceParam->getProcessorValue());
     }
 
     ~EnvelopeFollowerGenerator() override {
@@ -43,9 +43,13 @@ public:
         env.setSampleRate(sampleRate);
     }
 
-    void setSourceFromValue01(float sourceVal) {
-        const auto sourceIndex = static_cast<size_t>((sources.getSources().size()-1) * sourceVal);
-        const auto& source = sources.getSources()[sourceIndex];
+    void setSourceFromIndex(float sourceVal) {
+        const auto& source = sources.getSources()[sourceVal];
+        if (!source) {
+            jassertfalse;
+            return;
+        }
+
         if (source.get() != activeSource) {
             setSource(*source);
         }
@@ -58,7 +62,7 @@ public:
     void parameterChanged(Parameter* p) override {
         if (p == attackParam) env.setAttackMs(p->getProcessorValue() * 1000);
         else if (p == releaseParam) env.setReleaseMs(p->getProcessorValue() * 1000);
-        else if (p == sourceParam) setSourceFromValue01(p->getProcessorValue());
+        else if (p == sourceParam) setSourceFromIndex(p->getProcessorValue());
     }
 
 

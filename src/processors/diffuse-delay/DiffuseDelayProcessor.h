@@ -38,7 +38,6 @@ public:
         diffuser.setModAmount(modDepthParam->getUserValue());
         diffuser.setModFreq(modRateParam->getUserValue());
 
-
     }
 
     ~DiffuseDelayProcessor() {

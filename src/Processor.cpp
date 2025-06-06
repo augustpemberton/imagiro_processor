@@ -298,10 +298,10 @@ namespace imagiro {
 
     void Processor::parameterChanged(imagiro::Parameter *param) {
         if (param->getUID() == "bypass") {
-            bypassGain.setTargetValue(1 - param->getValue());
+            bypassGain.setTargetValue(1 - param->getBoolValue());
         }
         if (param->getUID() == "mix") {
-            mixGain.setTargetValue(param->getValue());
+            mixGain.setTargetValue(param->getProcessorValue());
         }
     }
 

@@ -27,6 +27,7 @@ namespace imagiro {
               modTarget("param-" + uid, name),
               jitterAmount(jitter)
     {
+        jassert(!this->configs.empty());
         this->value01 = convertTo0to1(this->Parameter::getConfig()->defaultValue);
         this->valueSmoother.setCurrentAndTargetValue(getProcessorValue(-1));
         this->modTarget.addListener(this);
