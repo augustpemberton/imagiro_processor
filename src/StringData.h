@@ -67,7 +67,11 @@ public:
         for (int i=0; i<v.size(); i++) {
             auto [name, value] = v.getObjectMemberAt(i);
             auto data = StringDataValue::fromState(value, isPreset);
-            values.insert({name, data});
+            if (values.contains(name)) {
+                values[name] = data;
+            } else {
+                values.insert({name, data});
+            }
             listeners.call(&Listener::OnStringDataUpdated, *this, name, data.value);
         }
     }

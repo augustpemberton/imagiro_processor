@@ -82,7 +82,7 @@ namespace imagiro {
     choc::value::Value Processor::handleMessage(const std::string& type, const choc::value::ValueView& data) {
         if (type == "SetStringData") {
             const auto key = data["key"].getWithDefault("");
-            const auto value = data["key"].getWithDefault("");
+            const auto value = data["value"].getWithDefault("");
             const auto saveInPreset = data["saveInPreset"].getWithDefault(false);
 
             stringData.set(key, value, saveInPreset);

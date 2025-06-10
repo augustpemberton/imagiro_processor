@@ -9,6 +9,7 @@
 #include "src/dsp/filter/StateVariableTPTFilter.h"
 #include "src/dsp/EnvelopeFollower.h"
 #include "src/dsp/LFO.h"
+#include "src/dsp/LookupTableLFO.h"
 #include "src/dsp/interpolation.h"
 
 #include "src/note/ScaledMPENote.h"
@@ -26,3 +27,4 @@
 #include "src/grain/GrainBuffer.h"
 #include "src/grain/Grain.h"
 #include "src/dsp/filter/CascadedOnePoleFilter.h"
+#include "src/curve/Curve.h"

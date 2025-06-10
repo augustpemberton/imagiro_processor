@@ -1,5 +1,6 @@
 #pragma once
 #include "ModGenerator.h"
+#include "CurveLFO/CurveLFOGenerator.h"
 #include "Envelope/EnvelopeGenerator.h"
 #include "EnvelopeFollower/EnvelopeFollowerGenerator.h"
 #include "EnvelopeFollower/EnvelopeFollowerSources.h"
@@ -56,7 +57,7 @@ protected:
     std::shared_ptr<ModGenerator> createProcessorForType(const GeneratorType type, const int id) const override {
         const std::string uid = "mod-" + std::to_string(id);
         const std::string name = to_string(type) + " " + std::to_string(id);
-        if (type == GeneratorType::LFO && synth) return std::make_shared<LFOGenerator>(*synth, modMatrix, uid, name);
+        if (type == GeneratorType::LFO && synth) return std::make_shared<CurveLFOGenerator>(*synth, modMatrix, uid, name);
         if (type == GeneratorType::Macro) return std::make_shared<MacroGenerator>(modMatrix, uid, name);
         if (type == GeneratorType::EnvelopeFollower && envSources) {
             return std::make_shared<EnvelopeFollowerGenerator>(*envSources, modMatrix, uid, name);

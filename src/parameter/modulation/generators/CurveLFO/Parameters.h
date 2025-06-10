@@ -1,6 +1,6 @@
 #pragma once
 
-namespace LFOGeneratorParameters {
+namespace CurveLFOGeneratorParameters {
   static constexpr const char *PARAMETERS_YAML = R"(
 
 frequency:
@@ -39,7 +39,7 @@ phase:
   range: {min: 0, max: 1}
 
 mono:
-  name: "mono"
+  name: "monophonic"
   type: toggle
   default: 0
 

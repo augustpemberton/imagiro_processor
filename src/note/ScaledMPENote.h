@@ -5,7 +5,7 @@
 #pragma once
 
 
-#include "./env-shape/SegmentCurve.h"
+#include "../curve/Curve.h"
 
 struct ScaledMPENote : public juce::MPENote {
     using juce::MPENote::MPENote;
@@ -17,7 +17,7 @@ struct ScaledMPENote : public juce::MPENote {
         initialNoteOffVelocity = noteOffVelocity;
     }
 
-    explicit ScaledMPENote(const juce::MPENote& base, const SegmentCurve& userCurve, const SegmentCurve& samplerCurve) : juce::MPENote(base) {
+    explicit ScaledMPENote(const juce::MPENote& base, const Curve& userCurve, const Curve& samplerCurve) : juce::MPENote(base) {
         initialNoteOnVelocity= noteOnVelocity;
         initialNoteOffVelocity = noteOffVelocity;
 

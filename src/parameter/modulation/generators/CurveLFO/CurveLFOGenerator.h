@@ -5,25 +5,36 @@
 #pragma once
 
 #include "../ModGenerator.h"
-#include <imagiro_processor/imagiro_processor.h>
 
 #include "Parameters.h"
+#include "choc/text/choc_JSON.h"
+#include "../../../../synth/MPESynth.h"
 
-class LFOGenerator : public ModGenerator, MPESynth::Listener {
+class CurveLFOGenerator : public ModGenerator, MPESynth::Listener {
 public:
-    LFOGenerator(MPESynth& synth, ModMatrix& m, const std::string& uid, const std::string& name)
-        : ModGenerator(LFOGeneratorParameters::PARAMETERS_YAML, m, uid, name, true),
+    CurveLFOGenerator(MPESynth& synth, ModMatrix& m, const std::string& uid, const std::string& name)
+        : ModGenerator(CurveLFOGeneratorParameters::PARAMETERS_YAML, m, uid, name, true),
         synth(synth)
     {
-        lfo.setFrequency(0.5f);
-        lfo.setShape(LFO::Sine);
+        lfo.setFrequency(0.5);
+        for (auto& v : voiceLFOs) {
+            v.setFrequency(0.5);
+        }
+
         synth.addListener(this);
 
         frequency->addListener(this);
         phase->addListener(this);
+
+        const auto defaultCurve = Curve({
+            {0.f, 0.f, 0.25f, 0.5f},
+            {0.5f, 1.f, 0.75f, 0.5f},
+            {1.f, 0.f, 1.f, 1.f}
+        });
+        stringData.set("curve", choc::json::toString(defaultCurve.getState()), true);
     }
 
-    ~LFOGenerator() override {
+    ~CurveLFOGenerator() override {
         synth.removeListener(this);
         frequency->removeListener(this);
         phase->removeListener(this);
@@ -56,6 +67,16 @@ public:
         lfo.setSampleRate(sampleRate);
     }
 
+    void OnStringDataUpdated(StringData &s, const std::string &key, const std::string &newValue) override {
+        if (key == "curve") {
+            const auto curve = Curve::fromState(choc::json::parse(newValue));
+            lfo.setTable(curve.getLookupTable());
+            for (auto& v : voiceLFOs) {
+                v.setTable(curve.getLookupTable());
+            }
+        }
+    }
+
 protected:
     Parameter* depth { getParameter("depth") };
     Parameter* frequency { getParameter("frequency") };
@@ -67,12 +88,12 @@ protected:
         ModGenerator::parameterChangedSync(p);
         if (p == frequency) {
             lfo.setFrequency(p->getProcessorValue());
-            for (const int voiceIndex: activeVoices) {
+            for (auto voiceIndex = 0; voiceIndex < MAX_MOD_VOICES; ++voiceIndex) {
                 voiceLFOs[voiceIndex].setFrequency(p->getProcessorValue(voiceIndex));
             }
         } else if (p == phase) {
             lfo.setPhase(p->getProcessorValue());
-            for (const int voiceIndex: activeVoices) {
+            for (auto voiceIndex = 0; voiceIndex < MAX_MOD_VOICES; ++voiceIndex) {
                 voiceLFOs[voiceIndex].setPhaseOffset(p->getProcessorValue(voiceIndex));
             }
         }
@@ -83,14 +104,14 @@ protected:
         return lfo.process(numSamples) * depth->getProcessorValue();
     }
 
-    float advanceVoiceValue(size_t voiceIndex, const int numSamples = 1) override {
+    float advanceVoiceValue(const size_t voiceIndex, const int numSamples = 1) override {
         if (mono->getBoolValue()) return 0.f;
         return voiceLFOs[voiceIndex].process(numSamples) * depth->getProcessorValue(voiceIndex);
     }
 
 private:
-    LFO lfo;
-    LFO voiceLFOs [MAX_MOD_VOICES];
+    LookupTableLFO lfo;
+    LookupTableLFO voiceLFOs [MAX_MOD_VOICES];
 
     MPESynth& synth;
 

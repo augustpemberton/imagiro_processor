@@ -57,7 +57,7 @@ public:
     }
 
 private:
-    ProcessorChain activeChain;
+    ProcessorChain activeChain {};
     std::optional<ProcessorChain> oldChain;
 
     std::atomic<bool> fadingOut { false };

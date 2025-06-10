@@ -5,8 +5,8 @@
 #pragma once
 #include <juce_audio_basics/juce_audio_basics.h>
 
-#include "imagiro_processor/src/parameter/modulation/ModMatrix.h"
-#include "imagiro_processor/src/parameter/modulation/MultichannelValue.h"
+#include "../parameter/modulation/ModMatrix.h"
+#include "../parameter/modulation/MultichannelValue.h"
 
 class MPESynth : public juce::MPESynthesiserBase {
 public:
