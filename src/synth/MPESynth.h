@@ -28,7 +28,6 @@ public:
         }
 
         MPESynthesiserBase::handleMidiEvent(m);
-        activeVoices.reserve(MAX_MOD_VOICES);
     }
 
     void notePressureChanged(const juce::MPENote n) override {
@@ -51,7 +50,7 @@ public:
     const auto &getInitialVelocity() { return initialVelocityValue; }
     const auto &getModWheel() { return modWheelValue; }
 
-    const auto& getActiveVoices() { return activeVoices; }
+    const auto& getActiveVoices() const { return activeVoices; }
 
 protected:
     juce::ListenerList<Listener> listeners;
@@ -61,7 +60,7 @@ protected:
     MultichannelValue<MAX_MOD_VOICES> initialNoteValue {true};
     MultichannelValue<MAX_MOD_VOICES> initialVelocityValue {false};
     MultichannelValue<MAX_MOD_VOICES> modWheelValue {false};
-    std::unordered_set<size_t> activeVoices;
+    FixedHashSet<size_t, MAX_MOD_VOICES> activeVoices = {};
 
     void voiceStarted(size_t voiceIndex) {
         listeners.call(&Listener::onVoiceStarted, voiceIndex);

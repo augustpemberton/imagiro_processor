@@ -73,6 +73,8 @@ namespace imagiro {
             return id;
         }
 
+        const ModMatrix* getMatrix() const { return matrix; }
+
     private:
         SourceID id;
         std::string name;

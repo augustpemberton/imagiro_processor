@@ -162,6 +162,11 @@ namespace imagiro {
             listeners.call (&Listener::parameterChanged, this);
         }
 
+        if (asyncConfigChangedFlag) {
+            asyncConfigChangedFlag = false;
+            listeners.call (&Listener::configChanged, this);
+        }
+
         if (asyncGestureStartUpdateFlag) {
             asyncGestureStartUpdateFlag = false;
             listeners.call (&Listener::gestureStarted, this);
@@ -275,7 +280,8 @@ namespace imagiro {
         auto uv = getUserValue();
         configIndex = index % configs.size();
 
-        listeners.call(&Listener::configChanged, this);
+        listeners.call(&Listener::configChangedSync, this);
+        asyncConfigChangedFlag = true;
         setUserValueAndNotifyHost(uv, true);
     }
 

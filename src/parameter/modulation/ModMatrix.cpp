@@ -5,6 +5,10 @@
 #include "ModMatrix.h"
 
 namespace imagiro {
+    ModMatrix::ModMatrix () {
+        cachedSerializedMatrix.ensureStorageAllocated(MAX_MOD_CONNECTIONS);
+    }
+
     void ModMatrix::removeConnection(const SourceID& sourceID, TargetID targetID) {
         matrix.erase({sourceID, targetID});
         matrixUpdated();
@@ -64,7 +68,7 @@ namespace imagiro {
     }
 
     void ModMatrix::calculateTargetValues(int numSamples) {
-        std::unordered_set<TargetID> updatedTargets;
+        updatedTargets.clear();
 
         for (const auto& [uid, value] : targetValues) {
             value->value.resetValue();
@@ -224,9 +228,9 @@ namespace imagiro {
         if (recacheSerializedMatrixFlag) {
             recacheSerializedMatrixFlag = false;
 
-            cachedSerializedMatrix = SerializedMatrix();
+            cachedSerializedMatrix.clearQuick();
             for (const auto& [pair, connection] : matrix) {
-                cachedSerializedMatrix.push_back({
+                cachedSerializedMatrix.add({
                        pair.first,
                        pair.second,
                        connection.getSettings().depth,

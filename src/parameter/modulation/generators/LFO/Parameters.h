@@ -46,7 +46,7 @@ mono:
 retrigger:
   name: "retrigger"
   type: toggle
-  default: 0
+  default: 1
 
 )";
 };

@@ -50,7 +50,7 @@ protected:
     virtual float advanceGlobalValue(int numSamples = 1) = 0;
     virtual float advanceVoiceValue(size_t voiceIndex, int numSamples = 1) = 0;
 
-    std::unordered_set<size_t> activeVoices;
+    FixedHashSet<size_t, MAX_MOD_VOICES> activeVoices;
 
     Parameter* bypassParam;
 };

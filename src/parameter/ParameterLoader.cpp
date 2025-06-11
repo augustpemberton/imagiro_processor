@@ -110,9 +110,10 @@ namespace imagiro {
             config.textFunction = DisplayFunctions::syncDisplay;
             config.valueFunction = DisplayFunctions::syncInput;
             config.processorValueChangesWithBPM = true;
-            config.processorConversionFunction = [&, syncType](float proportion, const Parameter*) {
-                auto v = (processor.getSyncTimeSeconds(proportion));
-                return (syncType == "inverse") ? 1.f / v : v;
+            bool syncTypeInverse = syncType == "inverse";
+            config.processorConversionFunction = [&, syncTypeInverse](float proportion, const Parameter*) {
+                auto v = processor.getSyncTimeSeconds(proportion);
+                return syncTypeInverse ? 1.f / v : v;
             };
         } else if (type == "sync-dotted") {
             config.textFunction = [](float t, const Parameter* p) -> DisplayValue {
@@ -123,9 +124,10 @@ namespace imagiro {
             };
 
             config.processorValueChangesWithBPM = true;
-            config.processorConversionFunction = [&, syncType](float proportion, const Parameter*) {
-                auto v = (processor.getSyncTimeSeconds(proportion) * (3.f/2.f));
-                return (syncType == "inverse") ? 1.f / v : v;
+            bool syncTypeInverse = syncType == "inverse";
+            config.processorConversionFunction = [&, syncTypeInverse](float proportion, const Parameter*) {
+                auto v = processor.getSyncTimeSeconds(proportion) * (3.f/2.f);
+                return syncTypeInverse ? 1.f / v : v;
             };
         } else if (type == "sync-triplet") {
             config.textFunction = [](float t, const Parameter* p) -> DisplayValue {
@@ -136,9 +138,10 @@ namespace imagiro {
             };
 
             config.processorValueChangesWithBPM = true;
-            config.processorConversionFunction = [&, syncType](float proportion, const Parameter*) {
-                auto v = (processor.getSyncTimeSeconds(proportion) * (2.f/3.f));
-                return (syncType == "inverse") ? 1.f / v : v;
+            bool syncTypeInverse = syncType == "inverse";
+            config.processorConversionFunction = [&, syncTypeInverse](float proportion, const Parameter*) {
+                auto v = processor.getSyncTimeSeconds(proportion) * (2.f/3.f);
+                return syncTypeInverse ? 1.f / v : v;
             };
         } else if (type == "choice") {
             config.textFunction = [](const float v, const Parameter* param)->DisplayValue {
@@ -160,7 +163,7 @@ namespace imagiro {
             config.range = {0, 1.f, 0};
 
             config.processorConversionFunction = [&](float v, const Parameter* pa) {
-                const auto c = pa->getConfig()->choices;
+                const auto& c = pa->getConfig()->choices;
                 return static_cast<int>(v * (c.size()-1));
             };
 

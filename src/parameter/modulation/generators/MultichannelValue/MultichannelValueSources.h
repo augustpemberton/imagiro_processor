@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <MacTypes.h>
 #include <unordered_map>
 
 struct NamedMultichannelValue {
@@ -13,8 +14,8 @@ struct NamedMultichannelValue {
 
 class MultichannelValueSources {
 public:
-    explicit MultichannelValueSources(const std::unordered_set<size_t>& activeVoices) : activeVoices(activeVoices) {
-
+    explicit MultichannelValueSources(const FixedHashSet<size_t, MAX_MOD_VOICES> &activeVoices)
+        : activeVoices(activeVoices) {
     }
 
     NamedMultichannelValue *getSource(const std::string &id) {
@@ -38,5 +39,5 @@ private:
     std::unordered_map<std::string, NamedMultichannelValue*> sourcesMap;
     std::vector<NamedMultichannelValue> sources;
 
-    const std::unordered_set<size_t>& activeVoices;
+    const FixedHashSet<size_t, MAX_MOD_VOICES>& activeVoices;
 };

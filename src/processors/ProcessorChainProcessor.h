@@ -31,6 +31,11 @@ public:
 
     void prepareToPlay(double sampleRate, int blockSize) override {
         Processor::prepareToPlay(sampleRate, blockSize);
+
+        // Flush pending chains
+        while (chainsToPrepare.try_dequeue(activeChain)) {}
+        while (preparedChains.try_dequeue(activeChain)) {}
+
         for (const auto &processor: activeChain) {
             prepareProcessor(*processor);
         }
@@ -40,6 +45,8 @@ public:
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
         for (const auto &processor: activeChain) {
+            processor->setDefaultBPM(getDefaultBPM());
+            processor->setPlayHead(getPlayHead());
             renderProcessor(*processor, buffer, midiMessages);
         }
 

@@ -8,12 +8,15 @@
 #include <stack>
 
 #include "MultichannelValue.h"
+#include "imagiro_webview/src/attachment/FileIOAttachment.h"
 
 #if defined(MAX_VOICES)
     #define MAX_MOD_VOICES MAX_VOICES
 #elif !defined(MAX_MOD_VOICES)
     #define MAX_MOD_VOICES 128
 #endif
+
+#define MAX_MOD_TARGETS 4096
 
 namespace imagiro {
     class ModMatrix {
@@ -35,6 +38,8 @@ namespace imagiro {
             Env = 2,
             Misc = 3
         };
+
+        ModMatrix();
 
         void registerSource(const SourceID& id, std::string name = "",
                             SourceType type = SourceType::Misc, bool isBipolar = false);
@@ -153,18 +158,18 @@ namespace imagiro {
         void setVoiceOff(size_t index) {
             // NOTE: commented this out for now as i don't think its desirable behaviour.
 
-            // std::erase_if(noteOnStack, [&, index](const size_t e) {
-            //     return e == index;
-            // });
-            // auto oldRecentVoice = mostRecentVoiceIndex.load();
-            // mostRecentVoiceIndex = noteOnStack.back();
-            // if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
+            std::erase_if(noteOnStack, [&, index](const size_t e) {
+                return e == index;
+            });
+            auto oldRecentVoice = mostRecentVoiceIndex.load();
+            mostRecentVoiceIndex = noteOnStack.back();
+            if (oldRecentVoice != mostRecentVoiceIndex) listeners.call(&Listener::OnRecentVoiceUpdated, mostRecentVoiceIndex);
         }
 
         std::unordered_map<SourceID, std::shared_ptr<SourceValue>>& getSourceValues() { return sourceValues; }
         std::unordered_map<TargetID, std::shared_ptr<TargetValue>>& getTargetValues() { return targetValues; }
 
-        size_t getMostRecentVoiceIndex() { return mostRecentVoiceIndex; }
+        const size_t getMostRecentVoiceIndex() const { return mostRecentVoiceIndex; }
         void processMatrixUpdates();
 
     private:
@@ -179,7 +184,7 @@ namespace imagiro {
         std::unordered_map<SourceID, std::shared_ptr<SourceValue>> sourceValues {};
         std::unordered_map<TargetID, std::shared_ptr<TargetValue>> targetValues {};
 
-        std::unordered_set<SourceID> updatedSourcesSinceLastCalculate {};
+        FixedHashSet<SourceID, MAX_MOD_TARGETS> updatedSourcesSinceLastCalculate {};
 
         void matrixUpdated();
 
@@ -194,5 +199,8 @@ namespace imagiro {
 
         std::atomic<bool> recacheSerializedMatrixFlag {false};
         SerializedMatrix cachedSerializedMatrix;
+
+        FixedHashSet<TargetID, MAX_MOD_TARGETS> updatedTargets;
+
     };
 }

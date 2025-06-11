@@ -21,6 +21,7 @@ namespace imagiro {
             virtual void parameterChanged (Parameter* ) {}
             virtual void parameterChangedSync (Parameter* ) {}
             virtual void configChanged(Parameter* ) {}
+            virtual void configChangedSync(Parameter* ) {}
             virtual void gestureStarted(Parameter* ) {}
             virtual void gestureStartedSync(Parameter* ) {}
             virtual void gestureEnded(Parameter* ) {}
@@ -98,7 +99,7 @@ namespace imagiro {
         void updateCachedUserValue() { cachedUserValue = getUserValue(); }
         float getCachedUserValue() const { return cachedUserValue; }
 
-        void callValueChangedListeners();
+        virtual void callValueChangedListeners();
 
         //==============================================================================
 
@@ -249,6 +250,7 @@ namespace imagiro {
         void generateSmoothedValueBuffer(int samples);
 
         std::atomic<bool> asyncValueUpdateFlag;
+        std::atomic<bool> asyncConfigChangedFlag;
         std::atomic<bool> asyncGestureStartUpdateFlag;
         std::atomic<bool> asyncGestureEndUpdateFlag;
 

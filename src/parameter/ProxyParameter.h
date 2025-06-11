@@ -38,10 +38,12 @@ public:
             p.setModMatrix(*modMatrix);
         }
         p.addListener(this);
-        listeners.call(&Listener::configChanged, this);
-        listeners.call(&Listener::lockChanged, this);
-        listeners.call(&Listener::parameterChanged, this);
+
+        asyncConfigChangedFlag = true;
+        asyncValueUpdateFlag = true;
+
         listeners.call(&Listener::parameterChangedSync, this);
+        listeners.call(&Listener::configChangedSync, this);
     }
 
     ModTarget& getModTarget() override {
@@ -51,10 +53,12 @@ public:
     // setters
     void setValue(const float newValue) override {
         if (proxyTarget) proxyTarget.load()->setValue(newValue);
+        Parameter::setValue(newValue);
     }
 
     void setValueAndNotifyHost(float f, bool forceUpdate) override {
         if (proxyTarget) proxyTarget.load()->setValueAndNotifyHost(f, forceUpdate);
+        Parameter::setValueAndNotifyHost(f, forceUpdate);
     }
 
     // getters
@@ -76,6 +80,11 @@ public:
 
     int getConfigIndex() override {
         return proxyTarget ? proxyTarget.load()->getConfigIndex() : configIndex;
+    }
+
+    void callValueChangedListeners() override {
+        if (proxyTarget) proxyTarget.load()->callValueChangedListeners();
+        Parameter::callValueChangedListeners();
     }
 
     void setConfig(const int index) override {

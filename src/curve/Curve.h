@@ -5,7 +5,6 @@
 #pragma once
 #include "CurvePoint.h"
 #include "juce_dsp/juce_dsp.h"
-#include "./Bezier.h"
 
 class Curve {
 public:
@@ -35,7 +34,7 @@ public:
     }
 
     float getY(const float x) const {
-        return lookupTable->getUnchecked(x * lookupTable->getNumPoints() - 1);
+        return lookupTable->getUnchecked(x * (lookupTable->getNumPoints() - 1));
     }
 
     std::shared_ptr<juce::dsp::LookupTable<float>> getLookupTable() const { return lookupTable; }
@@ -44,24 +43,59 @@ private:
     std::map<float, CurvePoint> points;
     std::shared_ptr<juce::dsp::LookupTable<float>> lookupTable;
 
-    void reloadLookupTable(float numPoints = 1024) {
+    // Power curve interpolation between two points
+    static float powerInterpolate(float t, float y0, float y1, float curve) {
+        float easedT;
+
+        const auto exponent = std::pow(50, curve);
+
+        if (curve < 0) {
+            easedT = std::pow(t, 1/exponent);
+        } else if (curve > 0) {
+            easedT = 1 - std::pow(1 - t, exponent);
+        } else {
+            easedT = t;
+        }
+
+        return y0 + (y1 - y0) * easedT;
+    }
+
+    void reloadLookupTable(float numPoints = 256) {
         lookupTable = std::make_shared<juce::dsp::LookupTable<float>>([&](const int n) -> float {
-            const float p = n / numPoints;
+            const float x = n / numPoints;
 
             if (points.empty()) return 0.f;
-            if (points.size() == 1) return points[0].y;
+            if (points.size() == 1) return points.begin()->second.y;
 
-            auto it = points.lower_bound(p);
-            if (it != points.begin()) it = std::prev(it);
+            // Find the segment containing this x value
+            auto it = points.lower_bound(x);
 
-            const auto& start = it->second;
-            const auto nextIterator = std::next(it);
-            if (nextIterator == points.end()) return start.y;
+            // If we're at or past the last point
+            if (it == points.end()) {
+                return std::prev(it)->second.y;
+            }
 
-            const auto end = nextIterator->second;
+            // If we're at the first point
+            if (it == points.begin()) {
+                return it->second.y;
+            }
 
-            const Bezier bezier ({start.x, start.y}, {end.x, end.y}, {start.controlX, start.controlY});
-            return bezier.getY(p) * 2 - 1;
+            // Get the previous point
+            auto prevIt = std::prev(it);
+            const auto& start = prevIt->second;
+            const auto& end = it->second;
+
+            // Calculate normalized position within this segment
+            float segmentLength = end.x - start.x;
+            if (segmentLength <= 0.0f) return start.y;
+
+            float t = (x - start.x) / segmentLength;
+            t = std::clamp(t, 0.0f, 1.0f);
+
+            // Apply power curve interpolation
+            float y = powerInterpolate(t, start.y, end.y, start.curve);
+
+            return y;
         }, numPoints);
     }
 };

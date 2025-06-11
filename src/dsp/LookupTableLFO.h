@@ -70,8 +70,10 @@ public:
             phase += phaseIncrement;
 
             // Wrap phase to [0, 1]
-            if (phase >= 1.0f)
-                phase -= 1.0f;
+            if (phase >= 1.0f) {
+                if (stopAfterOneOscillation) phase = 1.0f;
+                else phase -= 1.0f;
+            }
 
             // Update smoothed phase offset
             currentPhaseOffset = smoothedPhaseOffset.getNextValue();
@@ -84,7 +86,9 @@ public:
         if (totalPhase >= 1.0f) totalPhase -= 1.0f;
 
         // Get value from lookup table
-        return lookupTable->getUnchecked(totalPhase * (tableSize - 1));
+        const auto v = lookupTable->get(totalPhase * static_cast<float>(tableSize - 1));
+
+        return v;
     }
 
     float getCurrentValue() const
@@ -98,7 +102,10 @@ public:
         return lookupTable->getUnchecked(totalPhase * (tableSize - 1));
     }
 
-    float getPhase() const { return phase; }
+    float getPhase() const {
+        const auto p = phase + currentPhaseOffset;
+        return p - static_cast<int>(p);
+    }
     float getFrequency() const { return frequency; }
     float getPhaseOffset() const { return smoothedPhaseOffset.getTargetValue(); }
     float getCurrentPhaseOffset() const { return currentPhaseOffset; }
@@ -106,6 +113,10 @@ public:
     // call from message thread
     void setTable(const std::shared_ptr<juce::dsp::LookupTable<float>> &table) {
         tablesToLoad.enqueue(table);
+    }
+
+    void setStopAfterOneOscillation(bool shouldStop) {
+        stopAfterOneOscillation = shouldStop;
     }
 
 private:
@@ -136,4 +147,6 @@ private:
     float currentPhaseOffset = 0.0f; // Current smoothed offset value
     float smoothingTimeSeconds = 0.1f; // Smoothing time for phase offset
     double sampleRate = 44100.0;
+
+    bool stopAfterOneOscillation = false;
 };

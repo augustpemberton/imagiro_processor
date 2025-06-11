@@ -109,6 +109,7 @@ namespace imagiro {
         float getSamplesPerBeat() const;
         float getNotes(float seconds);
         float getNotesFromSamples(float samples);
+
         juce::Optional<juce::AudioPlayHead::PositionInfo>& getPosition() { return posInfo; }
         juce::AudioProcessor::TrackProperties getProperties() { return trackProperties; }
 

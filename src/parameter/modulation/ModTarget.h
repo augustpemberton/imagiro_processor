@@ -61,7 +61,7 @@ namespace imagiro {
         }
 
         float getModulatedValue(float baseValue, int voiceIndex = -1) const {
-            if (!matrix) return 0.f;
+            if (!matrix) return baseValue;
             return std::clamp(baseValue + matrix->getModulatedValue(id, voiceIndex), 0.f, 1.f);
         }
 

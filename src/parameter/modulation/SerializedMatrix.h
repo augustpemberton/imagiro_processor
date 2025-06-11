@@ -4,6 +4,7 @@
 
 #pragma once
 #include <choc/containers/choc_Value.h>
+#define MAX_MOD_CONNECTIONS 1024
 
 struct SerializedMatrixEntry {
     std::string sourceID;
@@ -38,7 +39,7 @@ struct SerializedMatrixEntry {
     }
 };
 
-struct SerializedMatrix : public std::vector<SerializedMatrixEntry> {
+struct SerializedMatrix : public juce::Array<SerializedMatrixEntry> {
     choc::value::Value getState() const {
         auto matrix = choc::value::createEmptyArray();
         for (const auto& entry : *this) {
@@ -50,8 +51,8 @@ struct SerializedMatrix : public std::vector<SerializedMatrixEntry> {
     static SerializedMatrix fromState(const choc::value::ValueView& state) {
         SerializedMatrix m;
         for (const auto& entryState : state) {
-            m.push_back(SerializedMatrixEntry::fromState(entryState));
-        };
+            m.add(SerializedMatrixEntry::fromState(entryState));
+        }
         return m;
     }
 };
