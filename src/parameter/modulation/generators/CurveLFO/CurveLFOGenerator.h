@@ -74,6 +74,9 @@ public:
     void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override {
         Processor::prepareToPlay(sampleRate, maximumExpectedSamplesPerBlock);
         lfo.setSampleRate(sampleRate);
+        for (auto& v : voiceLFOs) {
+            v.setSampleRate(sampleRate);
+        }
     }
 
     void OnStringDataUpdated(StringData &s, const std::string &key, const std::string &newValue) override {
