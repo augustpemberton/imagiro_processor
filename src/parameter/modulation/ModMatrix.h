@@ -8,7 +8,6 @@
 #include <stack>
 
 #include "MultichannelValue.h"
-#include "imagiro_webview/src/attachment/FileIOAttachment.h"
 
 #if defined(MAX_VOICES)
     #define MAX_MOD_VOICES MAX_VOICES
@@ -140,7 +139,7 @@ namespace imagiro {
 
         void prepareToPlay(double sampleRate, int maxSamplesPerBlock);
         void calculateTargetValues(int numSamples = 1);
-        std::set<size_t> getAlteredTargetVoices(const TargetID& targetID);
+        FixedHashSet<size_t, MAX_MOD_VOICES> getAlteredTargetVoices(const TargetID& targetID);
 
         auto& getMatrix() { return matrix; }
 
@@ -201,6 +200,5 @@ namespace imagiro {
         SerializedMatrix cachedSerializedMatrix;
 
         FixedHashSet<TargetID, MAX_MOD_TARGETS> updatedTargets;
-
     };
 }

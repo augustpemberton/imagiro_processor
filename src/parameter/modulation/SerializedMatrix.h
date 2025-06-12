@@ -14,6 +14,10 @@ struct SerializedMatrixEntry {
     float releaseMS;
     bool bipolar;
 
+    bool operator==(const SerializedMatrixEntry & o) const {
+        return o.sourceID == sourceID && o.targetID == targetID;
+    }
+
     choc::value::Value getState() const {
         auto val = choc::value::createObject("ModMatrixEntry");
         val.addMember("sourceID", choc::value::Value(sourceID));

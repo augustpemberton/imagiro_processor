@@ -333,13 +333,10 @@ namespace imagiro {
     }
 
     void Parameter::startBlock(int samples) {
-        // if we didn't generate buffer last block, move smoother along
-        auto target = getProcessorValue(-1);
-        valueSmoother.setTargetValue(target);
+       if (!hasGeneratedSmoothBufferThisBlock) {
+           valueSmoother.skip(samplesThisBlock);
+       }
 
-        if (!hasGeneratedSmoothBufferThisBlock) {
-            valueSmoother.skip(samplesThisBlock);
-        }
 
         samplesThisBlock = samples;
         hasGeneratedSmoothBufferThisBlock = false;
@@ -358,7 +355,8 @@ namespace imagiro {
     }
 
     void Parameter::OnTargetUpdated() {
-         callValueChangedListeners();
+        valueSmoother.setTargetValue(getProcessorValue(-1));
+        callValueChangedListeners();
     }
 
 }

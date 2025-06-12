@@ -13,7 +13,7 @@ class GrainStream;
 class Grain {
 public:
     struct Serialized {
-        int position;
+        int position { -1 };
         int loopFadePosition;
         float loopFadeProgress;
         float gain;

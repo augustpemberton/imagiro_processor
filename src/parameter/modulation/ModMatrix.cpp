@@ -4,9 +4,12 @@
 
 #include "ModMatrix.h"
 
+#include <MacTypes.h>
+
 namespace imagiro {
     ModMatrix::ModMatrix () {
         cachedSerializedMatrix.ensureStorageAllocated(MAX_MOD_CONNECTIONS);
+        matrix.reserve(MAX_MOD_CONNECTIONS);
     }
 
     void ModMatrix::removeConnection(const SourceID& sourceID, TargetID targetID) {
@@ -47,8 +50,9 @@ namespace imagiro {
             voiceIndex = static_cast<int>(mostRecentVoiceIndex);
         }
 
-        if (targetValues.contains(targetID)) {
-            return targetValues[targetID]->value.getGlobalValue() + targetValues[targetID]->value.getVoiceValue((size_t)voiceIndex);
+        jassert(targetValues.contains(targetID));
+        if (const auto& v = targetValues[targetID]) {
+            return v->value.getGlobalValue() + v->value.getVoiceValue(static_cast<size_t>(voiceIndex));
         }
 
         return 0;
@@ -62,17 +66,14 @@ namespace imagiro {
         }
     }
 
-    std::set<size_t> ModMatrix::getAlteredTargetVoices(const TargetID& id) {
+    FixedHashSet<size_t, MAX_MOD_VOICES> ModMatrix::getAlteredTargetVoices(const TargetID& id) {
         if (!targetValues.contains(id)) return {};
         return targetValues[id]->value.getAlteredVoices();
     }
 
     void ModMatrix::calculateTargetValues(int numSamples) {
         updatedTargets.clear();
-
-        for (const auto& [uid, value] : targetValues) {
-            value->value.resetValue();
-        }
+        FixedHashSet<TargetID, MAX_MOD_TARGETS> targetsToUpdate;
 
         for (auto &[ids, connection] : matrix) {
             const auto &[sourceID, targetID] = ids;
@@ -80,16 +81,24 @@ namespace imagiro {
 
             bool sourceValueUpdated = updatedSourcesSinceLastCalculate.contains(sourceID);
             if (connection.getGlobalEnvelopeFollower().isSmoothing()) sourceValueUpdated = true;
-            for (size_t i : sourceValues[sourceID]->value.getAlteredVoices()) {
+            for (const size_t i : sourceValues[sourceID]->value.getAlteredVoices()) {
                 if (connection.getVoiceEnvelopeFollower(i).isSmoothing()) sourceValueUpdated = true;
             }
 
-            // if (!sourceValueUpdated && !updatedTargets.contains(targetID)) continue;
+            if (sourceValueUpdated) {
+                targetsToUpdate.insert(targetID);
+            }
+        }
 
-            // if we haven't processed this target yet, reset it to 0 first
-            // if (!updatedTargets.contains(targetID)) {
-            //     targetValues[targetID]->value.resetValue();
-            // }
+        for (const auto& targetID : targetsToUpdate) {
+            targetValues[targetID]->value.resetValue();
+        }
+
+        // Second pass: calculate values for targets that need updating
+        for (auto &[ids, connection] : matrix) {
+            const auto &[sourceID, targetID] = ids;
+            if (!sourceValues.contains(sourceID) || !targetValues.contains(targetID)) continue;
+            if (!targetsToUpdate.contains(targetID)) continue;
 
             updatedTargets.insert(targetID);
 
@@ -100,7 +109,7 @@ namespace imagiro {
             connection.getGlobalEnvelopeFollower().setTargetValue(globalValueAddition);
             connection.getGlobalEnvelopeFollower().skip(numSamples);
             auto v = connection.getGlobalEnvelopeFollower().getCurrentValue() * connectionSettings.depth;
-            if (connectionSettings.bipolar) v *= 0.5f; // half depth & half value
+            if (connectionSettings.bipolar) v *= 0.5f;
             targetValues[targetID]->value.setGlobalValue(targetValues[targetID]->value.getGlobalValue() + v);
 
             // Update target's voice values
@@ -166,7 +175,7 @@ namespace imagiro {
         while (sourcesToDelete.try_dequeue(deleteSource)) {
             updated = true;
             sourcesToDeallocate.enqueue(sourceValues.at(deleteSource));
-            sourceValues.erase(deleteSource);
+            sourceValues[deleteSource]->value.resetValue();
 
             erase_if(matrix, [&, deleteSource](const auto& entry) {
                 if (entry.first.first == deleteSource) {
@@ -185,7 +194,8 @@ namespace imagiro {
         while (targetsToDelete.try_dequeue(deleteTarget)) {
             updated = true;
             targetsToDeallocate.enqueue(targetValues.at(deleteTarget));
-            targetValues.erase(deleteTarget);
+            targetValues[deleteTarget]->value.resetValue();
+            updatedTargets.insert(deleteTarget);
 
             erase_if(matrix, [deleteTarget](const auto& entry) {
                 return entry.first.second == deleteTarget;

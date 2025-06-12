@@ -6,6 +6,7 @@
 #include <array>
 #include <set>
 
+#include "ModMatrix.h"
 #include "choc/containers/choc_Value.h"
 #include "imagiro_util/src/util.h"
 
@@ -39,7 +40,7 @@ public:
 
     float getVoiceValue(size_t voiceIndex) const { return voiceValues[voiceIndex]; }
 
-    std::set<size_t> getAlteredVoices() const { return alteredVoices; }
+    const auto& getAlteredVoices() const { return alteredVoices; }
     const std::set<size_t>& getVoiceValues() const { return voiceValues; }
 
     choc::value::Value getState() const {
@@ -59,6 +60,6 @@ public:
 private:
     float globalValue {0};
     std::array<float, NumChannels> voiceValues {0};
-    std::set<size_t> alteredVoices {};
+    FixedHashSet<size_t, NumChannels> alteredVoices {};
     bool bipolar {false};
 };
