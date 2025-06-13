@@ -4,8 +4,6 @@
 
 #include "ModMatrix.h"
 
-#include <MacTypes.h>
-
 namespace imagiro {
     ModMatrix::ModMatrix() {
         cachedSerializedMatrix.ensureStorageAllocated(MAX_MOD_CONNECTIONS);
