@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <MacTypes.h>
 #include <unordered_map>
 
 struct NamedMultichannelValue {
