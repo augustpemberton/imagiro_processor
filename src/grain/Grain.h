@@ -68,8 +68,11 @@ public:
     int getSamplesUntilStart() const { return samplesUntilStart; }
     int getSamplesUntilEndOfBuffer();
 
-    void setPitch(float pitch, bool skipSmoothing = false) {
-        settings.pitch = pitch;
+    /*
+     * note - we can update stream pitch every block, but grain pitch only gets set once
+     */
+    void setStreamPitch(float pitch, bool skipSmoothing = false) {
+        settings.streamPitch = pitch;
         if (skipSmoothing) smoothPitchRatio.setCurrentAndTargetValue(settings.getPitchRatio());
         else smoothPitchRatio.setTargetValue(settings.getPitchRatio());
     }

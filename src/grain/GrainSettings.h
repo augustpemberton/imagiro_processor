@@ -47,6 +47,7 @@ struct GrainSettings {
 
     float gain = 1.f;
     float pitch = 0;
+    float streamPitch = 0;
     float pan = 0.5f;
     float spread = 0.f;
     float shape = 0.5f;
@@ -54,6 +55,6 @@ struct GrainSettings {
     bool reverse = false;
 
     float getPitchRatio() const {
-        return (reverse ? -1.f : 1.f) * std::pow(2.f, (pitch) / 12.f);
+        return (reverse ? -1.f : 1.f) * std::pow(2.f, (pitch+streamPitch) / 12.f);
     }
 };

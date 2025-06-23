@@ -53,7 +53,7 @@ void ADSR::setDecayRate(double rate) {
     decayCoef = calcCoef(rate, targetRatioDR);
 
     // Recalculate decay base relative to current output
-    if (state == EnvState::env_decay && output > 0.1) {
+    if (state == EnvState::env_decay && output > 0.001) {
         decayBase = (sustainLevel - output) * (1.0 - decayCoef);
     } else {
         decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
@@ -65,7 +65,7 @@ void ADSR::setReleaseRate(double rate) {
     releaseCoef = calcCoef(rate, targetRatioDR);
 
     // Recalculate release base relative to current output
-    if (state == EnvState::env_release && output > 0.1) {
+    if (state == EnvState::env_release && output > 0.001) {
         releaseBase = -output * (1.0 - releaseCoef);
     } else {
         releaseBase = -targetRatioDR * (1.0 - releaseCoef);
@@ -82,9 +82,9 @@ void ADSR::setSustainLevel(double level) {
     sustainLevel = level;
 
     // Update decay base considering current state
-    if (state == EnvState::env_decay && output > 0.1) {
+    if (state == EnvState::env_decay && output > 0.001) {
         decayBase = (sustainLevel - output) * (1.0 - decayCoef);
-    } else if (state == EnvState::env_sustain && output > 0.1) {
+    } else if (state == EnvState::env_sustain && output > 0.001) {
         // Smoothly transition to new sustain level by entering decay state
         state = EnvState::env_decay;
         decayBase = (sustainLevel - output) * (1.0 - decayCoef);
@@ -118,13 +118,13 @@ void ADSR::setTargetRatioDR(double targetRatio) {
     releaseCoef = calcCoef(releaseRate, targetRatioDR);
 
     // Update bases considering current state
-    if (state == EnvState::env_decay && output > 0.1) {
+    if (state == EnvState::env_decay && output > 0.001) {
         decayBase = (sustainLevel - output) * (1.0 - decayCoef);
     } else {
         decayBase = (sustainLevel - targetRatioDR) * (1.0 - decayCoef);
     }
 
-    if (state == EnvState::env_release && output > 0.1) {
+    if (state == EnvState::env_release && output > 0.001) {
         releaseBase = -output * (1.0 - releaseCoef);
     } else {
         releaseBase = -targetRatioDR * (1.0 - releaseCoef);

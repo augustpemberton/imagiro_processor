@@ -11,6 +11,7 @@ Grain::Grain(GrainBuffer& buffer, size_t i) : grainBuffer(buffer), gain(0), poin
 
 void Grain::configure(GrainSettings s) {
     settings = s;
+    settings.position = std::clamp(settings.position, 0.f, 1.f);
     spreadVal = (imagiro::rand01() * 2 - 1) * settings.spread;
     calculatePanCoeffs(settings.pan + spreadVal);
 
@@ -44,6 +45,7 @@ float* Grain::calculatePanCoeffs(const float val) {
 void Grain::play(int sampleDelay) {
     currentBuffer = grainBuffer.getBuffer();
     if (!currentBuffer) return;
+    if (currentBuffer->getNumSamples() <= 0) return;
     auto spawnPosition = settings.position * static_cast<float>(currentBuffer->getNumSamples());
 
     if (settings.loopSettings.loopActive) {
@@ -59,8 +61,9 @@ void Grain::play(int sampleDelay) {
         if (pastLoop) spawnPosition = imagiro::wrapWithinRange(spawnPosition, loopStart, loopEnd);
     }
 
-    pointer = std::min((double)currentBuffer->getNumSamples() - INTERP_POST_SAMPLES - 1 - quickfadeSamples, pointer);
-    pointer = static_cast<double>(std::max((float)INTERP_PRE_SAMPLES, spawnPosition));
+    pointer = spawnPosition;
+    pointer = std::min(static_cast<double>(currentBuffer->getNumSamples()) - INTERP_POST_SAMPLES - INTERP_PRE_SAMPLES - 1 - quickfadeSamples, pointer);
+    pointer = std::max(static_cast<double>(INTERP_PRE_SAMPLES), pointer);
     progress = 0;
 
     samplesUntilStart = sampleDelay;
@@ -131,6 +134,10 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
 
     if (pastLoopRegion || !settings.loopSettings.loopActive) {
         const auto samplesUntilEnd = getSamplesUntilEndOfBuffer() - INTERP_POST_SAMPLES - 1;
+        if (samplesUntilEnd < numSamples) {
+            stop(false);
+            return;
+        }
         if (samplesUntilEnd < quickfadeSamples + numSamples) {
             quickfading = true;
             numSamples = std::min(numSamples, samplesUntilEnd - 1);
