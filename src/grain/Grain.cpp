@@ -102,14 +102,14 @@ void Grain::updateLoopSettings(LoopSettings s) {
     else setNewLoopSettingsInternal(s);
 }
 
-bool Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int numSamples, bool setNotAdd) {
-    if (currentBuffer == nullptr) return false;
+void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int numSamples, bool setNotAdd) {
+    if (currentBuffer == nullptr) return;
 
     if (samplesUntilStart > 0) {
         auto delay = samplesUntilStart;
 
         samplesUntilStart = std::max(0, samplesUntilStart - numSamples);
-        if (samplesUntilStart > 0) return true;
+        if (samplesUntilStart > 0) return;
 
         outStartSample += delay;
         numSamples -= delay;
@@ -140,7 +140,7 @@ bool Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
     // Check if we're already at zero gain
     if (quickfading && quickfadeGain <= 0.f) {
         stop(false);
-        return false;
+        return;
     }
 
     if (progressPerSample > 0) {
@@ -253,7 +253,7 @@ bool Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         queuedLoopSettings.reset();
     }
 
-    auto wasPlaying = playing;
+    const auto wasPlaying = playing;
     playing = progress + progressPerSample < 1;
 
     if (quickfadeGain <= 0.f) {
@@ -263,8 +263,6 @@ bool Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
     if (!playing && wasPlaying) {
         stop(false);
     }
-
-    return playing;
 }
 
 void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {

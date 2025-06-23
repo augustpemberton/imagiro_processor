@@ -8,6 +8,10 @@
 #include "../parameter/modulation/ModMatrix.h"
 #include "../parameter/modulation/MultichannelValue.h"
 
+#if !defined(MAX_VOICES)
+#define MAX_VOICES MAX_MOD_VOICES
+#endif
+
 class MPESynth : public juce::MPESynthesiserBase {
 public:
     struct Listener {
@@ -20,6 +24,31 @@ public:
 
     void addListener(Listener* l) { listeners.add(l); }
     void removeListener(Listener* l) { listeners.remove(l); }
+
+    void noteAdded(juce::MPENote newNote) override {
+        const auto freeVoiceIndex = findFreeVoice();
+        if (!freeVoiceIndex) return;
+
+        const auto note = RetunedMPENote(ScaledMPENote(newNote));
+
+        setNoteForVoice(*freeVoiceIndex, note);
+        startVoice(note, *freeVoiceIndex);
+        listeners.call(&Listener::onVoiceStarted, *freeVoiceIndex);
+    }
+
+    void noteReleased(juce::MPENote finishedNote) override {
+        const auto note = RetunedMPENote(ScaledMPENote(finishedNote));
+
+        for (auto i=0; i<MAX_MOD_VOICES; i++) {
+            const auto& n = playingNotes[i];
+            if (!n) continue;
+
+            if (n->noteID == note.noteID) {
+                stopVoice(i, false);
+                listeners.call(&Listener::onVoiceReleased, i);
+            }
+        }
+    }
 
     void handleMidiEvent(const juce::MidiMessage &m) override {
         if (m.isController() && m.getControllerNumber() == 1) {
@@ -44,6 +73,9 @@ public:
         }
     }
 
+    virtual void startVoice(RetunedMPENote note, size_t voiceIndex) = 0;
+    virtual void stopVoice(size_t voiceIndex, bool quickStop) = 0;
+
     const auto &getPressure() { return pressureValue; }
     const auto &getPitchbend() { return pitchbendValue; }
     const auto &getInitialNote() { return initialNoteValue; }
@@ -60,18 +92,38 @@ protected:
     MultichannelValue<MAX_MOD_VOICES> initialNoteValue {true};
     MultichannelValue<MAX_MOD_VOICES> initialVelocityValue {false};
     MultichannelValue<MAX_MOD_VOICES> modWheelValue {false};
+
     FixedHashSet<size_t, MAX_MOD_VOICES> activeVoices = {};
-
-    void voiceStarted(size_t voiceIndex) {
-        listeners.call(&Listener::onVoiceStarted, voiceIndex);
-    }
-
-    void voiceReleased(size_t voiceIndex) {
-        listeners.call(&Listener::onVoiceReleased, voiceIndex);
-    }
+    std::array<std::optional<RetunedMPENote>, MAX_MOD_VOICES> playingNotes;
+    std::deque<size_t*> voiceAgeQueue;
 
     void voiceFinished(size_t voiceIndex) {
+        playingNotes[voiceIndex].reset();
+
+        const auto ageIt = std::ranges::find(voiceAgeQueue, &voiceIndex);
+        if (ageIt != voiceAgeQueue.end()) {
+            voiceAgeQueue.erase(ageIt);
+        }
+
+        clearNoteForVoice(voiceIndex);
         listeners.call(&Listener::onVoiceFinished, voiceIndex);
+    }
+
+    std::optional<size_t> findFreeVoice() {
+        if (activeVoices.size() >= MAX_VOICES) {
+            auto oldestVoiceIt = voiceAgeQueue.begin();
+            auto oldestVoice = **oldestVoiceIt;
+            stopVoice(oldestVoice, true);
+            voiceAgeQueue.erase(oldestVoiceIt);
+        }
+
+        for (auto i = 0u; i < playingNotes.size(); i++) {
+            if (!playingNotes[i].has_value()) return i;
+        }
+
+        // This shouldn't happen if our tracking is correct
+        jassertfalse;
+        return {};
     }
 
     void setNoteForVoice(const size_t voiceIndex, RetunedMPENote note,
@@ -90,13 +142,16 @@ protected:
         pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion), voiceIndex);
 
         activeVoices.insert(voiceIndex);
+        playingNotes[voiceIndex] = note;
     }
 
     void clearNoteForVoice(const size_t voiceIndex) {
+        playingNotes[voiceIndex].reset();
+        activeVoices.erase(voiceIndex);
+
         initialNoteValue.setVoiceValue(0, voiceIndex);
         initialVelocityValue.setVoiceValue(0, voiceIndex);
         pressureValue.setVoiceValue(0, voiceIndex);
         pitchbendValue.setVoiceValue(0, voiceIndex);
-        activeVoices.erase(voiceIndex);
     }
 };

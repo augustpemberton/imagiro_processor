@@ -50,7 +50,7 @@ namespace imagiro {
             voiceIndex = static_cast<int>(mostRecentVoiceIndex);
         }
 
-        jassert(!(targetValues.empty() && !targetValues.contains(targetID)));
+        if (targetValues.empty()) return 0.f;
         if (const auto& v = targetValues[targetID]) {
             return v->value.getGlobalValue() + v->value.getVoiceValue(static_cast<size_t>(voiceIndex));
         }

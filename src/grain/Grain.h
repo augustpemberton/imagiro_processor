@@ -8,8 +8,6 @@
 #include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 
-class GrainStream;
-
 class Grain {
 public:
     struct Serialized {
@@ -49,7 +47,7 @@ public:
     void play(int delay = 0);
     void stop(bool fadeout = false);
 
-    bool processBlock(juce::AudioSampleBuffer& out, int startSample, int numSamples, bool setNotAdd = false);
+    void processBlock(juce::AudioSampleBuffer& out, int startSample, int numSamples, bool setNotAdd = false);
     void prepareToPlay(double sampleRate, int maxBlockSize);
 
     double getPointer() const { return pointer; }

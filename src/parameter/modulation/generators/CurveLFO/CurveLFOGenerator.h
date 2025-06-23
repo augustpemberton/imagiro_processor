@@ -42,6 +42,7 @@ public:
         frequency->removeListener(this);
         phase->removeListener(this);
         playbackMode->removeListener(this);
+        stopTimer();
     }
 
     void onVoiceStarted(const size_t voiceIndex) override {

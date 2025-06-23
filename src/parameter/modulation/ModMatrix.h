@@ -10,7 +10,8 @@
 #include "MultichannelValue.h"
 
 #if defined(MAX_VOICES)
-    #define MAX_MOD_VOICES MAX_VOICES
+    // note here that we need twice as many as max_voices to account for stealing
+    #define MAX_MOD_VOICES MAX_VOICES*2
 #elif !defined(MAX_MOD_VOICES)
     #define MAX_MOD_VOICES 128
 #endif
