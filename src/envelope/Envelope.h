@@ -119,7 +119,7 @@ private:
     float quickfadeRate {0};
     bool quickfading {false};
 
-    const int downsampleRate = 8;
+    const int downsampleRate = 6;
     const float downsampleInv = 1.f / (float) downsampleRate;
     float downsampleCounter = 0;
 

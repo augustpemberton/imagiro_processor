@@ -8,10 +8,6 @@
 #include "../parameter/modulation/ModMatrix.h"
 #include "../parameter/modulation/MultichannelValue.h"
 
-#if !defined(MAX_VOICES)
-#define MAX_VOICES MAX_MOD_VOICES
-#endif
-
 class MPESynth : public juce::MPESynthesiserBase {
 public:
     struct Listener {
@@ -25,12 +21,27 @@ public:
     void addListener(Listener* l) { listeners.add(l); }
     void removeListener(Listener* l) { listeners.remove(l); }
 
+    explicit MPESynth(const int maxVoices = MAX_MOD_VOICES / 2){
+        setMaxVoices(maxVoices);
+    }
+
+    void setMaxVoices(int maxVoices) {
+        // need half as many max voices as mod voices, so we can do stealing without clicks
+        maxVoices = std::min(MAX_MOD_VOICES / 2, maxVoices);
+        this->maxVoices = maxVoices;
+
+        for (auto& v : activeVoices) {
+            stopVoice(v, true);
+        }
+    }
+
     void noteAdded(juce::MPENote newNote) override {
         const auto freeVoiceIndex = findFreeVoice();
         if (!freeVoiceIndex) return;
 
         const auto note = RetunedMPENote(ScaledMPENote(newNote));
 
+        voiceAgeQueue.push_back(*freeVoiceIndex);
         setNoteForVoice(*freeVoiceIndex, note);
         startVoice(note, *freeVoiceIndex);
         listeners.call(&Listener::onVoiceStarted, *freeVoiceIndex);
@@ -85,6 +96,8 @@ public:
     const auto& getActiveVoices() const { return activeVoices; }
 
 protected:
+    int maxVoices;
+
     juce::ListenerList<Listener> listeners;
 
     MultichannelValue<MAX_MOD_VOICES> pressureValue {false};
@@ -95,12 +108,12 @@ protected:
 
     FixedHashSet<size_t, MAX_MOD_VOICES> activeVoices = {};
     std::array<std::optional<RetunedMPENote>, MAX_MOD_VOICES> playingNotes;
-    std::deque<size_t*> voiceAgeQueue;
+    std::deque<size_t> voiceAgeQueue;
 
     void voiceFinished(size_t voiceIndex) {
         playingNotes[voiceIndex].reset();
 
-        const auto ageIt = std::ranges::find(voiceAgeQueue, &voiceIndex);
+        const auto ageIt = std::ranges::find(voiceAgeQueue, voiceIndex);
         if (ageIt != voiceAgeQueue.end()) {
             voiceAgeQueue.erase(ageIt);
         }
@@ -110,9 +123,9 @@ protected:
     }
 
     std::optional<size_t> findFreeVoice() {
-        if (activeVoices.size() >= MAX_VOICES) {
+        if (activeVoices.size() >= maxVoices) {
             auto oldestVoiceIt = voiceAgeQueue.begin();
-            auto oldestVoice = **oldestVoiceIt;
+            auto oldestVoice = *oldestVoiceIt;
             stopVoice(oldestVoice, true);
             voiceAgeQueue.erase(oldestVoiceIt);
         }
