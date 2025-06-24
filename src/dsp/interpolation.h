@@ -8,6 +8,19 @@
 #define INTERP_POST_SAMPLES 4
 
 namespace imagiro {
+    static float interp_linear(const juce::AudioSampleBuffer& b, int channel, double index) {
+        jassert(index >= INTERP_PRE_SAMPLES && index < b.getNumSamples() - INTERP_POST_SAMPLES);
+
+        const auto* in = b.getReadPointer(channel);
+        const int floored = static_cast<int>(index);
+        const auto x = index - floored;
+
+        const auto y0 = in[floored];
+        const auto y1 = in[floored + 1];
+
+        return y0 + (y1 - y0) * x;
+    }
+
     /*
      * 4-point, 3rd order for 2x oversampled audio
      */

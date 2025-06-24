@@ -37,7 +37,7 @@ private:
     juce::File fileToLoad;
     bool normalizeFile {false};
 
-    const int oversampleRatio = 2;
+    const int oversampleRatio = 1;
 
     void run() override;
 };

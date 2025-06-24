@@ -75,9 +75,16 @@ void BufferFileLoader::run() {
 
         // interpolate
         for (auto c = 0; c < std::min(buffer->getNumChannels(), (int) reader->numChannels); c++) {
-            interpolator[c].process(1 / ratio, tempLoadBuffer.getReadPointer(c, n),
-                                    tempInterpBuffer.getWritePointer(c, outN),
-                                    numOutputSamples);
+            if (ratio == 1) {
+                juce::FloatVectorOperations::copy(
+                    tempInterpBuffer.getWritePointer(c, outN),
+                    tempLoadBuffer.getReadPointer(c, n),
+                    numOutputSamples);
+            } else {
+                interpolator[c].process(1 / ratio, tempLoadBuffer.getReadPointer(c, n),
+                                        tempInterpBuffer.getWritePointer(c, outN),
+                                        numOutputSamples);
+            }
         }
 
         // load into buffer

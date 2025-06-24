@@ -253,11 +253,11 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
                 const auto& sample = sampleDataBuffer[s];
 
                 // assuming we're running at 2x oversample
-                auto v = imagiro::interp4p3o_2x(*currentBuffer, inChannel, sample.position);
+                auto v = imagiro::interp_linear(*currentBuffer, inChannel, sample.position);
 
                 // Apply loop crossfade if needed
                 if (sample.loopFadePointer >= 0) {
-                    const auto fadeSample = imagiro::interp4p3o_2x(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
+                    const auto fadeSample = imagiro::interp_linear(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
                     v = v * (1 - sample.loopFadeProgress) + fadeSample * sample.loopFadeProgress;
                 }
 
