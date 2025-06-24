@@ -47,7 +47,7 @@ public:
         if (!file.exists()) return;
 
         grain.stop(false);
-        grainBuffer.loadFileIntoBuffer(file, lastSampleRate);
+        grainBuffer.loadFileIntoBuffer(file);
     }
 
     choc::value::Value OnMessageReceived(std::string type, const choc::value::ValueView &data) override {
@@ -133,7 +133,7 @@ public:
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
         // if we're on file mode but no file loaded, don't do anything
-        if (typeParam->getProcessorValue() == 1 &&  grainBuffer.getBuffer()->getNumSamples() == 0) {
+        if (typeParam->getProcessorValue() == 1 &&  grainBuffer.getBuffer()->getBuffer(0)->getNumSamples() == 0) {
             return;
         }
 

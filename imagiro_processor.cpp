@@ -11,3 +11,4 @@
 #include "src/parameter/modulation/ModMatrix.cpp"
 #include "src/grain/Grain.cpp"
 #include "src/grain/GrainBuffer.cpp"
+#include "src/BufferFileLoader.cpp"
