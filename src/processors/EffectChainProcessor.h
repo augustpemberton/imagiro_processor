@@ -36,6 +36,4 @@ protected:
         if (type == EffectType::Erosion) return std::make_shared<ErosionProcessor>();
         return nullptr;
     }
-
-    std::string getPrefix() const override { return "fx"; }
 };

@@ -300,6 +300,9 @@ namespace imagiro {
             smootherNeedsUpdate = false;
         }
 
+        auto target = getProcessorValue();
+        valueSmoother.setTargetValue(target);
+
         auto blockStart = valueSmoother.getCurrentValue();
         valueSmoother.skip(samples);
         auto blockEnd = valueSmoother.getCurrentValue();
@@ -336,7 +339,6 @@ namespace imagiro {
        if (!hasGeneratedSmoothBufferThisBlock) {
            valueSmoother.skip(samplesThisBlock);
        }
-
 
         samplesThisBlock = samples;
         hasGeneratedSmoothBufferThisBlock = false;

@@ -34,6 +34,9 @@ public:
         lowpassParam->addListener(this);
         highpassParam->addListener(this);
 
+        pitchParam = getParameter("pitch");
+        pitchParam->addListener(this);
+
         grain.configure({
             -1, 0, {
                 0, 1, 0.01, true
@@ -46,7 +49,6 @@ public:
         const juce::File file (path);
         if (!file.exists()) return;
 
-        grain.stop(false);
         grainBuffer.loadFileIntoBuffer(file);
     }
 
@@ -76,7 +78,7 @@ public:
             .withOutput("Output", juce::AudioChannelSet::stereo(), true);
     }
 
-    void parameterChanged(Parameter* p) override {
+    void parameterChangedSync(Parameter* p) override {
         Processor::parameterChanged(p);
         if (p == tightnessParam) {
             env.setReleaseMs(p->getProcessorValue() * 1000);
@@ -85,6 +87,8 @@ public:
             lpFreq->setUserValue(p->getUserValue());
         } else if (p == highpassParam) {
             hpFreq->setUserValue(p->getUserValue());
+        } else if (p == pitchParam) {
+            grain.setStreamPitch(p->getProcessorValue());
         }
     }
 
@@ -133,19 +137,20 @@ public:
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
         // if we're on file mode but no file loaded, don't do anything
-        if (typeParam->getProcessorValue() == 1 &&  grainBuffer.getBuffer()->getBuffer(0)->getNumSamples() == 0) {
+        if (typeParam->getProcessorValue() == 1 && grainBuffer.getBuffer() && grainBuffer.getBuffer()->getBuffer(0)->getNumSamples() == 0) {
             return;
         }
 
         if (playGrainFlag) {
             playGrainFlag = false;
+            grain.stop(false);
             grain.play();
         }
 
         fillNoiseBuffer(buffer.getNumSamples());
         filterNoiseBuffer();
 
-        static constexpr auto noiseNormalizationGain = 2.5;
+        static constexpr auto noiseNormalizationGain = 1;
         for (auto s = 0; s < buffer.getNumSamples(); s++) {
             float monoSample {0};
             float gateValue = gateGain.getNextValue();
@@ -178,6 +183,8 @@ private:
 
     Parameter *lpFreq;
     Parameter *hpFreq;
+
+    Parameter *pitchParam;
 
     GrainBuffer grainBuffer;
     Grain grain;

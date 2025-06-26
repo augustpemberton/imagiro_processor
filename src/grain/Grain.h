@@ -136,6 +136,7 @@ private:
 
     juce::SmoothedValue<double> smoothPitchRatio;
     double sampleRateRatio {1};
+    void updateSampleRateRatio();
     float gain;
 
     double pointer;

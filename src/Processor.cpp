@@ -359,6 +359,7 @@ namespace imagiro {
     }
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        lastSampleRate = sampleRate;
         setRateAndBufferSizeDetails(sampleRate, samplesPerBlock);
         modMatrix.prepareToPlay(sampleRate, samplesPerBlock);
         measurer.reset(sampleRate, samplesPerBlock);

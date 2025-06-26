@@ -41,7 +41,6 @@ float* Grain::calculatePanCoeffs(const float val) {
     return cachedPanCoeffs;
 }
 
-
 void Grain::play(int sampleDelay) {
     currentMipMapBuffer = grainBuffer.getBuffer();
     if (!currentMipMapBuffer) return;
@@ -52,7 +51,7 @@ void Grain::play(int sampleDelay) {
     if (!currentBuffer) return;
     if (currentBuffer->getNumSamples() <= 0) return;
 
-    sampleRateRatio = currentMipMapBuffer->getSampleRate() / sampleRate;
+    updateSampleRateRatio();
 
     auto spawnPosition = settings.position * static_cast<float>(currentBuffer->getNumSamples());
 
@@ -252,12 +251,11 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
             for (int s = 0; s < samplesThisChunk; s++) {
                 const auto& sample = sampleDataBuffer[s];
 
-                // assuming we're running at 2x oversample
-                auto v = imagiro::interp_linear(*currentBuffer, inChannel, sample.position);
+                auto v = imagiro::interp4p3o_2x(*currentBuffer, inChannel, sample.position);
 
                 // Apply loop crossfade if needed
                 if (sample.loopFadePointer >= 0) {
-                    const auto fadeSample = imagiro::interp_linear(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
+                    const auto fadeSample = imagiro::interp4p3o_2x(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
                     v = v * (1 - sample.loopFadeProgress) + fadeSample * sample.loopFadeProgress;
                 }
 
@@ -312,6 +310,11 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
     }
 }
 
+
+void Grain::updateSampleRateRatio() {
+    if (!currentMipMapBuffer) return;
+    sampleRateRatio = currentMipMapBuffer->getSampleRate() / sampleRate;
+}
 
 void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
     settings.loopSettings = loopSettings;
@@ -378,6 +381,7 @@ void Grain::stop(bool fadeout) {
 
 void Grain::prepareToPlay(double sr, int maxBlockSize) {
     this->sampleRate = sr;
+    updateSampleRateRatio();
     temp.setSize(1, maxBlockSize + INTERP_PRE_SAMPLES + INTERP_POST_SAMPLES);
     sampleDataBuffer.resize(maxBlockSize);
 

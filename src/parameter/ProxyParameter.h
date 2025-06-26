@@ -17,7 +17,10 @@ public:
     }
 
     bool isProxySet() const { return proxyTarget != nullptr || queuedProxyTarget != nullptr; }
-    void clearProxyTarget() { proxyTarget = nullptr; }
+    void clearProxyTarget() {
+        proxyTarget = nullptr;
+        queuedProxyTarget = nullptr;
+    }
 
     void queueProxyTarget(Parameter& p) {
         queuedProxyTarget = &p;
@@ -31,13 +34,19 @@ public:
     }
 
     void setProxyTarget(Parameter& p) {
-        if (proxyTarget) proxyTarget.load()->removeListener(this);
+        if (proxyTarget) {
+            proxyTarget.load()->removeListener(this);
+            if (proxyOriginalModTarget) {
+                proxyTarget.load()->setModTarget(*proxyOriginalModTarget);
+                proxyOriginalModTarget.reset();
+            }
+        }
         internal = p.isInternal();
         proxyTarget = &p;
-        if (modMatrix) {
-            p.setModMatrix(*modMatrix);
-        }
         p.addListener(this);
+
+        proxyOriginalModTarget = p.getModTarget();
+        p.setModTarget(modTarget);
 
         asyncConfigChangedFlag = true;
         asyncValueUpdateFlag = true;
@@ -46,9 +55,16 @@ public:
         listeners.call(&Listener::configChangedSync, this);
     }
 
-    ModTarget& getModTarget() override {
-        return proxyTarget ? proxyTarget.load()->getModTarget() : modTarget;
+    void OnTargetUpdated() override {
+        Parameter::OnTargetUpdated();
+        // if (!proxyTarget) return;
+
+        // proxyTarget.load()->setValue(getModValue());
     }
+
+    // ModTarget& getModTarget() override {
+    //     return proxyTarget ? proxyTarget.load()->getModTarget() : modTarget;
+    // }
 
     // setters
     void setValue(const float newValue) override {
@@ -131,4 +147,5 @@ private:
     std::atomic<Parameter*> proxyTarget {nullptr};
     std::atomic<Parameter*> queuedProxyTarget{nullptr};
 
+    std::optional<ModTarget> proxyOriginalModTarget;
 };

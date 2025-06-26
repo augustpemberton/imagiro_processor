@@ -76,8 +76,6 @@ protected:
         item.processor->getSource().deregister();
     }
 
-    std::string getPrefix() const override { return "generator"; }
-
 private:
     ModMatrix& modMatrix;
     EnvelopeFollowerSources* envSources {nullptr};

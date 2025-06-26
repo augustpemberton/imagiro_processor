@@ -8,8 +8,12 @@
 #include "imagiro_processor/src/parameter/ProxyParameter.h"
 
 template<typename ItemType, typename ProcessorType>
-class ChainManager {
+class ChainManager : juce::Timer {
 public:
+    ChainManager() {
+        startTimer(1000);
+    }
+
     virtual ~ChainManager() = default;
 
     struct Item {
@@ -33,7 +37,6 @@ public:
     void removeListener(Listener* l) { listeners.remove(l); }
 
     void processBlock(juce::AudioSampleBuffer& b, juce::MidiBuffer& midi) {
-        processorGraph.processBlock(b, midi);
         ProxyParameter* p;
 
         bool updated = false;
@@ -41,6 +44,8 @@ public:
             p->processQueuedTarget();
             updated = true;
         }
+
+        processorGraph.processBlock(b, midi);
 
         if (updated) clearWaitingProxiesFlag = true;
     }
@@ -50,8 +55,19 @@ public:
         return itemsByID[id];
     }
 
+    void setItem(size_t index, ItemType type, bool sync = false) {
+        if (currentChain.size() > index && currentChain[index].type == type) return;
+        auto newChain = currentChain;
+
+        index = std::clamp(index, static_cast<size_t>(0), newChain.size());
+
+        if (index == newChain.size()) newChain.push_back(Item{-1, type});
+        else newChain[index] = Item{-1, type};
+        setChain(newChain, sync);
+    }
+
     /* Allocates - call from message thread */
-    void setChain(Chain chain) {
+    void setChain(Chain chain, bool sync = false) {
         if (clearWaitingProxiesFlag) {
             proxiesWaitingToUpdate.clear();
             clearWaitingProxiesFlag = false;
@@ -65,6 +81,7 @@ public:
 
         auto oldChain = currentChain;
         currentChain = chain;
+        allChains.push_back(currentChain);
 
         itemsByID.clear();
         for (auto& item : currentChain) {
@@ -76,7 +93,9 @@ public:
         for (auto& item : currentChain) {
             processorList.push_back(item.processor);
         }
-        processorGraph.queueChain(processorList);
+
+        if (sync) processorGraph.setChain(processorList);
+        else processorGraph.queueChain(processorList);
 
         cleanupOldItems(oldChain);
         listeners.call(&Listener::OnChainUpdated);
@@ -121,8 +140,6 @@ public:
         setChain(chain);
     }
 
-    virtual std::string getPrefix() const = 0;
-
     virtual choc::value::Value getItemState(const Item& item) {
         auto chainValue = choc::value::createObject("item");
         chainValue.setMember("type", static_cast<int>(item.type));
@@ -143,6 +160,7 @@ private:
     ProcessorChainProcessor processorGraph;
 
     Chain currentChain;
+    std::vector<Chain> allChains;
 
     std::set<ProxyParameter*> usedProxyParams;
     std::vector<ProxyParameter*>* proxyParameters{nullptr};
@@ -150,6 +168,23 @@ private:
     std::map<int, Item*> itemsByID;
 
     juce::ListenerList<Listener> listeners;
+
+    void timerCallback() override {
+        for (auto it = allChains.begin(); it != allChains.end();) {
+            bool nonReferenced = true;
+            for (const auto& item : *it) {
+                if (item.processor.use_count() > 1) {
+                    nonReferenced = false;
+                }
+            }
+
+            if (nonReferenced) {
+                DBG("De-allocating chain");
+                cleanupOldItems(*it);
+                it = allChains.erase(it);
+            } else ++it;
+        }
+    }
 
     void cleanupOldItems(const Chain& oldChain) {
         for (const auto& oldItem : oldChain) {
@@ -231,7 +266,6 @@ private:
 
             if (mappedProxyParameters[oldItem.id].contains(param->getUID())) {
                 auto proxy = mappedProxyParameters[oldItem.id][param->getUID()];
-                param->setModTarget(proxy->getModTarget());
                 proxy->queueProxyTarget(*param);
                 proxyParamsToUpdate.enqueue(proxy);
                 proxiesWaitingToUpdate.insert(proxy);
@@ -268,7 +302,6 @@ private:
                 break;
             }
 
-            param->setModTarget(ModTarget("param" + getPrefix() + std::to_string(item.id) + param->getUID()));
             proxyParam->queueProxyTarget(*param);
             proxyParamsToUpdate.enqueue(proxyParam);
             proxiesWaitingToUpdate.insert(proxyParam);

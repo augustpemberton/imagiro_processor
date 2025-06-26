@@ -29,6 +29,11 @@ public:
         chainsToPrepare.enqueue(chain);
     }
 
+    void setChain(ProcessorChain& chain) {
+        prepareChainInternal(chain);
+        activeChain = chain;
+    }
+
     void prepareToPlay(double sampleRate, int blockSize) override {
         Processor::prepareToPlay(sampleRate, blockSize);
 
@@ -71,22 +76,25 @@ private:
     juce::SmoothedValue<float> chainFadeGain {1};
 
     moodycamel::ConcurrentQueue<ProcessorChain> chainsToPrepare{4};
-    moodycamel::ReaderWriterQueue<ProcessorChain> preparedChains {4};
+    moodycamel::ConcurrentQueue<ProcessorChain> preparedChains {4};
 
     moodycamel::ReaderWriterQueue<ProcessorChain> chainsToDeallocate {4};
+
+    void prepareChainInternal(ProcessorChain& chain) {
+        for (auto &processor: chain) {
+            // only prepare processor if it's not already in the current chain
+            // otherwise it's already prepared! and might click during fadeout
+            auto instanceInCurrentChain = std::ranges::find(activeChain, processor);
+            if (instanceInCurrentChain == activeChain.end()) {
+                prepareProcessor(*processor);
+            }
+        }
+    }
 
     void timerCallback() override {
         ProcessorChain tempChain;
         while (chainsToPrepare.try_dequeue(tempChain)) {
-            for (auto &processor: tempChain) {
-                // only prepare processor if it's not already in the current chain
-                // otherwise it's already prepared! and might click during fadeout
-                auto instanceInCurrentChain = std::ranges::find(activeChain, processor);
-                if (instanceInCurrentChain == activeChain.end()) {
-                    prepareProcessor(*processor);
-                }
-            }
-
+            prepareChainInternal(tempChain);
             fadingOut = true;
             preparedChains.enqueue(tempChain);
         }
