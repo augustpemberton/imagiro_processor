@@ -34,6 +34,7 @@ public:
     }
 
     float getY(const float x) const {
+        if (points.size() == 0) return x;
         return lookupTable->getUnchecked(x * (lookupTable->getNumPoints() - 1));
     }
 
