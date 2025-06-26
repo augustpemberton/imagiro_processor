@@ -8,7 +8,7 @@
 #include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 
-template <int Resolution = 3>
+template <int Resolution = 4>
 class MipmappedBuffer {
 public:
     MipmappedBuffer() {
@@ -31,7 +31,6 @@ public:
     }
 
     std::shared_ptr<juce::AudioSampleBuffer> getBuffer(size_t factor) {
-        jassert(factor < Resolution);
         return mipmapBuffers[std::min(factor, static_cast<size_t>(Resolution - 1))];
     }
 
