@@ -15,24 +15,26 @@ GrainBuffer::~GrainBuffer() {
     fileLoader.removeListener(this);
 }
 
-void GrainBuffer::loadFileIntoBuffer(juce::File file, double targetSampleRate) {
-    fileLoader.loadFileIntoBuffer(file, targetSampleRate, true);
+void GrainBuffer::loadFileIntoBuffer(const juce::File &file) {
+    fileLoader.loadFileIntoBuffer(file, true);
     lastRequestedFile = file;
 }
 
 void GrainBuffer::clear() {
     lastLoadedFile = "";
     bufferMagnitude = 0;
-    this->buffer = std::make_shared<juce::AudioSampleBuffer>(0, 0);
+    this->buffer = nullptr;
     listeners.call(&Listener::OnBufferUpdated, *this);
 }
 
-void GrainBuffer::OnFileLoadComplete(std::shared_ptr<juce::AudioSampleBuffer> buffer, float mag) {
+void GrainBuffer::OnFileLoadComplete(std::shared_ptr<juce::AudioSampleBuffer> buffer, double sr, const float magnitude) {
     DBG("file load complete");
     lastLoadedFile = lastRequestedFile;
-    bufferMagnitude = mag;
-    this->buffer = buffer;
-    allBuffers.push_back(buffer);
+    bufferMagnitude = magnitude;
+
+    this->buffer = std::make_shared<MipmappedBuffer<>>(buffer, sr);
+    allBuffers.push_back(this->buffer);
+
     listeners.call(&Listener::OnBufferUpdated, *this);
 }
 
@@ -40,7 +42,7 @@ void GrainBuffer::OnFileLoadProgress(float progress) {
     //
 }
 
-void GrainBuffer::OnFileLoadError(juce::String error) {
+void GrainBuffer::OnFileLoadError(const juce::String& error) {
     DBG("file load error: " + error);
 }
 

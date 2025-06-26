@@ -5,6 +5,7 @@
 #pragma once
 #include <juce_audio_basics/juce_audio_basics.h>
 
+#include "MipmappedBuffer.h"
 #include "imagiro_processor/src/BufferFileLoader.h"
 #include "juce_events/juce_events.h"
 
@@ -13,12 +14,14 @@ public:
     GrainBuffer();
     ~GrainBuffer() override;
 
-    std::shared_ptr<juce::AudioSampleBuffer> getBuffer() { return buffer; }
+    std::shared_ptr<MipmappedBuffer<>> getBuffer() const {
+        return buffer;
+    }
 
-    int getNumChannels() { return getBuffer()->getNumChannels(); }
-    int getNumSamples() { return getBuffer()->getNumSamples(); }
+    int getNumChannels() const { return getBuffer()->getBuffer(0)->getNumChannels(); }
+    int getNumSamples() const { return getBuffer()->getBuffer(0)->getNumSamples(); }
 
-    void loadFileIntoBuffer(juce::File file, double targetSampleRate);
+    void loadFileIntoBuffer(const juce::File &file);
     void clear();
 
     BufferFileLoader& getFileLoader() { return fileLoader; }
@@ -41,14 +44,14 @@ private:
 
     juce::ListenerList<Listener> listeners;
 
-    std::shared_ptr<juce::AudioSampleBuffer> buffer;
-    std::vector<std::shared_ptr<juce::AudioSampleBuffer>> allBuffers;
+    std::shared_ptr<MipmappedBuffer<>> buffer;
+    std::vector<std::shared_ptr<MipmappedBuffer<>>> allBuffers;
 
     std::atomic<float> bufferMagnitude {0};
 
-    void OnFileLoadComplete(std::shared_ptr<juce::AudioSampleBuffer> buffer, float magnitude) override;
+    void OnFileLoadComplete(std::shared_ptr<juce::AudioSampleBuffer> buffer, double sr, float magnitude) override;
     void OnFileLoadProgress(float progress) override;
-    void OnFileLoadError(juce::String error) override;
+    void OnFileLoadError(const juce::String& error) override;
 
     BufferFileLoader fileLoader;
     void timerCallback() override;

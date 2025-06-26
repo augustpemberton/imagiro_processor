@@ -8,6 +8,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 
+#include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
+
 class Grain {
 public:
     struct Serialized {
@@ -93,6 +95,24 @@ private:
     bool isLooping;
     std::optional<LoopSettings> queuedLoopSettings;
 
+    struct CachedLoopBoundaries {
+        int loopStartSample = 0;
+        int loopEndSample = 0;
+        int loopCrossfadeSamples = 0;
+        int loopFadeStart = 0;
+        int loopFadeStartReverse = 0;
+        int loopLengthSamples = 0;
+    } cachedLoopBoundaries;
+    void updateCachedLoopBoundaries();
+
+    struct SampleData {
+        double position;
+        bool looping;
+        float loopFadeProgress;
+        double loopFadePointer;
+    };
+    std::vector<SampleData> sampleDataBuffer;
+
     juce::dsp::LookupTableTransform<float> sinApprox {
         [] (float x) { return (float)std::sin(x); },
         -6.5f, 6.5f, 80};
@@ -110,10 +130,12 @@ private:
 
     GrainBuffer& grainBuffer;
     std::shared_ptr<juce::AudioSampleBuffer> currentBuffer;
+    std::shared_ptr<MipmappedBuffer<>> currentMipMapBuffer;
 
     GrainSettings settings;
 
-    juce::SmoothedValue<float> smoothPitchRatio;
+    juce::SmoothedValue<double> smoothPitchRatio;
+    double sampleRateRatio {1};
     float gain;
 
     double pointer;

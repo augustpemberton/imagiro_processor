@@ -29,7 +29,7 @@ void Grain::configure(GrainSettings s) {
         }, 0.f, 1.f, 100);
     }
 
-    smoothPitchRatio.setCurrentAndTargetValue(s.getPitchRatio());
+    smoothPitchRatio.setTargetValue(settings.getPitchRatio());
 }
 
 float* Grain::calculatePanCoeffs(const float val) {
@@ -43,10 +43,20 @@ float* Grain::calculatePanCoeffs(const float val) {
 
 
 void Grain::play(int sampleDelay) {
-    currentBuffer = grainBuffer.getBuffer();
+    currentMipMapBuffer = grainBuffer.getBuffer();
+    if (!currentMipMapBuffer) return;
+
+    int mipMapLevel = static_cast<int>(std::abs(smoothPitchRatio.getTargetValue()));
+
+    currentBuffer = currentMipMapBuffer->getBuffer(mipMapLevel);
     if (!currentBuffer) return;
     if (currentBuffer->getNumSamples() <= 0) return;
+
+    sampleRateRatio = currentMipMapBuffer->getSampleRate() / sampleRate;
+
     auto spawnPosition = settings.position * static_cast<float>(currentBuffer->getNumSamples());
+
+    updateCachedLoopBoundaries();
 
     if (settings.loopSettings.loopActive) {
         const auto loopStart = settings.loopSettings.getLoopStartSample(currentBuffer->getNumSamples());
@@ -85,6 +95,7 @@ float Grain::getGrainSpeed() {
 
 int Grain::getSamplesUntilEndOfBuffer() {
     auto maxPitchRatio = std::max(std::abs(smoothPitchRatio.getCurrentValue()), std::abs(smoothPitchRatio.getTargetValue()));
+    maxPitchRatio *= sampleRateRatio;
 
     int s;
     if (settings.reverse) {
@@ -107,10 +118,10 @@ void Grain::updateLoopSettings(LoopSettings s) {
 
 void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int numSamples, bool setNotAdd) {
     if (currentBuffer == nullptr) return;
+    if (currentMipMapBuffer == nullptr) return;
 
     if (samplesUntilStart > 0) {
         auto delay = samplesUntilStart;
-
         samplesUntilStart = std::max(0, samplesUntilStart - numSamples);
         if (samplesUntilStart > 0) return;
 
@@ -123,14 +134,8 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         stopFlag = false;
     }
 
-    const auto loopStartSample = settings.loopSettings.getLoopStartSample(currentBuffer->getNumSamples());
-    const auto loopCrossfadeSamples = settings.loopSettings.getCrossfadeSamples(currentBuffer->getNumSamples());
-    const auto loopEndSample = settings.loopSettings.getLoopEndSample(currentBuffer->getNumSamples());
-    const auto loopFadeStart = settings.loopSettings.getCrossfadeStartSample(currentBuffer->getNumSamples());
-    const auto loopFadeStartReverse = settings.loopSettings.getReverseCrossfadeStartSample(currentBuffer->getNumSamples());
-    const auto loopLengthSamples = settings.loopSettings.getLoopLengthSamples(currentBuffer->getNumSamples());
-
-    const auto pastLoopRegion = settings.loopSettings.loopActive && pointer > loopEndSample;
+    const auto& bounds = cachedLoopBoundaries;
+    const auto pastLoopRegion = settings.loopSettings.loopActive && pointer > bounds.loopEndSample;
 
     if (pastLoopRegion || !settings.loopSettings.loopActive) {
         const auto samplesUntilEnd = getSamplesUntilEndOfBuffer() - INTERP_POST_SAMPLES - 1;
@@ -155,18 +160,23 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         numSamples = std::min(numSamples, samplesUntilEndOfGrain);
     }
 
-
     if (firstBlockFlag) {
         firstBlockFlag = false;
         smoothPitchRatio.setCurrentAndTargetValue(smoothPitchRatio.getTargetValue());
     }
 
+    // Cache frequently accessed values
+    const auto numBufferChannels = currentBuffer->getNumChannels();
+    const auto numOutChannels = out.getNumChannels();
+    const bool isLoopActive = settings.loopSettings.loopActive;
+    const bool isReverse = settings.reverse;
+
     while (numSamples > 0 && quickfadeGain > 0.f) {
         auto samplesThisChunk = numSamples;
 
-        auto startPitchRatio = smoothPitchRatio.getCurrentValue();
+        auto startPitchRatio = smoothPitchRatio.getCurrentValue() * sampleRateRatio;
         smoothPitchRatio.skip(samplesThisChunk);
-        auto endPitchRatio = smoothPitchRatio.getCurrentValue();
+        auto endPitchRatio = smoothPitchRatio.getCurrentValue() * sampleRateRatio;
         auto pitchRatioPerSample = (endPitchRatio - startPitchRatio) / (float) samplesThisChunk;
 
         auto startPan = smoothedPan.getCurrentValue();
@@ -179,80 +189,110 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
                                   static_cast<int>(quickfadeGainStart / quickfadeGainPerSample) + 1 : samplesThisChunk;
         samplesThisChunk = std::min(samplesThisChunk, maxQuickfadeSamples);
 
+        // Ensure our buffer is large enough
+        if (sampleDataBuffer.size() < static_cast<size_t>(samplesThisChunk)) {
+            sampleDataBuffer.resize(samplesThisChunk);
+        }
+
+        // Pre-calculate all position and loop data
         double pos = pointer;
         bool looping = isLooping;
-        for (int c=0; c<out.getNumChannels(); c++) {
-            auto inChannel = c % currentBuffer->getNumChannels();
-            pos = pointer;
-            looping = isLooping;
+        for (int s = 0; s < samplesThisChunk; s++) {
+            auto pitchRatio = startPitchRatio + (float)s * pitchRatioPerSample;
+            pos += pitchRatio;
 
-            for (auto s=0; s<samplesThisChunk; s++) {
-                auto pitchRatio = startPitchRatio + (float)s * pitchRatioPerSample;
-                pos += pitchRatio;
-
-                if (!settings.reverse && settings.loopSettings.loopActive && pos >= loopEndSample) {
-                    pos -= loopLengthSamples;
-                    pos += loopCrossfadeSamples;
+            // Handle loop wrapping
+            if (isLoopActive) {
+                if (!isReverse && pos >= bounds.loopEndSample) {
+                    pos -= bounds.loopLengthSamples;
+                    pos += bounds.loopCrossfadeSamples;
                     looping = false;
-                } else if (settings.reverse && settings.loopSettings.loopActive && pos <= loopStartSample) {
-                    pos += loopLengthSamples;
-                    pos -= loopCrossfadeSamples;
+                } else if (isReverse && pos <= bounds.loopStartSample) {
+                    pos += bounds.loopLengthSamples;
+                    pos -= bounds.loopCrossfadeSamples;
                     looping = false;
                 }
 
+                // Check for loop fade start
+                if (!isReverse && pos - pitchRatio < bounds.loopFadeStart && pos >= bounds.loopFadeStart) {
+                    looping = true;
+                } else if (isReverse && pos - pitchRatio > bounds.loopFadeStartReverse && pos <= bounds.loopFadeStartReverse) {
+                    looping = true;
+                }
+            }
 
-                auto v = imagiro::interpolateHQ(*currentBuffer, inChannel, static_cast<float>(pos));
+            sampleDataBuffer[s].position = pos;
+            sampleDataBuffer[s].looping = looping;
 
-                // only loop if we just crossed the loop fade boundary
-                // we don't want to start looping midway through the fade boundary or we'll get clicks
-                if (settings.loopSettings.loopActive) {
-                    if (!settings.reverse && pos - pitchRatio < loopFadeStart && pos >= loopFadeStart) {
-                        looping = true;
-                    } else if (settings.reverse && pos - pitchRatio > loopFadeStartReverse && pos <= loopFadeStartReverse) {
-                        looping = true;
-                    }
+
+            // Pre-calculate loop fade data if needed
+            if (looping && bounds.loopCrossfadeSamples > 0) {
+                if (!isReverse && pos >= bounds.loopFadeStart && pos <= bounds.loopEndSample + 1) {
+                    const auto distanceIntoFade = pos - bounds.loopFadeStart;
+                    sampleDataBuffer[s].loopFadePointer = bounds.loopStartSample + distanceIntoFade;
+                    sampleDataBuffer[s].loopFadeProgress = distanceIntoFade / bounds.loopCrossfadeSamples;
+                } else if (isReverse && pos >= bounds.loopStartSample - 1 && pos <= bounds.loopFadeStartReverse) {
+                    const auto distanceIntoFade = bounds.loopFadeStartReverse - pos;
+                    sampleDataBuffer[s].loopFadePointer = bounds.loopEndSample - distanceIntoFade;
+                    sampleDataBuffer[s].loopFadeProgress = distanceIntoFade / bounds.loopCrossfadeSamples;
+                } else {
+                    sampleDataBuffer[s].loopFadePointer = -1;
+                    sampleDataBuffer[s].loopFadeProgress = 0;
+                }
+            } else {
+                sampleDataBuffer[s].loopFadePointer = -1;
+                sampleDataBuffer[s].loopFadeProgress = 0;
+            }
+        }
+
+        // Now process all channels using pre-calculated data
+        for (int c = 0; c < numOutChannels; c++) {
+            auto inChannel = c % numBufferChannels;
+
+            for (int s = 0; s < samplesThisChunk; s++) {
+                const auto& sample = sampleDataBuffer[s];
+
+                // assuming we're running at 2x oversample
+                auto v = imagiro::interp_linear(*currentBuffer, inChannel, sample.position);
+
+                // Apply loop crossfade if needed
+                if (sample.loopFadePointer >= 0) {
+                    const auto fadeSample = imagiro::interp_linear(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
+                    v = v * (1 - sample.loopFadeProgress) + fadeSample * sample.loopFadeProgress;
                 }
 
-                if (looping && loopCrossfadeSamples > 0) {
-                    if (!settings.reverse && pos >= loopFadeStart && pos <= loopEndSample + 1) {
-                        const auto distanceIntoFade = pos - loopFadeStart;
-                        loopFadePointer = loopStartSample + distanceIntoFade;
-                        const auto fadeSample = imagiro::interpolateHQ(*currentBuffer, inChannel, static_cast<float>(loopFadePointer));
-                        loopFadeProgress = distanceIntoFade / loopCrossfadeSamples;
-                        v = v * (1-loopFadeProgress) + fadeSample * loopFadeProgress;
-                    } else if (settings.reverse && pos >= loopStartSample - 1 && pos <= loopFadeStartReverse) {
-                        const auto distanceIntoFade = loopFadeStartReverse - pos;
-                        loopFadePointer = loopEndSample - distanceIntoFade;
-                        const auto fadeSample = imagiro::interpolateHQ(*currentBuffer, inChannel, static_cast<float>(loopFadePointer));
-                        loopFadeProgress = distanceIntoFade / loopCrossfadeSamples;
-                        v = v * (1-loopFadeProgress) + fadeSample * loopFadeProgress;
-                    }
-                }
-
+                // Apply window function
                 v *= windowFunction(progress + (float)s * progressPerSample);
                 v *= settings.gain;
 
+                // Apply quickfade
                 if (quickfading) {
                     const auto quickfadeAmount = quickfadeGainStart - quickfadeGainPerSample * (float)s;
                     if (quickfadeAmount <= 0.f) break;
                     v *= quickfadeAmount;
                 }
 
+                // Apply panning
                 const auto pan = startPan + static_cast<float>(s) * panPerSample;
-                v *= currentBuffer->getNumChannels() > 1 ? calculatePanCoeffs(pan + spreadVal)[c%2] : 1.f;
+                v *= numBufferChannels > 1 ? calculatePanCoeffs(pan + spreadVal)[c%2] : 1.f;
 
                 if (setNotAdd) out.setSample(c, outStartSample + s, v);
                 else out.addSample(c, outStartSample + s, v);
             }
         }
 
-        pointer = pos;
-        isLooping = looping;
+        // Update grain state with final values
+        pointer = sampleDataBuffer[samplesThisChunk - 1].position;
+        isLooping = sampleDataBuffer[samplesThisChunk - 1].looping;
+        if (isLooping) {
+            loopFadePointer = sampleDataBuffer[samplesThisChunk - 1].loopFadePointer;
+            loopFadeProgress = sampleDataBuffer[samplesThisChunk - 1].loopFadeProgress;
+        }
+
         progress += progressPerSample * (float)samplesThisChunk;
         if (quickfading) quickfadeGain -= quickfadeGainPerSample * (float)samplesThisChunk;
 
         numSamples -= samplesThisChunk;
-
     }
 
     if (!isLooping && queuedLoopSettings.has_value()) {
@@ -271,6 +311,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         stop(false);
     }
 }
+
 
 void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
     settings.loopSettings = loopSettings;
@@ -320,6 +361,8 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
         const auto newCrossfadePercentage = newLoopCrossfadeSamples / static_cast<float>(newLengthSamples) * 2;
         settings.loopSettings.loopCrossfade = newCrossfadePercentage;
     }
+
+    updateCachedLoopBoundaries();
 }
 
 
@@ -328,19 +371,31 @@ void Grain::stop(bool fadeout) {
     else {
         playing = false;
         currentBuffer.reset();
+        currentMipMapBuffer.reset();
         listeners.call(&Listener::OnGrainFinished, *this);
     }
 }
 
 void Grain::prepareToPlay(double sr, int maxBlockSize) {
     this->sampleRate = sr;
-    temp.setSize(1, maxBlockSize);
+    temp.setSize(1, maxBlockSize + INTERP_PRE_SAMPLES + INTERP_POST_SAMPLES);
+    sampleDataBuffer.resize(maxBlockSize);
 
     smoothPitchRatio.reset(sr, 0.01);
     smoothedPan.reset(sr, 0.01);
 
     quickfadeSamples = (int)(quickfadeSeconds * (float)sr);
     quickfadeGainPerSample = 1.f / static_cast<float>(quickfadeSamples);
+}
+
+void Grain::updateCachedLoopBoundaries() {
+    const auto numSamples = currentBuffer->getNumSamples();
+    cachedLoopBoundaries.loopStartSample = settings.loopSettings.getLoopStartSample(numSamples);
+    cachedLoopBoundaries.loopEndSample = settings.loopSettings.getLoopEndSample(numSamples);
+    cachedLoopBoundaries.loopCrossfadeSamples = settings.loopSettings.getCrossfadeSamples(numSamples);
+    cachedLoopBoundaries.loopFadeStart = settings.loopSettings.getCrossfadeStartSample(numSamples);
+    cachedLoopBoundaries.loopFadeStartReverse = settings.loopSettings.getReverseCrossfadeStartSample(numSamples);
+    cachedLoopBoundaries.loopLengthSamples = settings.loopSettings.getLoopLengthSamples(numSamples);
 }
 
 float Grain::getGrainShapeGain(float p, float sym, float skew) {

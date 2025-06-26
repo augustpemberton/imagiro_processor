@@ -27,4 +27,5 @@
 #include "src/grain/GrainBuffer.h"
 #include "src/grain/Grain.h"
 #include "src/dsp/filter/CascadedOnePoleFilter.h"
+#include "src/dsp/filter/CascadedBiquadFilter.h"
 #include "src/curve/Curve.h"
