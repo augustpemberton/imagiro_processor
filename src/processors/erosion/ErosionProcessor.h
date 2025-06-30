@@ -5,6 +5,8 @@
 #pragma once
 #include "Parameters.h"
 #include "imagiro_processor/src/Processor.h"
+#include "imagiro_processor/src/dsp/XORRandom.h"
+#include "imagiro_processor/src/dsp/filter/CascadedOnePoleFilter.h"
 #include "imagiro_processor/src/processors/iir-filter/IIRFilterProcessor.h"
 
 using namespace imagiro;
@@ -15,17 +17,8 @@ public:
             ParameterLoader(), getDefaultProperties()) {
         gainParam = getParameter("gain");
 
-        lpFilterProcessor.getParameter("type")->setUserValue(0);
-        hpFilterProcessor.getParameter("type")->setUserValue(2);
-
-        lpFreq = lpFilterProcessor.getParameter("frequency");
-        hpFreq = hpFilterProcessor.getParameter("frequency");
-
         lowpassParam = getParameter("lowpass");
         highpassParam= getParameter("highpass");
-
-        lpFreq->setUserValue(lowpassParam->getUserValue());
-        hpFreq->setUserValue(highpassParam->getUserValue());
 
         lowpassParam->addListener(this);
         highpassParam->addListener(this);
@@ -40,9 +33,9 @@ public:
     void parameterChanged(Parameter* p) override {
         Processor::parameterChanged(p);
         if (p == lowpassParam) {
-            lpFreq->setUserValue(p->getModUserValue());
+            lpFilter.setCutoff(p->getUserValue());
         } else if (p == highpassParam) {
-            hpFreq->setUserValue(p->getModUserValue());
+            hpFilter.setCutoff(p->getUserValue());
         }
     }
 
@@ -50,18 +43,10 @@ public:
         Processor::prepareToPlay(sampleRate, samplesPerBlock);
         env.setSampleRate(sampleRate);
 
-        lpFilterProcessor.setPlayConfigDetails(
-            getTotalNumInputChannels(),
-            getTotalNumOutputChannels(),
-            getSampleRate(), getBlockSize()
-            );
-        hpFilterProcessor.setPlayConfigDetails(
-            getTotalNumInputChannels(),
-            getTotalNumOutputChannels(),
-            getSampleRate(), getBlockSize()
-            );
-        lpFilterProcessor.prepareToPlay(sampleRate, samplesPerBlock);
-        hpFilterProcessor.prepareToPlay(sampleRate, samplesPerBlock);
+        lpFilter.setSampleRate(sampleRate);
+        hpFilter.setSampleRate(sampleRate);
+        lpFilter.setChannels(getTotalNumInputChannels());
+        hpFilter.setChannels(getTotalNumInputChannels());
 
         noiseBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
 
@@ -75,14 +60,11 @@ public:
     void fillNoiseBuffer() {
         for (auto c = 0; c < noiseBuffer.getNumChannels(); c++) {
             for (auto s = 0; s < noiseBuffer.getNumSamples(); s++) {
-                auto noiseSample = rand01();
-                noiseBuffer.setSample(c, s, noiseSample);
+                const auto noiseSample = random.nextFloat();
+                const auto filteredSample = lpFilter.processLP(hpFilter.processHP(noiseSample, c), c);
+                noiseBuffer.setSample(c, s, filteredSample);
             }
         }
-
-        juce::MidiBuffer temp;
-        lpFilterProcessor.processBlock(noiseBuffer, temp);
-        hpFilterProcessor.processBlock(noiseBuffer, temp);
     }
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
@@ -113,10 +95,9 @@ private:
 
     Parameter *lowpassParam;
     Parameter *highpassParam;
-    Parameter *lpFreq;
-    Parameter *hpFreq;
-    IIRFilterProcessor lpFilterProcessor;
-    IIRFilterProcessor hpFilterProcessor;
+
+    CascadedOnePoleFilter<4> lpFilter;
+    CascadedOnePoleFilter<4> hpFilter;
 
     EnvelopeFollower<> env {50, 150};
 
@@ -124,4 +105,6 @@ private:
 
     int maxDelayDepthSamples {1500};
     std::vector<signalsmith::delay::Delay<float>> channelDelays;
+
+    XORRandom random;
 };

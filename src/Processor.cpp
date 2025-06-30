@@ -277,6 +277,10 @@ namespace imagiro {
 
         modMatrix.processMatrixUpdates();
 
+        const auto gainStart = bypassGain.getCurrentValue() * mixGain.getCurrentValue();
+        const auto gainTarget = bypassGain.getTargetValue() * mixGain.getTargetValue();
+
+        if (gainStart > 0 || gainTarget > 0)
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
             process(buffer, midiMessages);

@@ -7,6 +7,9 @@
 #include "Parameters.h"
 #include "../../grain/GrainBuffer.h"
 #include "../../grain/Grain.h"
+#include "imagiro_processor/src/dsp/FastRandom.h"
+#include "imagiro_processor/src/dsp/XORRandom.h"
+#include "imagiro_processor/src/dsp/filter/CascadedOnePoleFilter.h"
 #include "imagiro_processor/src/grain/GrainBuffer.h"
 
 using namespace imagiro;
@@ -21,15 +24,6 @@ public:
 
         env.setAttackMs(tightnessParam->getProcessorValue() * 1000);
         env.setReleaseMs(tightnessParam->getProcessorValue() * 1000);
-
-        lpFilterProcessor.getParameter("type")->setUserValue(0);
-        hpFilterProcessor.getParameter("type")->setUserValue(2);
-
-        lpFreq = lpFilterProcessor.getParameter("frequency");
-        hpFreq = hpFilterProcessor.getParameter("frequency");
-
-        lpFreq->setUserValue(lowpassParam->getUserValue());
-        hpFreq->setUserValue(highpassParam->getUserValue());
 
         lowpassParam->addListener(this);
         highpassParam->addListener(this);
@@ -84,9 +78,9 @@ public:
             env.setReleaseMs(p->getProcessorValue() * 1000);
             env.setAttackMs(p->getProcessorValue() * 1000);
         } else if (p == lowpassParam) {
-            lpFreq->setUserValue(p->getUserValue());
+            lpFilter.setCutoff(p->getUserValue());
         } else if (p == highpassParam) {
-            hpFreq->setUserValue(p->getUserValue());
+            hpFilter.setCutoff(p->getUserValue());
         } else if (p == pitchParam) {
             grain.setStreamPitch(p->getProcessorValue());
         }
@@ -97,18 +91,11 @@ public:
         env.setSampleRate(sampleRate);
         gateGain.reset(static_cast<int>(sampleRate * 0.01));
 
-        lpFilterProcessor.setPlayConfigDetails(
-            getTotalNumInputChannels(),
-            getTotalNumOutputChannels(),
-            getSampleRate(), getBlockSize()
-            );
-        hpFilterProcessor.setPlayConfigDetails(
-            getTotalNumInputChannels(),
-            getTotalNumOutputChannels(),
-            getSampleRate(), getBlockSize()
-            );
-        lpFilterProcessor.prepareToPlay(sampleRate, samplesPerBlock);
-        hpFilterProcessor.prepareToPlay(sampleRate, samplesPerBlock);
+        lpFilter.setSampleRate(sampleRate);
+        hpFilter.setSampleRate(sampleRate);
+
+        lpFilter.setChannels(getTotalNumInputChannels());
+        hpFilter.setChannels(getTotalNumInputChannels());
 
         noiseBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
         noiseBuffer.clear();
@@ -119,7 +106,7 @@ public:
         if (typeParam->getProcessorValue() == 0) {
             for (auto c = 0; c < noiseBuffer.getNumChannels(); c++) {
                 for (auto s = 0; s < numSamples; s++) {
-                    const auto noiseSample = randomInRange(-0.1, 0.1);
+                    const auto noiseSample = random.nextFloat() * 0.1;
                     noiseBuffer.setSample(c, s, noiseSample);
                 }
             }
@@ -129,9 +116,13 @@ public:
     }
 
     void filterNoiseBuffer() {
-        juce::MidiBuffer temp;
-        lpFilterProcessor.processBlock(noiseBuffer, temp);
-        hpFilterProcessor.processBlock(noiseBuffer, temp);
+        for (auto c=0; c<noiseBuffer.getNumChannels(); c++) {
+            for (auto s=0; s<noiseBuffer.getNumSamples(); s++) {
+                const auto sample = noiseBuffer.getSample(c, s);
+                const auto filteredSample = lpFilter.processLP(hpFilter.processHP(sample, c), c);
+                noiseBuffer.setSample(c, s, filteredSample);
+            }
+        }
     }
 
 
@@ -181,9 +172,6 @@ private:
     Parameter *lowpassParam { getParameter("lowpass") };
     Parameter *highpassParam { getParameter("highpass") };
 
-    Parameter *lpFreq;
-    Parameter *hpFreq;
-
     Parameter *pitchParam;
 
     GrainBuffer grainBuffer;
@@ -192,10 +180,12 @@ private:
     EnvelopeFollower<float> env {50, 150};
     juce::SmoothedValue<float> gateGain;
 
-    IIRFilterProcessor lpFilterProcessor;
-    IIRFilterProcessor hpFilterProcessor;
+    CascadedOnePoleFilter<4> lpFilter;
+    CascadedOnePoleFilter<4> hpFilter;
 
     juce::AudioSampleBuffer noiseBuffer;
 
     bool playGrainFlag {false};
+
+    XORRandom random;
 };

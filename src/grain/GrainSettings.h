@@ -11,6 +11,13 @@ struct LoopSettings {
     float loopCrossfade = 0;
     bool loopActive = false;
 
+    bool operator==(const LoopSettings &other) const {
+        return this->loopStart == other.loopStart &&
+               this->loopLength == other.loopLength &&
+               this->loopCrossfade == other.loopCrossfade &&
+               this->loopActive == other.loopActive;
+    }
+
     int getLoopStartSample(const int bufferLength) const {
         return std::max(static_cast<int>(loopStart * bufferLength), INTERP_PRE_SAMPLES);
     }
