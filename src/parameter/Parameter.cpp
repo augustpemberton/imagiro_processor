@@ -209,6 +209,12 @@ namespace imagiro {
         return getConfig()->range.convertTo0to1 (getConfig()->defaultValue);
     }
 
+    void Parameter::setName(const juce::String &n) {
+        this->name = n.toStdString();
+        asyncConfigChangedFlag = true;
+        listeners.call(&Listener::configChangedSync, this);
+    }
+
     juce::String Parameter::getName (int maximumStringLength) const {
         return juce::String(name).substring (0, maximumStringLength);
     }

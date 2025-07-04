@@ -46,14 +46,13 @@ namespace imagiro {
     }
 
     Parameter* Processor::addParam (std::unique_ptr<Parameter> p) {
+        p->addListener(this);
         if (p->getUID() == "bypass") {
             bypassGain.setTargetValue(1 - p->getValue());
-            p->addListener(this);
         }
 
         if (p->getUID() == "mix") {
             mixGain.setTargetValue(p->getValue());
-            p->addListener(this);
         }
 
         p->setModMatrix(modMatrix);

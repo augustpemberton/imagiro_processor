@@ -5,7 +5,6 @@
 #include "EnvelopeFollower/EnvelopeFollowerGenerator.h"
 #include "EnvelopeFollower/EnvelopeFollowerSources.h"
 #include "imagiro_processor/src/synth/MPESynth.h"
-#include "LFO/LFOGenerator.h"
 #include "Macro/MacroGenerator.h"
 #include "MultichannelValue/MultichannelValueGenerator.h"
 #include "MultichannelValue/MultichannelValueSources.h"
@@ -20,8 +19,8 @@ enum class GeneratorType {
 
 class GeneratorChainManager : public ChainManager<GeneratorType, ModGenerator> {
 public:
-    explicit GeneratorChainManager(ModMatrix &m)
-        : ChainManager(0), modMatrix(m) {
+    GeneratorChainManager(const ParameterFactory& parameterFactory, ModMatrix &m, const int numSlots, const int maxParamsPerSlot)
+    : ChainManager(parameterFactory, numSlots, maxParamsPerSlot), modMatrix(m) {
     }
 
     void setEnvelopeSynth(MPESynth& synth) {

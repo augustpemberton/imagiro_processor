@@ -53,6 +53,8 @@ public:
 
         listeners.call(&Listener::parameterChangedSync, this);
         listeners.call(&Listener::configChangedSync, this);
+
+        Parameter::sendValueChangedMessageToListeners(getValue());
     }
 
     void OnTargetUpdated() override {

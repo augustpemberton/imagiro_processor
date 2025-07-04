@@ -10,11 +10,37 @@
 template<typename ItemType, typename ProcessorType>
 class ChainManager : juce::Timer {
 public:
-    ChainManager() {
+    using ParameterFactory = std::function<ProxyParameter*(int)>;
+
+    ChainManager(const ParameterFactory &parameterFactory, const int numSlots, const int maxParamsPerSlot)
+        : numSlots(numSlots), maxParamsPerSlot(maxParamsPerSlot) {
+        for (auto i=0; i<numSlots; i++) {
+            proxyParameters.push_back(std::vector<ProxyParameter*>());
+            for (auto j=0; j<maxParamsPerSlot; j++) {
+                proxyParameters[i].push_back(parameterFactory(i*maxParamsPerSlot + j));
+            }
+        }
         startTimer(1000);
     }
 
-    virtual ~ChainManager() = default;
+    ~ChainManager() override {
+        resetAllProxies();
+    }
+
+    void resetProxies(int processorID) {
+        for (const auto [uid, param] : mappedProxyParameters[processorID]) {
+            param->clearProxyTarget();
+        }
+        mappedProxyParameters[processorID].clear();
+    }
+
+    void resetAllProxies() {
+        for (const auto [processorID, map] : mappedProxyParameters) {
+            resetProxies(processorID);
+        }
+
+        mappedProxyParameters.clear();
+    }
 
     struct Item {
         int id{-1};
@@ -39,40 +65,32 @@ public:
     void processBlock(juce::AudioSampleBuffer& b, juce::MidiBuffer& midi) {
         ProxyParameter* p;
 
-        bool updated = false;
         while (proxyParamsToUpdate.try_dequeue(p)) {
             p->processQueuedTarget();
-            updated = true;
         }
 
         processorGraph.processBlock(b, midi);
-
-        if (updated) clearWaitingProxiesFlag = true;
     }
 
-    Item* getItem(int id) {
-        if (!itemsByID.contains(id)) return nullptr;
-        return itemsByID[id];
+    Item* getItem(int index) {
+        if (index >= currentChain.size()) return nullptr;
+        return &currentChain[index];
     }
 
     void setItem(size_t index, ItemType type, bool sync = false) {
+        if (index >= numSlots) return;
         if (currentChain.size() > index && currentChain[index].type == type) return;
         auto newChain = currentChain;
 
         index = std::clamp(index, static_cast<size_t>(0), newChain.size());
 
-        if (index == newChain.size()) newChain.push_back(Item{-1, type});
-        else newChain[index] = Item{-1, type};
+        if (index == newChain.size()) newChain.push_back(Item{static_cast<int>(index), type});
+        else newChain[index] = Item{static_cast<int>(index), type};
         setChain(newChain, sync);
     }
 
     /* Allocates - call from message thread */
-    void setChain(Chain chain, bool sync = false) {
-        if (clearWaitingProxiesFlag) {
-            proxiesWaitingToUpdate.clear();
-            clearWaitingProxiesFlag = false;
-        }
-
+    void setChain(Chain chain, const bool sync = false) {
         for (const auto& item : currentChain) {
             listeners.call(&Listener::OnItemRemoved, item);
         }
@@ -83,10 +101,8 @@ public:
         currentChain = chain;
         allChains.push_back(currentChain);
 
-        itemsByID.clear();
         for (auto& item : currentChain) {
             listeners.call(&Listener::OnItemAdded, item);
-            itemsByID.insert({item.id, &item});
         }
 
         std::vector<std::shared_ptr<Processor>> processorList;
@@ -104,10 +120,6 @@ public:
     Processor& getProcessor() { return processorGraph; }
     const Chain& getCurrentChain() { return currentChain; }
 
-    void setProxyParameters(std::vector<ProxyParameter*>& p) {
-        this->proxyParameters = &p;
-    }
-
     auto& getProxyParameterMap() { return mappedProxyParameters; }
 
     choc::value::Value getState() {
@@ -124,20 +136,23 @@ public:
         return states;
     }
 
-    void loadState(const choc::value::ValueView& state) {
+    void loadState(const choc::value::ValueView& state, bool sync = false) {
         Chain chain;
         for (const auto& itemState : state) {
             auto itemType = static_cast<ItemType>(itemState["type"].getWithDefault(0));
             auto id = itemState["id"].getWithDefault(-1);
             auto processorState = Preset::fromState(itemState["ProcessorState"]);
 
+            if (id >= numSlots) continue;
+
             Item item{id, itemType};
-            createAndMapNewProcessor(item, id);
+            item.processor = createNewProcessor(item.type, item.id);
+            proxyMapItem(item);
             item.processor->loadPreset(processorState);
             chain.push_back(item);
         }
 
-        setChain(chain);
+        setChain(chain, sync);
     }
 
     virtual choc::value::Value getItemState(const Item& item) {
@@ -148,9 +163,6 @@ public:
     }
 
 protected:
-    ChainManager(const unsigned int numChannels)
-        : processorGraph(numChannels) {
-    }
 
     // Pure virtual methods to be implemented by derived classes
     virtual std::shared_ptr<ProcessorType> createProcessorForType(ItemType type, int id) const = 0;
@@ -162,10 +174,8 @@ private:
     Chain currentChain;
     std::vector<Chain> allChains;
 
-    std::set<ProxyParameter*> usedProxyParams;
-    std::vector<ProxyParameter*>* proxyParameters{nullptr};
+    std::vector<std::vector<ProxyParameter*>> proxyParameters;
     std::map<int, std::map<std::string, ProxyParameter*>> mappedProxyParameters;
-    std::map<int, Item*> itemsByID;
 
     juce::ListenerList<Listener> listeners;
 
@@ -208,79 +218,38 @@ private:
         }
     }
 
-    bool isIDInChain(const Chain& chain, int id) {
-        for (const auto& item : chain) {
-            if (item.id == id) return true;
-        }
-        return false;
-    }
-
-    std::pair<Item*, int> findProcessorOfTypeFromCurrentChain(ItemType type, const int startIndex) {
-        for (auto i = startIndex; i < currentChain.size(); i++) {
-            if (currentChain[i].type == type) {
-                return {&currentChain[i], i};
-            }
-        }
-        return {nullptr, -1};
-    }
-
-    static int getMaxIDInChain(const Chain& chain) {
-        int maxID = 0;
-        for (auto& item : chain) {
-            maxID = std::max(item.id, maxID);
-        }
-        return maxID;
-    }
-
-    static Item* findItemInChain(Chain& chain, const int id) {
-        for (auto& item : chain) {
-            if (item.id == id) return &item;
-        }
-        return nullptr;
-    }
-
     void updateProcessors(Chain& chain) {
+        resetAllProxies();
+
         for (auto& item : chain) {
-            if (item.processor) continue;
             if (item.id < 0) {
-                createAndMapNewProcessor(item, getMaxIDInChain(chain) + 1);
-                continue;
+                for (int idx = 0; idx<numSlots; idx++) {
+                    if (!findItemInChain(chain, idx)) item.id = idx;
+                }
+                if (item.id < 0) {
+                    jassertfalse; // too many items in the chain!
+                    continue;
+                }
             }
 
-            if (auto currentItem = findItemInChain(currentChain, item.id)) {
-                item.processor = currentItem->processor;
-                currentItem->processor.reset();
+            if (!item.processor) {
+                if (currentChain.size() > item.id && currentChain[item.id].type == item.type) {
+                    item.processor = currentChain[item.id].processor;
+                    currentChain[item.id].processor.reset();
+                } else {
+                    item.processor = createNewProcessor(item.type, item.id);
+                }
             }
-            else createAndMapNewProcessor(item, getMaxIDInChain(chain) + 1);
+
+            proxyMapItem(item);
         }
     }
 
-    void copyProcessorAndMoveProxyParams(Item& newItem, Item& oldItem) {
-        newItem.processor = createNewProcessor(newItem.type, oldItem.id);
-        newItem.id = oldItem.id;
-
-        newItem.processor->loadPreset(oldItem.processor->createPreset("",true));
-        for (auto& param : newItem.processor->getPluginParameters()) {
-            auto oldParam = oldItem.processor->getParameter(param->getUID());
-            // param->setState(oldParam->getState());
-
-            if (mappedProxyParameters[oldItem.id].contains(param->getUID())) {
-                auto proxy = mappedProxyParameters[oldItem.id][param->getUID()];
-                proxy->queueProxyTarget(*param);
-                proxyParamsToUpdate.enqueue(proxy);
-                proxiesWaitingToUpdate.insert(proxy);
-            }
-        }
-    }
-
-    void createAndMapNewProcessor(Item& item, int id) {
-        item.processor = createNewProcessor(item.type, id);
-        item.id = id;
-        proxyMapItem(item);
-    }
-
-    std::shared_ptr<ProcessorType> createNewProcessor(ItemType& type, int id) {
+    std::shared_ptr<ProcessorType> createNewProcessor(const ItemType& type, const int id) {
         const auto processor = createProcessorForType(type, id);
+        for (const auto& param : processor->getPluginParameters()) {
+            param->setName(param->getName(200) + " " + std::to_string(id));
+        }
         return processor;
     }
 
@@ -294,32 +263,35 @@ private:
             mappedProxyParameters[item.id] = std::map<std::string, ProxyParameter*>();
         }
 
-        for (auto& param : item.processor->getPluginParameters()) {
+        for (auto i=0; i<item.processor->getPluginParameters().size(); i++) {
+            auto param = item.processor->getPluginParameters()[i];
             if (param->isInternal()) continue;
-            auto proxyParam = getFreeProxyParameter();
+            auto proxyParam = proxyParameters[item.id][i];
+
             if (!proxyParam) {
                 jassertfalse;
                 break;
             }
 
+            if (proxyParam->isProxySet()) {
+                jassertfalse;
+                proxyParam->clearProxyTarget();
+            }
+
             proxyParam->queueProxyTarget(*param);
             proxyParamsToUpdate.enqueue(proxyParam);
-            proxiesWaitingToUpdate.insert(proxyParam);
             mappedProxyParameters[item.id][param->getUID()] = proxyParam;
         }
     }
 
-    ProxyParameter* getFreeProxyParameter() const {
-        if (!proxyParameters) return nullptr;
-        for (auto param : *proxyParameters) {
-            if (param->isProxySet()) continue;
-            if (proxiesWaitingToUpdate.contains(param)) continue;
-            return param;
+    static Item* findItemInChain(Chain& chain, const int id) {
+        for (auto& item : chain) {
+            if (item.id == id) return &item;
         }
         return nullptr;
     }
 
     moodycamel::ReaderWriterQueue<ProxyParameter*> proxyParamsToUpdate{200};
-    std::unordered_set<ProxyParameter*> proxiesWaitingToUpdate;
-    std::atomic<bool> clearWaitingProxiesFlag{false};
+    int numSlots;
+    int maxParamsPerSlot;
 };

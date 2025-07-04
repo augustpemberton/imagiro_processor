@@ -18,10 +18,10 @@ enum class EffectType {
     Erosion = 7,
 };
 
-class EffectChainProcessor : public ChainManager<EffectType, Processor> {
+class EffectChainManager : public ChainManager<EffectType, Processor> {
 public:
-    EffectChainProcessor()
-        : ChainManager(2) {
+    EffectChainManager(const ParameterFactory& parameterFactory, const int numSlots, const int maxParamsPerSlot)
+    : ChainManager(parameterFactory, numSlots, maxParamsPerSlot) {
     }
 
 protected:
