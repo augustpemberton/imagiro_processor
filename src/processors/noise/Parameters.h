@@ -23,7 +23,7 @@ tightness:
 gain:
   name: "gain"
   type: db
-  default: 0
+  default: -12
   range: {min: -60, max: 24, step: 0.1}
 
 lowpass:
@@ -37,6 +37,12 @@ highpass:
     type: freq
     default: 300
     range: {min: 20, max: 20000, type: freq}
+
+pitch:
+    name: "pitch"
+    type: cent
+    default: 0
+    range: {min: -24, max: 24, step: 0.01}
 
 )";
 

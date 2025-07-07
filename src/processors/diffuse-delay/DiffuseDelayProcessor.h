@@ -92,5 +92,5 @@ private:
     Parameter* modDepthParam;
     Parameter* modRateParam;
 
-    Diffuser<8, 4> diffuser;
+    Diffuser<4, 4> diffuser;
 };

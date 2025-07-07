@@ -8,6 +8,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 
+#include "imagiro_processor/src/dsp/DCBlocker.h"
 #include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
 
 class Grain {
@@ -85,7 +86,7 @@ public:
 
     GrainBuffer& getGrainBuffer() { return grainBuffer; }
 
-    void updateLoopSettings(LoopSettings settings);
+    void updateLoopSettings(LoopSettings settings, bool force = false);
     void updatePan(float val) { smoothedPan.setTargetValue(val); }
 
 private:
@@ -136,6 +137,7 @@ private:
 
     juce::SmoothedValue<double> smoothPitchRatio;
     double sampleRateRatio {1};
+    void updateSampleRateRatio();
     float gain;
 
     double pointer;

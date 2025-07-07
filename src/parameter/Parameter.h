@@ -12,7 +12,7 @@
 namespace imagiro {
     class Processor;
 
-    class Parameter : juce::RangedAudioParameter, juce::Timer, ModTarget::Listener {
+    class Parameter : protected juce::RangedAudioParameter, juce::Timer, ModTarget::Listener {
     public:
         class Listener {
         public:
@@ -185,6 +185,7 @@ namespace imagiro {
         //==============================================================================
         juce::String getParameterID() const override    { return uid; }
 
+        void setName (const juce::String& n);
         juce::String getName (int maximumStringLength) const override;
         juce::String getLabel() const override;
 

@@ -171,7 +171,7 @@ namespace imagiro {
 
     private:
         std::atomic<size_t> mostRecentVoiceIndex {0};
-        juce::ListenerList<Listener> listeners;
+        juce::LightweightListenerList<Listener> listeners;
         double sampleRate {48000};
 
         std::list<size_t> noteOnStack;

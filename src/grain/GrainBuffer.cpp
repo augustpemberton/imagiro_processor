@@ -50,7 +50,6 @@ void GrainBuffer::timerCallback() {
     for (auto it = allBuffers.begin(); it != allBuffers.end();) {
         // if only one reference, we are the only holder, safe to delete
         if (it->use_count() == 1) {
-            DBG("de-allocating buffer");
             it = allBuffers.erase(it);
         } else ++it;
     }

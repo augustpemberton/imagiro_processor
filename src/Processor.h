@@ -145,6 +145,7 @@ namespace imagiro {
         juce::AudioPlayHead* playhead {nullptr};
         juce::Optional<juce::AudioPlayHead::PositionInfo> posInfo;
 
+        ModMatrix modMatrix;
         juce::Array<Parameter*> allParameters;
         juce::OwnedArray<Parameter> internalParameters;
         juce::ListenerList<ParameterListener> parameterListeners;
@@ -156,8 +157,6 @@ namespace imagiro {
 
         juce::AudioProcessLoadMeasurer measurer;
         std::atomic<float> cpuLoad;
-
-        ModMatrix modMatrix;
 
         void emitMessage(const std::string& type, choc::value::Value data);
         juce::ListenerList<MessageListener> messageListeners;

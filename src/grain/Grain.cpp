@@ -41,7 +41,6 @@ float* Grain::calculatePanCoeffs(const float val) {
     return cachedPanCoeffs;
 }
 
-
 void Grain::play(int sampleDelay) {
     currentMipMapBuffer = grainBuffer.getBuffer();
     if (!currentMipMapBuffer) return;
@@ -50,13 +49,14 @@ void Grain::play(int sampleDelay) {
 
     currentBuffer = currentMipMapBuffer->getBuffer(mipMapLevel);
     if (!currentBuffer) return;
+
     if (currentBuffer->getNumSamples() <= 0) return;
 
-    sampleRateRatio = currentMipMapBuffer->getSampleRate() / sampleRate;
+    updateSampleRateRatio();
 
     auto spawnPosition = settings.position * static_cast<float>(currentBuffer->getNumSamples());
 
-    updateCachedLoopBoundaries();
+    setNewLoopSettingsInternal(settings.loopSettings);
 
     if (settings.loopSettings.loopActive) {
         const auto loopStart = settings.loopSettings.getLoopStartSample(currentBuffer->getNumSamples());
@@ -111,7 +111,9 @@ int Grain::getSamplesUntilEndOfBuffer() {
     // return wrapped;
 }
 
-void Grain::updateLoopSettings(LoopSettings s) {
+void Grain::updateLoopSettings(LoopSettings s, bool force) {
+    if (settings.loopSettings == s && !force) return;
+
     if (isLooping) queuedLoopSettings = s;
     else setNewLoopSettingsInternal(s);
 }
@@ -248,16 +250,16 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         // Now process all channels using pre-calculated data
         for (int c = 0; c < numOutChannels; c++) {
             auto inChannel = c % numBufferChannels;
+            auto stereoOutChannel = c % 2;
 
             for (int s = 0; s < samplesThisChunk; s++) {
                 const auto& sample = sampleDataBuffer[s];
 
-                // assuming we're running at 2x oversample
-                auto v = imagiro::interp_linear(*currentBuffer, inChannel, sample.position);
+                auto v = imagiro::interp4p3o_2x(*currentBuffer, inChannel, sample.position);
 
                 // Apply loop crossfade if needed
                 if (sample.loopFadePointer >= 0) {
-                    const auto fadeSample = imagiro::interp_linear(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
+                    const auto fadeSample = imagiro::interp4p3o_2x(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
                     v = v * (1 - sample.loopFadeProgress) + fadeSample * sample.loopFadeProgress;
                 }
 
@@ -274,7 +276,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
 
                 // Apply panning
                 const auto pan = startPan + static_cast<float>(s) * panPerSample;
-                v *= numBufferChannels > 1 ? calculatePanCoeffs(pan + spreadVal)[c%2] : 1.f;
+                v *= numBufferChannels > 1 ? calculatePanCoeffs(pan + spreadVal)[stereoOutChannel] : 1.f;
 
                 if (setNotAdd) out.setSample(c, outStartSample + s, v);
                 else out.addSample(c, outStartSample + s, v);
@@ -312,6 +314,11 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
     }
 }
 
+
+void Grain::updateSampleRateRatio() {
+    if (!currentMipMapBuffer) return;
+    sampleRateRatio = currentMipMapBuffer->getSampleRate() / sampleRate;
+}
 
 void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
     settings.loopSettings = loopSettings;
@@ -378,6 +385,7 @@ void Grain::stop(bool fadeout) {
 
 void Grain::prepareToPlay(double sr, int maxBlockSize) {
     this->sampleRate = sr;
+    updateSampleRateRatio();
     temp.setSize(1, maxBlockSize + INTERP_PRE_SAMPLES + INTERP_POST_SAMPLES);
     sampleDataBuffer.resize(maxBlockSize);
 
@@ -401,9 +409,9 @@ void Grain::updateCachedLoopBoundaries() {
 float Grain::getGrainShapeGain(float p, float sym, float skew) {
 
     if (skew < 0)
-        p = pow(p, exp(skew));
+        p = pow(p, fastexp(skew));
     else if (skew > 0) {
-        p = pow(1-p, exp(-skew));
+        p = pow(1-p, fastexp(-skew));
     }
 
     auto alphaStart = std::max(1 - sym, 0.001f);
@@ -412,9 +420,9 @@ float Grain::getGrainShapeGain(float p, float sym, float skew) {
 
     float v;
     if (2 * pInv <= alphaEnd) {
-        v = 0.5f * (1-std::cos((juce::MathConstants<float>::twoPi * pInv) / alphaEnd));
+        v = 0.5f * (1-fastcos((juce::MathConstants<float>::twoPi * pInv) / alphaEnd));
     } else if (2 * p <= alphaStart) {
-        v = 0.5f * (1-std::cos((juce::MathConstants<float>::twoPi * p) / alphaStart));
+        v = 0.5f * (1-fastcos((juce::MathConstants<float>::twoPi * p) / alphaStart));
     } else v = 1.f;
 
     jassert(!std::isnan(v));

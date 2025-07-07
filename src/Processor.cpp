@@ -46,14 +46,13 @@ namespace imagiro {
     }
 
     Parameter* Processor::addParam (std::unique_ptr<Parameter> p) {
+        p->addListener(this);
         if (p->getUID() == "bypass") {
             bypassGain.setTargetValue(1 - p->getValue());
-            p->addListener(this);
         }
 
         if (p->getUID() == "mix") {
             mixGain.setTargetValue(p->getValue());
-            p->addListener(this);
         }
 
         p->setModMatrix(modMatrix);
@@ -277,6 +276,10 @@ namespace imagiro {
 
         modMatrix.processMatrixUpdates();
 
+        const auto gainStart = bypassGain.getCurrentValue() * mixGain.getCurrentValue();
+        const auto gainTarget = bypassGain.getTargetValue() * mixGain.getTargetValue();
+
+        if (gainStart > 0 || gainTarget > 0)
         {
             juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
             process(buffer, midiMessages);
@@ -359,6 +362,7 @@ namespace imagiro {
     }
 
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+        lastSampleRate = sampleRate;
         setRateAndBufferSizeDetails(sampleRate, samplesPerBlock);
         modMatrix.prepareToPlay(sampleRate, samplesPerBlock);
         measurer.reset(sampleRate, samplesPerBlock);

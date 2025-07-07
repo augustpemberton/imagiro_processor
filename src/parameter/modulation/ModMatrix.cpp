@@ -145,6 +145,7 @@ namespace imagiro {
     }
 
     void ModMatrix::resetSourceValue(const SourceID& sourceID) {
+        if (!sourceValues.contains(sourceID)) return;
         sourceValues[sourceID]->value.resetValue();
         updatedSourcesSinceLastCalculate.insert(sourceID);
     }
@@ -176,6 +177,7 @@ namespace imagiro {
             updated = true;
             sourcesToDeallocate.enqueue(sourceValues.at(deleteSource));
             sourceValues[deleteSource]->value.resetValue();
+            sourceValues.erase(deleteSource);
 
             erase_if(matrix, [&, deleteSource](const auto& entry) {
                 if (entry.first.first == deleteSource) {

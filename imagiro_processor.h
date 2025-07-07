@@ -20,7 +20,7 @@
 #include "src/parameter/modulation/ModTarget.h"
 #include "src/AudioTimer.h"
 
-#include "src/processors/EffectChainProcessor.h"
+#include "src/processors/EffectChainManager.h"
 #include "src/parameter/ProxyParameter.h"
 #include "src/parameter/modulation/generators/GeneratorChainManager.h"
 

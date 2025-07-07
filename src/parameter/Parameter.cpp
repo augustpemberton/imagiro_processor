@@ -209,6 +209,12 @@ namespace imagiro {
         return getConfig()->range.convertTo0to1 (getConfig()->defaultValue);
     }
 
+    void Parameter::setName(const juce::String &n) {
+        this->name = n.toStdString();
+        asyncConfigChangedFlag = true;
+        listeners.call(&Listener::configChangedSync, this);
+    }
+
     juce::String Parameter::getName (int maximumStringLength) const {
         return juce::String(name).substring (0, maximumStringLength);
     }
@@ -300,6 +306,9 @@ namespace imagiro {
             smootherNeedsUpdate = false;
         }
 
+        auto target = getProcessorValue();
+        valueSmoother.setTargetValue(target);
+
         auto blockStart = valueSmoother.getCurrentValue();
         valueSmoother.skip(samples);
         auto blockEnd = valueSmoother.getCurrentValue();
@@ -336,7 +345,6 @@ namespace imagiro {
        if (!hasGeneratedSmoothBufferThisBlock) {
            valueSmoother.skip(samplesThisBlock);
        }
-
 
         samplesThisBlock = samples;
         hasGeneratedSmoothBufferThisBlock = false;
