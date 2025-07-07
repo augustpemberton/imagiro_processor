@@ -12,8 +12,8 @@ class ChainManager : juce::Timer {
 public:
     using ParameterFactory = std::function<ProxyParameter*(int)>;
 
-    ChainManager(const ParameterFactory &parameterFactory, const int numSlots, const int maxParamsPerSlot)
-        : numSlots(numSlots), maxParamsPerSlot(maxParamsPerSlot) {
+    ChainManager(const ParameterFactory &parameterFactory, const int numSlots, const int maxParamsPerSlot, int numChannels = 2)
+        : numSlots(numSlots), maxParamsPerSlot(maxParamsPerSlot), processorGraph(numChannels) {
         for (auto i=0; i<numSlots; i++) {
             proxyParameters.push_back(std::vector<ProxyParameter*>());
             for (auto j=0; j<maxParamsPerSlot; j++) {

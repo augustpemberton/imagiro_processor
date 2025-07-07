@@ -73,6 +73,7 @@ public:
 
     /*
      * note - we can update stream pitch every block, but grain pitch only gets set once
+     * (is this really what we want? pitch bend, detune etc? should we be managing this outside of grain?)
      */
     void setStreamPitch(float pitch, bool skipSmoothing = false) {
         settings.streamPitch = pitch;
