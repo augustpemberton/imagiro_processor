@@ -29,3 +29,6 @@
 #include "src/dsp/filter/CascadedOnePoleFilter.h"
 #include "src/dsp/filter/CascadedBiquadFilter.h"
 #include "src/curve/Curve.h"
+
+#include "src/dsp/transient/Transient.h"
+#include "src/dsp/transient/TransientDetector.h"
