@@ -14,6 +14,8 @@ namespace imagiro {
 
     void ModMatrix::removeConnection(const SourceID& sourceID, TargetID targetID) {
         matrix.erase({sourceID, targetID});
+        updatedSourcesSinceLastCalculate.insert(sourceID);
+        updatedTargetsSinceLastCalculate.insert(targetID);
         matrixUpdated();
     }
 
@@ -42,6 +44,7 @@ namespace imagiro {
         }
 
         updatedSourcesSinceLastCalculate.insert(sourceID);
+        updatedTargetsSinceLastCalculate.insert(targetID);
         matrixUpdated();
     }
 
@@ -90,6 +93,11 @@ namespace imagiro {
             }
         }
 
+        for (const auto& targetID : updatedTargetsSinceLastCalculate) {
+            targetsToUpdate.insert(targetID);
+        }
+
+
         for (const auto& targetID : targetsToUpdate) {
             targetValues[targetID]->value.resetValue();
         }
@@ -128,6 +136,7 @@ namespace imagiro {
         }
 
         updatedSourcesSinceLastCalculate.clear();
+        updatedTargetsSinceLastCalculate.clear();
     }
 
     void ModMatrix::setGlobalSourceValue(const SourceID& sourceID, float value) {

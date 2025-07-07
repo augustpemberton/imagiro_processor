@@ -182,6 +182,7 @@ namespace imagiro {
         std::unordered_map<TargetID, std::shared_ptr<TargetValue>> targetValues {};
 
         FixedHashSet<SourceID, MAX_MOD_TARGETS> updatedSourcesSinceLastCalculate {};
+        FixedHashSet<SourceID, MAX_MOD_TARGETS> updatedTargetsSinceLastCalculate {};
 
         void matrixUpdated();
 
