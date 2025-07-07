@@ -12,3 +12,4 @@
 #include "src/grain/Grain.cpp"
 #include "src/grain/GrainBuffer.cpp"
 #include "src/BufferFileLoader.cpp"
+#include "src/dsp/transient/TransientDetector.cpp"
