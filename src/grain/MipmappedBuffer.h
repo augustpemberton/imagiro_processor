@@ -8,7 +8,7 @@
 #include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
 #include "juce_audio_basics/juce_audio_basics.h"
 
-template <int Resolution = 4>
+template <int Resolution = 1>
 class MipmappedBuffer {
 public:
     MipmappedBuffer() {
