@@ -115,7 +115,6 @@ namespace imagiro {
 
         void prepareToPlay(double sampleRate, int samplesPerBlock) override;
         void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
-        virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
 
         void parameterChanged(imagiro::Parameter *param) override;
         void configChanged(imagiro::Parameter *param) override;
@@ -125,6 +124,8 @@ namespace imagiro {
         juce::AudioProcessorParameter* getBypassParameter() const override;
 
     protected:
+        virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
+
         juce::SharedResourcePointer<Resources> resources;
         StringData stringData;
 
