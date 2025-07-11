@@ -55,13 +55,13 @@ public:
 
     void OnBufferUpdated(GrainBuffer &) override {
         playGrainFlag = true;
-        getStringData().set("filePath", grainBuffer.getLastLoadedFile().getFullPathName().toStdString(), true);
+        getValueData().set("filePath", grainBuffer.getLastLoadedFile().getFullPathName().toStdString(), true);
     }
 
-    void OnStringDataUpdated(StringData &s, const std::string &key, const std::string &newValue) override {
+    void OnValueDataUpdated(ValueData &s, const std::string &key, const choc::value::ValueView &newValue) override {
         if (key == "filePath") {
-            if (grainBuffer.getLastLoadedFile().getFullPathName().toStdString() != newValue) {
-                loadFilePath(newValue);
+            if (grainBuffer.getLastLoadedFile().getFullPathName().toStdString() != newValue.toString()) {
+                loadFilePath(newValue.toString());
             }
         }
     }

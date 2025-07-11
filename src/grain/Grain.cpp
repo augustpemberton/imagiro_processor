@@ -264,7 +264,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
                 }
 
                 // Apply window function
-                v *= windowFunction(progress + (float)s * progressPerSample);
+                v *= windowFunction.processSampleUnchecked(progress + (float)s * progressPerSample);
                 v *= settings.gain;
 
                 // Apply quickfade

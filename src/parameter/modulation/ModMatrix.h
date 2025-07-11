@@ -38,9 +38,10 @@ namespace imagiro {
 
         ModMatrix();
 
-        void registerSource(const SourceID& id, std::string name = "",
-                            SourceType type = SourceType::Misc, bool isBipolar = false);
-        void registerTarget(const TargetID& id, std::string name = "");
+        SourceID registerSource(std::string name = "", SourceType type = SourceType::Misc, bool isBipolar = false);
+        void updateSource(SourceID id, const std::string &name = "", SourceType type = SourceType::Misc, bool isBipolar = false);
+        TargetID registerTarget(std::string name = "");
+
 
         void removeSource(const SourceID& id) { sourcesToDelete.enqueue(id); }
         void removeTarget(const TargetID& id) { targetsToDelete.enqueue(id); }
@@ -199,5 +200,8 @@ namespace imagiro {
         SerializedMatrix cachedSerializedMatrix;
 
         FixedHashSet<TargetID, MAX_MOD_TARGETS> updatedTargets;
+
+        int nextSourceID {0};
+        int nextTargetID {0};
     };
 }

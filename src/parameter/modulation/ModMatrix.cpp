@@ -222,11 +222,18 @@ namespace imagiro {
         }
     }
 
-    void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
+    SourceID ModMatrix::registerSource(std::string name, const SourceType type, const bool isBipolar) {
+        const auto id = nextSourceID++;
+
         if (name.empty()) {
-            name = id;
+            name = "source" + std::to_string(id);
         }
 
+        updateSource(id, name, type, isBipolar);
+        return id;
+    }
+
+    void ModMatrix::updateSource(SourceID id, const std::string &name, const SourceType type, const bool isBipolar) {
         auto sourceValue = std::make_shared<SourceValue>();
         sourceValue->bipolar = isBipolar;
         sourceValue->type = type;
@@ -234,8 +241,8 @@ namespace imagiro {
         newSourcesQueue.enqueue({id, sourceValue});
     }
 
-    void ModMatrix::registerTarget(const TargetID& id, std::string name) {
-
+    TargetID ModMatrix::registerTarget(std::string name) {
+        auto id = nextTargetID++;
         if (name.empty()) {
             name = id;
         }
@@ -243,6 +250,7 @@ namespace imagiro {
         auto targetValue = std::make_shared<TargetValue>();
         targetValue->name = name;
         newTargetsQueue.enqueue({id, targetValue});
+        return id;
     }
 
     SerializedMatrix ModMatrix::getSerializedMatrix() {

@@ -13,7 +13,7 @@ public:
                  const std::string &name = "",
                  const bool bipolar = false)
         : Processor(parametersYAML, ParameterLoader(), BusesProperties()),
-          source(uid, name, &m, ModMatrix::SourceType::Misc, bipolar) {
+          source(name, &m, ModMatrix::SourceType::Misc, bipolar) {
 
         auto bp = std::move(
             ParameterLoader().loadParameters(

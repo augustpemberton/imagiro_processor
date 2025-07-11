@@ -35,7 +35,7 @@ public:
             {0.5f, 1.f, 0.f},
             {1.f, 0.f, 0.f}
         });
-        stringData.set("curve", choc::json::toString(defaultCurve.getState()), true);
+        valueData.set("curve", defaultCurve.getState(), true);
 
         startTimerHz(120);
     }
@@ -82,9 +82,9 @@ public:
         }
     }
 
-    void OnStringDataUpdated(StringData &s, const std::string &key, const std::string &newValue) override {
+    void OnValueDataUpdated(ValueData &s, const std::string &key, const choc::value::ValueView &newValue) override {
         if (key == "curve") {
-            const auto curve = Curve::fromState(choc::json::parse(newValue));
+            const auto curve = Curve::fromState(newValue);
             lfo.setTable(curve.getLookupTable());
             for (auto& v : voiceLFOs) {
                 v.setTable(curve.getLookupTable());
