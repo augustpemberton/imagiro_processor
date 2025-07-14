@@ -5,6 +5,8 @@
 #pragma once
 #include "./MixMatrix.h"
 #include <random>
+
+#include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
 #include "imagiro_util/src/dsp/delay.h"
 
 using namespace imagiro;
@@ -55,8 +57,8 @@ struct DiffusionStep {
             delays[c].reset(0);
         }
 
-        diffusionOffset.reset(sampleRate, 0.01);
-        diffusionSkew.reset(sampleRate, 0.01);
+        diffusionOffset.reset(sampleRate, 0.2);
+        diffusionSkew.reset(sampleRate, 0.2);
         lfoAmount.reset(sampleRate, 0.01);
     }
 
@@ -101,9 +103,9 @@ struct DiffusionStep {
         // Mix with a Hadamard matrix
         Array mixed = delayed;
         // flip
-        for (int c = 0; c < channels; ++c) {
-            if (flipPolarity[c]) mixed[c] *= -1;
-        }
+        // for (int c = 0; c < channels; ++c) {
+        //     if (flipPolarity[c]) mixed[c] *= -1;
+        // }
 
         // mix
         Hadamard<double, channels>::inPlace(mixed.data());
@@ -125,11 +127,13 @@ struct DiffuserHalfLengths {
     double sampleRate {0};
     juce::SmoothedValue<double> lowpassCutoff {20000};
     juce::SmoothedValue<double> highpassCutoff {20};
-    std::array<juce::IIRFilter, channels> lowpasses;
-    std::array<juce::IIRFilter, channels> highpasses;
+    std::array<CascadedBiquadFilter<2>, channels> lowpasses;
+    std::array<CascadedBiquadFilter<2>, channels> highpasses;
 
     DiffuserHalfLengths() {
         feedback.fill(0);
+        for (auto& hp : highpasses) hp.setFilterType(CascadedBiquadFilter<2>::FilterType::HIGHPASS);
+        for (auto& lp : lowpasses) lp.setFilterType(CascadedBiquadFilter<2>::FilterType::LOWPASS);
     }
 
     void setDiffusionLength(double offset, double skewTime) {
@@ -143,6 +147,11 @@ struct DiffuserHalfLengths {
         for (auto &step : steps) step.configure(sampleRate);
         lowpassCutoff.reset(sampleRate, 0.05);
         highpassCutoff.reset(sampleRate, 0.05);
+
+        for (auto c=0; c<channels; c++) {
+            lowpasses[c].setSampleRate(sr);
+            highpasses[c].setSampleRate(sr);
+        }
     }
 
     Array process(Array samples) {
@@ -157,10 +166,10 @@ struct DiffuserHalfLengths {
         auto lp = lowpassCutoff.getNextValue();
         auto hp = highpassCutoff.getNextValue();
         for (auto c=0; c<channels; c++) {
-            lowpasses[c].setCoefficients(juce::IIRCoefficients::makeLowPass(sampleRate, lp));
-            highpasses[c].setCoefficients(juce::IIRCoefficients::makeHighPass(sampleRate, hp));
-            samples[c] = lowpasses[c].processSingleSampleRaw(samples[c]);
-            samples[c] = highpasses[c].processSingleSampleRaw(samples[c]);
+            lowpasses[c].setCutoff(lp);
+            highpasses[c].setCutoff(hp);
+            samples[c] = lowpasses[c].process(samples[c]);
+            samples[c] = highpasses[c].process(samples[c]);
             feedback[c] = samples[c];
         }
         return samples;

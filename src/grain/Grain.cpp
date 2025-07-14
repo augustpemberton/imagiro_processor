@@ -5,8 +5,11 @@
 
 #include "imagiro_processor/src/dsp/interpolation.h"
 
-Grain::Grain(GrainBuffer& buffer, size_t i) : grainBuffer(buffer), gain(0), pointer(0), sampleRate(0),
-                                              indexInStream(i), isLooping(false), windowFunction(), cachedPanCoeffs{} {
+Grain::Grain(GrainBuffer &buffer, std::vector<GrainSampleData> &data, size_t i)
+    : indexInStream(i), isLooping(false), sampleDataBuffer(data), windowFunction(),
+      cachedPanCoeffs{}, grainBuffer(buffer), gain(0), pointer(0),
+      sampleRate(0)
+{
 }
 
 void Grain::configure(GrainSettings s) {
@@ -22,7 +25,7 @@ void Grain::configure(GrainSettings s) {
             return 1.f;
         }, 0.f, 1.f, 2);
     } else {
-        progressPerSample = 1.f / (s.duration * (float)sampleRate);
+        progressPerSample = 1.f / (s.duration * (float) sampleRate);
 
         windowFunction.initialise([s](float p) {
             return getGrainShapeGain(p, s.shape, s.skew);
@@ -32,7 +35,7 @@ void Grain::configure(GrainSettings s) {
     smoothPitchRatio.setTargetValue(settings.getPitchRatio());
 }
 
-float* Grain::calculatePanCoeffs(const float val) {
+float *Grain::calculatePanCoeffs(const float val) {
     if (val != cachedPan) {
         cachedPanCoeffs[0] = sinApprox((1 - val) * juce::MathConstants<float>::pi / 2);
         cachedPanCoeffs[1] = sinApprox(val * juce::MathConstants<float>::pi / 2);
@@ -72,7 +75,9 @@ void Grain::play(int sampleDelay) {
     }
 
     pointer = spawnPosition;
-    pointer = std::min(static_cast<double>(currentBuffer->getNumSamples()) - INTERP_POST_SAMPLES - INTERP_PRE_SAMPLES - 1 - quickfadeSamples, pointer);
+    pointer = std::min(
+        static_cast<double>(currentBuffer->getNumSamples()) - INTERP_POST_SAMPLES - INTERP_PRE_SAMPLES - 1 -
+        quickfadeSamples, pointer);
     pointer = std::max(static_cast<double>(INTERP_PRE_SAMPLES), pointer);
     progress = 0;
 
@@ -94,14 +99,15 @@ float Grain::getGrainSpeed() {
 }
 
 int Grain::getSamplesUntilEndOfBuffer() {
-    auto maxPitchRatio = std::max(std::abs(smoothPitchRatio.getCurrentValue()), std::abs(smoothPitchRatio.getTargetValue()));
+    auto maxPitchRatio = std::max(std::abs(smoothPitchRatio.getCurrentValue()),
+                                  std::abs(smoothPitchRatio.getTargetValue()));
     maxPitchRatio *= sampleRateRatio;
 
     int s;
     if (settings.reverse) {
-        s = (int)((pointer - INTERP_PRE_SAMPLES) / maxPitchRatio);
+        s = (int) ((pointer - INTERP_PRE_SAMPLES) / maxPitchRatio);
     } else {
-        s = (int)((currentBuffer->getNumSamples() - INTERP_POST_SAMPLES - pointer) / (maxPitchRatio));
+        s = (int) ((currentBuffer->getNumSamples() - INTERP_POST_SAMPLES - pointer) / (maxPitchRatio));
     }
 
     return s;
@@ -118,7 +124,7 @@ void Grain::updateLoopSettings(LoopSettings s, bool force) {
     else setNewLoopSettingsInternal(s);
 }
 
-void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int numSamples, bool setNotAdd) {
+void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int numSamples, bool setNotAdd) {
     if (currentBuffer == nullptr) return;
     if (currentMipMapBuffer == nullptr) return;
 
@@ -136,7 +142,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         stopFlag = false;
     }
 
-    const auto& bounds = cachedLoopBoundaries;
+    const auto &bounds = cachedLoopBoundaries;
     const auto pastLoopRegion = settings.loopSettings.loopActive && pointer > bounds.loopEndSample;
 
     if (pastLoopRegion || !settings.loopSettings.loopActive) {
@@ -158,7 +164,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
     }
 
     if (progressPerSample > 0) {
-        auto samplesUntilEndOfGrain = (int)((1 - progress) / progressPerSample);
+        auto samplesUntilEndOfGrain = (int) ((1 - progress) / progressPerSample);
         numSamples = std::min(numSamples, samplesUntilEndOfGrain);
     }
 
@@ -172,6 +178,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
     const auto numOutChannels = out.getNumChannels();
     const bool isLoopActive = settings.loopSettings.loopActive;
     const bool isReverse = settings.reverse;
+
 
     while (numSamples > 0 && quickfadeGain > 0.f) {
         auto samplesThisChunk = numSamples;
@@ -187,8 +194,9 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         auto panPerSample = (endPan - startPan) / (float) samplesThisChunk;
 
         auto quickfadeGainStart = quickfadeGain;
-        int maxQuickfadeSamples = quickfading ?
-                                  static_cast<int>(quickfadeGainStart / quickfadeGainPerSample) + 1 : samplesThisChunk;
+        int maxQuickfadeSamples = quickfading
+                                      ? static_cast<int>(quickfadeGainStart / quickfadeGainPerSample) + 1
+                                      : samplesThisChunk;
         samplesThisChunk = std::min(samplesThisChunk, maxQuickfadeSamples);
 
         // Ensure our buffer is large enough
@@ -200,7 +208,7 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         double pos = pointer;
         bool looping = isLooping;
         for (int s = 0; s < samplesThisChunk; s++) {
-            auto pitchRatio = startPitchRatio + (float)s * pitchRatioPerSample;
+            auto pitchRatio = startPitchRatio + (float) s * pitchRatioPerSample;
             pos += pitchRatio;
 
             // Handle loop wrapping
@@ -218,7 +226,8 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
                 // Check for loop fade start
                 if (!isReverse && pos - pitchRatio < bounds.loopFadeStart && pos >= bounds.loopFadeStart) {
                     looping = true;
-                } else if (isReverse && pos - pitchRatio > bounds.loopFadeStartReverse && pos <= bounds.loopFadeStartReverse) {
+                } else if (isReverse && pos - pitchRatio > bounds.loopFadeStartReverse && pos <= bounds.
+                           loopFadeStartReverse) {
                     looping = true;
                 }
             }
@@ -251,25 +260,27 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
         for (int c = 0; c < numOutChannels; c++) {
             auto inChannel = c % numBufferChannels;
             auto stereoOutChannel = c % 2;
+            const auto* bufferPointer = currentBuffer->getReadPointer(c);
 
             for (int s = 0; s < samplesThisChunk; s++) {
-                const auto& sample = sampleDataBuffer[s];
+                const auto &sample = sampleDataBuffer[s];
 
-                auto v = imagiro::interp4p3o_2x(*currentBuffer, inChannel, sample.position);
+                auto v = imagiro::interp4p3o_2x(bufferPointer, sample.position);
 
                 // Apply loop crossfade if needed
                 if (sample.loopFadePointer >= 0) {
-                    const auto fadeSample = imagiro::interp4p3o_2x(*currentBuffer, inChannel, static_cast<float>(sample.loopFadePointer));
+                    const auto fadeSample = imagiro::interp4p3o_2x(bufferPointer,
+                                                                   static_cast<float>(sample.loopFadePointer));
                     v = v * (1 - sample.loopFadeProgress) + fadeSample * sample.loopFadeProgress;
                 }
 
                 // Apply window function
-                v *= windowFunction(progress + (float)s * progressPerSample);
+                v *= windowFunction.processSampleUnchecked(progress + (float) s * progressPerSample);
                 v *= settings.gain;
 
                 // Apply quickfade
                 if (quickfading) {
-                    const auto quickfadeAmount = quickfadeGainStart - quickfadeGainPerSample * (float)s;
+                    const auto quickfadeAmount = quickfadeGainStart - quickfadeGainPerSample * (float) s;
                     if (quickfadeAmount <= 0.f) break;
                     v *= quickfadeAmount;
                 }
@@ -291,8 +302,8 @@ void Grain::processBlock(juce::AudioSampleBuffer& out, int outStartSample, int n
             loopFadeProgress = sampleDataBuffer[samplesThisChunk - 1].loopFadeProgress;
         }
 
-        progress += progressPerSample * (float)samplesThisChunk;
-        if (quickfading) quickfadeGain -= quickfadeGainPerSample * (float)samplesThisChunk;
+        progress += progressPerSample * (float) samplesThisChunk;
+        if (quickfading) quickfadeGain -= quickfadeGainPerSample * (float) samplesThisChunk;
 
         numSamples -= samplesThisChunk;
     }
@@ -342,7 +353,8 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
         auto minLoopEnd = std::min(bufferEnd, static_cast<int>(nextPointerPos + loopCrossfadeSamples));
         minLoopEnd += 1; // compensate for rounding errors
         if (loopEndSample < minLoopEnd) {
-            newLoopCrossfadeSamples = std::min(newLoopCrossfadeSamples, minLoopEnd - static_cast<int>(nextPointerPos+1));
+            newLoopCrossfadeSamples = std::min(newLoopCrossfadeSamples,
+                                               minLoopEnd - static_cast<int>(nextPointerPos + 1));
             newLengthSamples = minLoopEnd - loopStartSample;
             const auto newLengthPercentage = newLengthSamples / static_cast<float>(currentBuffer->getNumSamples());
             settings.loopSettings.loopLength = newLengthPercentage;
@@ -351,7 +363,8 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
         auto maxLoopStart = std::max(bufferStart, static_cast<int>(nextPointerPos - loopCrossfadeSamples));
         maxLoopStart -= 1; // compensate for rounding errors
         if (loopStartSample > maxLoopStart) {
-            newLoopCrossfadeSamples = std::min(newLoopCrossfadeSamples, static_cast<int>(nextPointerPos) - maxLoopStart);
+            newLoopCrossfadeSamples = std::min(newLoopCrossfadeSamples,
+                                               static_cast<int>(nextPointerPos) - maxLoopStart);
             newLengthSamples = loopEndSample - maxLoopStart;
 
             const auto newStartPercentage = maxLoopStart / static_cast<float>(currentBuffer->getNumSamples());
@@ -386,13 +399,11 @@ void Grain::stop(bool fadeout) {
 void Grain::prepareToPlay(double sr, int maxBlockSize) {
     this->sampleRate = sr;
     updateSampleRateRatio();
-    temp.setSize(1, maxBlockSize + INTERP_PRE_SAMPLES + INTERP_POST_SAMPLES);
-    sampleDataBuffer.resize(maxBlockSize);
 
     smoothPitchRatio.reset(sr, 0.01);
     smoothedPan.reset(sr, 0.01);
 
-    quickfadeSamples = (int)(quickfadeSeconds * (float)sr);
+    quickfadeSamples = (int) (quickfadeSeconds * (float) sr);
     quickfadeGainPerSample = 1.f / static_cast<float>(quickfadeSamples);
 }
 
@@ -407,22 +418,21 @@ void Grain::updateCachedLoopBoundaries() {
 }
 
 float Grain::getGrainShapeGain(float p, float sym, float skew) {
-
     if (skew < 0)
         p = pow(p, fastexp(skew));
     else if (skew > 0) {
-        p = pow(1-p, fastexp(-skew));
+        p = pow(1 - p, fastexp(-skew));
     }
 
     auto alphaStart = std::max(1 - sym, 0.001f);
     auto alphaEnd = alphaStart;
-    auto pInv = 1-p;
+    auto pInv = 1 - p;
 
     float v;
     if (2 * pInv <= alphaEnd) {
-        v = 0.5f * (1-fastcos((juce::MathConstants<float>::twoPi * pInv) / alphaEnd));
+        v = 0.5f * (1 - fastcos((juce::MathConstants<float>::twoPi * pInv) / alphaEnd));
     } else if (2 * p <= alphaStart) {
-        v = 0.5f * (1-fastcos((juce::MathConstants<float>::twoPi * p) / alphaStart));
+        v = 0.5f * (1 - fastcos((juce::MathConstants<float>::twoPi * p) / alphaStart));
     } else v = 1.f;
 
     jassert(!std::isnan(v));

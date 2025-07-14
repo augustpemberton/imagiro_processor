@@ -26,13 +26,16 @@ public:
         frequency->addListener(this);
         phase->addListener(this);
         playbackMode->addListener(this);
+        bipolar->addListener(this);
+
+        source.setBipolar(bipolar->getBoolValue());
 
         const auto defaultCurve = Curve({
             {0.f, 0.f, 0.f},
             {0.5f, 1.f, 0.f},
             {1.f, 0.f, 0.f}
         });
-        stringData.set("curve", choc::json::toString(defaultCurve.getState()), true);
+        valueData.set("curve", defaultCurve.getState(), true);
 
         startTimerHz(120);
     }
@@ -42,6 +45,7 @@ public:
         frequency->removeListener(this);
         phase->removeListener(this);
         playbackMode->removeListener(this);
+        bipolar->removeListener(this);
         stopTimer();
     }
 
@@ -56,13 +60,11 @@ public:
         // retrigger
         if (playbackMode->getProcessorValue() != 1) {
             if (!mono->getBoolValue()) {
-                voiceLFOs[voiceIndex].setPhase(phase->getProcessorValue());
+                voiceLFOs[voiceIndex].setPhase(0);
             } else {
-                lfo.setPhase(phase->getProcessorValue());
+                lfo.setPhase(0);
             }
         }
-
-
     }
 
     void onVoiceFinished(const size_t voiceIndex) override {
@@ -80,9 +82,9 @@ public:
         }
     }
 
-    void OnStringDataUpdated(StringData &s, const std::string &key, const std::string &newValue) override {
+    void OnValueDataUpdated(ValueData &s, const std::string &key, const choc::value::ValueView &newValue) override {
         if (key == "curve") {
-            const auto curve = Curve::fromState(choc::json::parse(newValue));
+            const auto curve = Curve::fromState(newValue);
             lfo.setTable(curve.getLookupTable());
             for (auto& v : voiceLFOs) {
                 v.setTable(curve.getLookupTable());
@@ -101,6 +103,7 @@ protected:
     Parameter* playbackMode { getParameter("playbackMode") };
     Parameter* mono { getParameter("mono") };
     Parameter* syncToHost { getParameter("syncToHost") };
+    Parameter* bipolar { getParameter("bipolar") };
 
     std::atomic<float> mostRecentPhase {0};
 
@@ -124,6 +127,8 @@ protected:
             }
         } else if (p == mono) {
             if (!p->getBoolValue()) mostRecentPhase = -1;
+        } else if (p == bipolar) {
+            source.setBipolar(bipolar->getBoolValue());
         }
     }
 
@@ -156,7 +161,14 @@ protected:
     float advanceGlobalValue(const int numSamples = 1) override {
         if (!mono->getBoolValue()) return 0.f;
         if (isLockedToTransport()) syncLFOToHost(lfo);
-        const auto v = lfo.process(numSamples) * depth->getProcessorValue();
+
+        auto v = lfo.process(numSamples);
+        if (bipolar->getBoolValue()) {
+            v -= 0.5;
+            v *= 2;
+        }
+        v *= depth->getProcessorValue();
+
         mostRecentPhase = lfo.getPhase();
         return v;
     }
@@ -164,7 +176,14 @@ protected:
     float advanceVoiceValue(const size_t voiceIndex, const int numSamples = 1) override {
         if (mono->getBoolValue()) return 0.f;
         if (isLockedToTransport()) syncLFOToHost(voiceLFOs[voiceIndex]);
-        auto v = voiceLFOs[voiceIndex].process(numSamples) * depth->getProcessorValue(voiceIndex);
+
+        auto v = voiceLFOs[voiceIndex].process(numSamples);
+        if (bipolar->getBoolValue()) {
+            v -= 0.5;
+            v *= 2;
+        }
+        v *= depth->getProcessorValue(voiceIndex);
+
         if (voiceIndex == source.getMatrix()->getMostRecentVoiceIndex()) {
             mostRecentPhase = voiceLFOs[voiceIndex].getPhase();
         }

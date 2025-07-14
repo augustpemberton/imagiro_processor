@@ -24,7 +24,7 @@ namespace imagiro {
               internal(internal),
               uid(uid),
               name(name),
-              modTarget("param-" + uid, name),
+              modTarget(name),
               jitterAmount(jitter)
     {
         jassert(!this->configs.empty());

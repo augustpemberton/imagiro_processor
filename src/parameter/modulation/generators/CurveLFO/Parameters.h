@@ -29,7 +29,7 @@ frequency:
 depth:
   name: "depth"
   type: percent
-  default: 0.5
+  default: 1
   range: {min: 0, max: 1}
 
 phase:
@@ -50,6 +50,11 @@ playbackMode:
 
 syncToHost:
   name: "sync to host"
+  type: toggle
+  default: 1
+
+bipolar:
+  name: "bipolar"
   type: toggle
   default: 1
 

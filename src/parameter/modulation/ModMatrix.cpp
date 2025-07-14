@@ -14,6 +14,8 @@ namespace imagiro {
 
     void ModMatrix::removeConnection(const SourceID& sourceID, TargetID targetID) {
         matrix.erase({sourceID, targetID});
+        updatedSourcesSinceLastCalculate.insert(sourceID);
+        updatedTargetsSinceLastCalculate.insert(targetID);
         matrixUpdated();
     }
 
@@ -42,6 +44,7 @@ namespace imagiro {
         }
 
         updatedSourcesSinceLastCalculate.insert(sourceID);
+        updatedTargetsSinceLastCalculate.insert(targetID);
         matrixUpdated();
     }
 
@@ -90,6 +93,11 @@ namespace imagiro {
             }
         }
 
+        for (const auto& targetID : updatedTargetsSinceLastCalculate) {
+            targetsToUpdate.insert(targetID);
+        }
+
+
         for (const auto& targetID : targetsToUpdate) {
             targetValues[targetID]->value.resetValue();
         }
@@ -128,6 +136,7 @@ namespace imagiro {
         }
 
         updatedSourcesSinceLastCalculate.clear();
+        updatedTargetsSinceLastCalculate.clear();
     }
 
     void ModMatrix::setGlobalSourceValue(const SourceID& sourceID, float value) {
@@ -213,11 +222,18 @@ namespace imagiro {
         }
     }
 
-    void ModMatrix::registerSource(const SourceID& id, std::string name, SourceType type, bool isBipolar) {
+    SourceID ModMatrix::registerSource(std::string name, const SourceType type, const bool isBipolar) {
+        const auto id = nextSourceID++;
+
         if (name.empty()) {
-            name = id;
+            name = "source" + std::to_string(id);
         }
 
+        updateSource(id, name, type, isBipolar);
+        return id;
+    }
+
+    void ModMatrix::updateSource(SourceID id, const std::string &name, const SourceType type, const bool isBipolar) {
         auto sourceValue = std::make_shared<SourceValue>();
         sourceValue->bipolar = isBipolar;
         sourceValue->type = type;
@@ -225,8 +241,8 @@ namespace imagiro {
         newSourcesQueue.enqueue({id, sourceValue});
     }
 
-    void ModMatrix::registerTarget(const TargetID& id, std::string name) {
-
+    TargetID ModMatrix::registerTarget(std::string name) {
+        auto id = nextTargetID++;
         if (name.empty()) {
             name = id;
         }
@@ -234,6 +250,7 @@ namespace imagiro {
         auto targetValue = std::make_shared<TargetValue>();
         targetValue->name = name;
         newTargetsQueue.enqueue({id, targetValue});
+        return id;
     }
 
     SerializedMatrix ModMatrix::getSerializedMatrix() {

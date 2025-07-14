@@ -17,8 +17,8 @@ namespace imagiro {
         void addListener(Listener* l) { listeners.add(l); }
         void removeListener(Listener* l) { listeners.remove(l); }
 
-        ModTarget(TargetID targetID, std::string targetName = "", ModMatrix* m = nullptr)
-                : id(std::move(targetID)), name(std::move(targetName))
+        ModTarget(std::string targetName = "", ModMatrix* m = nullptr)
+                : name(std::move(targetName))
         {
             if (m) setModMatrix(*m);
         }
@@ -48,7 +48,7 @@ namespace imagiro {
         void setModMatrix(ModMatrix& m) {
             if (matrix) matrix->removeListener(this);
             matrix = &m;
-            matrix->registerTarget(id, name);
+            id = matrix->registerTarget(name);
             matrix->addListener(this);
         }
 

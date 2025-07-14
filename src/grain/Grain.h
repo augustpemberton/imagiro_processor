@@ -8,8 +8,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 
-#include "imagiro_processor/src/dsp/DCBlocker.h"
-#include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
+#include "GrainSampleData.h"
 
 class Grain {
 public:
@@ -41,7 +40,7 @@ public:
         };
     }
 
-    Grain(GrainBuffer& buffer, size_t indexInStream = 0);
+    Grain(GrainBuffer& buffer, std::vector<GrainSampleData>& data, size_t indexInStream = 0);
     Grain(const Grain&) = delete;
 
     void configure(GrainSettings settings);
@@ -73,6 +72,7 @@ public:
 
     /*
      * note - we can update stream pitch every block, but grain pitch only gets set once
+     * (is this really what we want? pitch bend, detune etc? should we be managing this outside of grain?)
      */
     void setStreamPitch(float pitch, bool skipSmoothing = false) {
         settings.streamPitch = pitch;
@@ -106,16 +106,10 @@ private:
     } cachedLoopBoundaries;
     void updateCachedLoopBoundaries();
 
-    struct SampleData {
-        double position;
-        bool looping;
-        float loopFadeProgress;
-        double loopFadePointer;
-    };
-    std::vector<SampleData> sampleDataBuffer;
+    std::vector<GrainSampleData>& sampleDataBuffer;
 
     juce::dsp::LookupTableTransform<float> sinApprox {
-        [] (float x) { return (float)std::sin(x); },
+        [] (const float x) { return std::sin(x); },
         -6.5f, 6.5f, 80};
 
     juce::dsp::LookupTableTransform<float> windowFunction;
@@ -160,8 +154,6 @@ private:
     bool stopFlag {false};
 
     int samplesUntilStart {0};
-
-    juce::AudioSampleBuffer temp;
 };
 
 

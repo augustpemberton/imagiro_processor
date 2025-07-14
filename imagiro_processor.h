@@ -32,3 +32,5 @@
 
 #include "src/dsp/transient/Transient.h"
 #include "src/dsp/transient/TransientDetector.h"
+
+#include "src/valuedata/Serialize.h"

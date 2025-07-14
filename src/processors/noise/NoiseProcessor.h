@@ -18,7 +18,7 @@ public:
     NoiseProcessor()
         : Processor(NoiseProcessorParameters::PARAMETERS_YAML,
             ParameterLoader(), getDefaultProperties()),
-        grain(grainBuffer)
+        grain(grainBuffer, sampleDataBuffer)
     {
         tightnessParam->addListener(this);
 
@@ -55,13 +55,13 @@ public:
 
     void OnBufferUpdated(GrainBuffer &) override {
         playGrainFlag = true;
-        getStringData().set("filePath", grainBuffer.getLastLoadedFile().getFullPathName().toStdString(), true);
+        getValueData().set("filePath", grainBuffer.getLastLoadedFile().getFullPathName().toStdString(), true);
     }
 
-    void OnStringDataUpdated(StringData &s, const std::string &key, const std::string &newValue) override {
+    void OnValueDataUpdated(ValueData &s, const std::string &key, const choc::value::ValueView &newValue) override {
         if (key == "filePath") {
-            if (grainBuffer.getLastLoadedFile().getFullPathName().toStdString() != newValue) {
-                loadFilePath(newValue);
+            if (grainBuffer.getLastLoadedFile().getFullPathName().toStdString() != newValue.toString()) {
+                loadFilePath(newValue.toString());
             }
         }
     }
@@ -99,7 +99,17 @@ public:
 
         noiseBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
         noiseBuffer.clear();
+        sampleDataBuffer.resize(samplesPerBlock);
         grain.prepareToPlay(sampleRate, samplesPerBlock);
+    }
+
+    bool isFileLoaded() {
+        if (!grainBuffer.getLastLoadedFile().exists()) return false;
+        if (!grainBuffer.getBuffer()) return false;
+        const auto& mmBuffer = grainBuffer.getBuffer()->getBuffer(0);
+        if (!mmBuffer) return false;
+        if (mmBuffer->getNumSamples() == 0) return false;
+        return true;
     }
 
     void fillNoiseBuffer(const int numSamples) {
@@ -111,7 +121,8 @@ public:
                 }
             }
         } else {
-            grain.processBlock(noiseBuffer, 0, numSamples, true);
+            if (isFileLoaded()) grain.processBlock(noiseBuffer, 0, numSamples, true);
+            else noiseBuffer.clear();
         }
     }
 
@@ -127,10 +138,6 @@ public:
 
 
     void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override {
-        // if we're on file mode but no file loaded, don't do anything
-        if (typeParam->getProcessorValue() == 1 && grainBuffer.getBuffer() && grainBuffer.getBuffer()->getBuffer(0)->getNumSamples() == 0) {
-            return;
-        }
 
         if (playGrainFlag) {
             playGrainFlag = false;
@@ -149,7 +156,7 @@ public:
                 auto drySample = buffer.getSample(c, s);
                 monoSample += drySample;
 
-                auto noiseSample = noiseBuffer.getSample(c, s);
+                auto noiseSample = noiseBuffer.getSample(c%noiseBuffer.getNumChannels(), s);
                 noiseSample *= gateValue;
                 noiseSample *= gainParam->getSmoothedValue(s);
                 noiseSample *= noiseNormalizationGain;
@@ -184,6 +191,7 @@ private:
     CascadedOnePoleFilter<4> hpFilter;
 
     juce::AudioSampleBuffer noiseBuffer;
+    std::vector<GrainSampleData> sampleDataBuffer;
 
     bool playGrainFlag {false};
 

@@ -8,10 +8,10 @@
 namespace imagiro {
     class ModSource {
     public:
-        ModSource(SourceID sourceID, std::string sourceName = "", ModMatrix* m = nullptr,
+        ModSource(std::string sourceName = "", ModMatrix* m = nullptr,
                   ModMatrix::SourceType sourceType = ModMatrix::SourceType::Misc,
                   bool bipolar = false)
-                : id(std::move(sourceID)), name(std::move(sourceName)), matrix(m), isBipolar(bipolar),
+                : name(std::move(sourceName)), matrix(m), isBipolar(bipolar),
                   type (sourceType)
         {
             if (m) setModMatrix(*m);
@@ -19,12 +19,12 @@ namespace imagiro {
 
         void setModMatrix(ModMatrix& m) {
             matrix = &m;
-            matrix->registerSource(id, name, type, isBipolar);
+            id = matrix->registerSource(name, type, isBipolar);
         }
 
         void setBipolar(bool bipolar) {
             isBipolar = bipolar;
-            matrix->registerSource(id, name, type, isBipolar);
+            matrix->updateSource(id, name, type, isBipolar);
         }
 
         void resetValue() const {

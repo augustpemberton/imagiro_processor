@@ -20,7 +20,7 @@ enum class GeneratorType {
 class GeneratorChainManager : public ChainManager<GeneratorType, ModGenerator> {
 public:
     GeneratorChainManager(const ParameterFactory& parameterFactory, ModMatrix &m, const int numSlots, const int maxParamsPerSlot)
-    : ChainManager(parameterFactory, numSlots, maxParamsPerSlot), modMatrix(m) {
+    : ChainManager(parameterFactory, numSlots, maxParamsPerSlot, 0), modMatrix(m) {
     }
 
     void setEnvelopeSynth(MPESynth& synth) {
@@ -55,7 +55,7 @@ public:
 protected:
     std::shared_ptr<ModGenerator> createProcessorForType(const GeneratorType type, const int id) const override {
         const std::string uid = "mod-" + std::to_string(id);
-        const std::string name = to_string(type) + " " + std::to_string(id);
+        const std::string name = to_string(type) + " " + std::to_string(id+1);
         if (type == GeneratorType::LFO && synth) return std::make_shared<CurveLFOGenerator>(*synth, modMatrix, uid, name);
         if (type == GeneratorType::Macro) return std::make_shared<MacroGenerator>(modMatrix, uid, name);
         if (type == GeneratorType::EnvelopeFollower && envSources) {

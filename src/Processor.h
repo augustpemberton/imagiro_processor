@@ -7,8 +7,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <imagiro_util/imagiro_util.h>
 #include "ProcessorBase.h"
-#include "StringData.h"
-#include "StringData.h"
+#include "valuedata/ValueData.h"
+#include "valuedata/ValueData.h"
 #include "parameter/Parameter.h"
 #include "preset/Preset.h"
 #include "config/AuthorizationManager.h"
@@ -19,7 +19,7 @@
 class Preset;
 
 namespace imagiro {
-    class Processor : public ProcessorBase, StringData::Listener, public Parameter::Listener, private juce::AudioProcessorListener {
+    class Processor : public ProcessorBase, ValueData::Listener, public Parameter::Listener, private juce::AudioProcessorListener {
     public:
         Processor(juce::String parametersYAMLString,
                   const ParameterLoader& loader = ParameterLoader(),
@@ -67,7 +67,7 @@ namespace imagiro {
         void addMessageListener(MessageListener* l) {messageListeners.add(l);}
         void removeMessageListener(MessageListener* l) {messageListeners.remove(l);}
 
-        StringData& getStringData() { return stringData; }
+        ValueData& getValueData() { return valueData; }
 
         // =================================================================
         struct PresetListener {
@@ -115,7 +115,6 @@ namespace imagiro {
 
         void prepareToPlay(double sampleRate, int samplesPerBlock) override;
         void processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) override;
-        virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
 
         void parameterChanged(imagiro::Parameter *param) override;
         void configChanged(imagiro::Parameter *param) override;
@@ -125,8 +124,10 @@ namespace imagiro {
         juce::AudioProcessorParameter* getBypassParameter() const override;
 
     protected:
+        virtual void process(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {}
+
         juce::SharedResourcePointer<Resources> resources;
-        StringData stringData;
+        ValueData valueData;
 
         bool firstBufferFlag {true};
 

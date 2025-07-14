@@ -7,8 +7,8 @@
 #define MAX_MOD_CONNECTIONS 1024
 
 struct SerializedMatrixEntry {
-    std::string sourceID;
-    std::string targetID;
+    imagiro::SourceID sourceID;
+    imagiro::TargetID targetID;
     float depth;
     float attackMS;
     float releaseMS;
@@ -31,8 +31,8 @@ struct SerializedMatrixEntry {
 
     static SerializedMatrixEntry fromState(const choc::value::ValueView& state) {
         SerializedMatrixEntry e {
-                state["sourceID"].getWithDefault(""),
-                state["targetID"].getWithDefault(""),
+                state["sourceID"].getWithDefault(0),
+                state["targetID"].getWithDefault(0),
                 state["depth"].getWithDefault(0.f),
                 state["attackMS"].getWithDefault(0.f),
                 state["releaseMS"].getWithDefault(0.f),

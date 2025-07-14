@@ -12,8 +12,8 @@ class ChainManager : juce::Timer {
 public:
     using ParameterFactory = std::function<ProxyParameter*(int)>;
 
-    ChainManager(const ParameterFactory &parameterFactory, const int numSlots, const int maxParamsPerSlot)
-        : numSlots(numSlots), maxParamsPerSlot(maxParamsPerSlot) {
+    ChainManager(const ParameterFactory &parameterFactory, const int numSlots, const int maxParamsPerSlot, int numChannels = 2)
+        : numSlots(numSlots), maxParamsPerSlot(maxParamsPerSlot), processorGraph(numChannels) {
         for (auto i=0; i<numSlots; i++) {
             proxyParameters.push_back(std::vector<ProxyParameter*>());
             for (auto j=0; j<maxParamsPerSlot; j++) {
@@ -198,23 +198,19 @@ private:
 
     void cleanupOldItems(const Chain& oldChain) {
         for (const auto& oldItem : oldChain) {
-            auto id = oldItem.id;
+            auto oldProc = oldItem.processor.get();
             auto newVersion = std::ranges::find_if(currentChain,
-                                                   [id](const Item& item) {
-                                                       return item.id == id;
+                                                   [oldProc](const Item& item) {
+                                                       return item.processor.get() == oldProc;
                                                    });
 
             // if the new version has that processor we aren't deleting it
-            if (newVersion != currentChain.end()) continue;
+            if (newVersion != currentChain.end()) {
+                continue;
+            }
 
             // Perform type-specific cleanup
             performTypeSpecificCleanup(oldItem);
-
-            for (auto [uid, param] : mappedProxyParameters[oldItem.id]) {
-                param->getModTarget().deregister();
-                param->clearProxyTarget();
-            }
-            mappedProxyParameters.erase(oldItem.id);
         }
     }
 
@@ -224,7 +220,10 @@ private:
         for (auto& item : chain) {
             if (item.id < 0) {
                 for (int idx = 0; idx<numSlots; idx++) {
-                    if (!findItemInChain(chain, idx)) item.id = idx;
+                    if (!findItemInChain(chain, idx)) {
+                        item.id = idx;
+                        break;
+                    }
                 }
                 if (item.id < 0) {
                     jassertfalse; // too many items in the chain!
