@@ -18,7 +18,7 @@ public:
     NoiseProcessor()
         : Processor(NoiseProcessorParameters::PARAMETERS_YAML,
             ParameterLoader(), getDefaultProperties()),
-        grain(grainBuffer)
+        grain(grainBuffer, sampleDataBuffer)
     {
         tightnessParam->addListener(this);
 
@@ -99,6 +99,7 @@ public:
 
         noiseBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
         noiseBuffer.clear();
+        sampleDataBuffer.resize(samplesPerBlock);
         grain.prepareToPlay(sampleRate, samplesPerBlock);
     }
 
@@ -190,6 +191,7 @@ private:
     CascadedOnePoleFilter<4> hpFilter;
 
     juce::AudioSampleBuffer noiseBuffer;
+    std::vector<GrainSampleData> sampleDataBuffer;
 
     bool playGrainFlag {false};
 
