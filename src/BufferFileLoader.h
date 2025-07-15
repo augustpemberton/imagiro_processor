@@ -3,10 +3,11 @@
 //
 
 #pragma once
+#include "bufferpool/InfoBuffer.h"
 #include "juce_audio_formats/juce_audio_formats.h"
 
 
-class BufferFileLoader : public juce::Thread {
+class BufferFileLoader : public juce::Thread, juce::Timer {
 public:
 
     BufferFileLoader();
@@ -23,7 +24,7 @@ public:
         virtual ~Listener() = default;
 
         virtual void OnFileLoadProgress(float progress) {}
-        virtual void OnFileLoadComplete(std::shared_ptr<juce::AudioSampleBuffer> buffer, double sr, float maxMagnitude) {}
+        virtual void OnFileLoadComplete(std::shared_ptr<InfoBuffer> buffer) {}
         virtual void OnFileLoadError(const juce::String& error) {}
     };
 
@@ -38,6 +39,13 @@ private:
     bool normalizeFile {false};
 
     const int oversampleRatio = 1;
+
+    std::shared_ptr<InfoBuffer> loadedBuffer {nullptr};
+    std::atomic<bool> loadCompleteFlag {false};
+
+    std::atomic<float> progress;
+    std::atomic<bool> loadProgressFlag;
+    void timerCallback() override;
 
     void run() override;
 };

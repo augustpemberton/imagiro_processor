@@ -3,12 +3,11 @@
 //
 
 #pragma once
-#include "GrainBuffer.h"
 #include "GrainSettings.h"
 #include <juce_dsp/juce_dsp.h>
-#include <imagiro_util/imagiro_util.h>
 
 #include "GrainSampleData.h"
+#include "imagiro_processor/src/bufferpool/FileBufferCache.h"
 
 class Grain {
 public:
@@ -18,19 +17,9 @@ public:
         float loopFadeProgress;
         float gain;
         float pitchRatio;
-
-        choc::value::Value getState() const {
-            auto state = choc::value::createObject("Grain");
-            state.addMember("position", position);
-            state.addMember("loopFadePosition", loopFadePosition);
-            state.addMember("loopFadeProgress", loopFadeProgress);
-            state.addMember("gain", gain);
-            state.addMember("pitchRatio", pitchRatio);
-            return state;
-        }
     };
 
-    Serialized serialize() {
+    Serialized serialize() const {
         return {
                 static_cast<int>(getPointer()),
                 static_cast<int>(getLoopFadePointer()),
@@ -40,7 +29,7 @@ public:
         };
     }
 
-    Grain(GrainBuffer& buffer, std::vector<GrainSampleData>& data, size_t indexInStream = 0);
+    explicit Grain(std::vector<GrainSampleData>& data, size_t indexInStream = 0);
     Grain(const Grain&) = delete;
 
     void configure(GrainSettings settings);
@@ -70,24 +59,22 @@ public:
     int getSamplesUntilStart() const { return samplesUntilStart; }
     int getSamplesUntilEndOfBuffer();
 
-    /*
-     * note - we can update stream pitch every block, but grain pitch only gets set once
-     * (is this really what we want? pitch bend, detune etc? should we be managing this outside of grain?)
-     */
-    void setStreamPitch(float pitch, bool skipSmoothing = false) {
-        settings.streamPitch = pitch;
+    void setPitch(const float pitch, const bool skipSmoothing = false) {
+        settings.pitch = pitch;
         if (skipSmoothing) smoothPitchRatio.setCurrentAndTargetValue(settings.getPitchRatio());
         else smoothPitchRatio.setTargetValue(settings.getPitchRatio());
     }
 
-    float getCurrentGain() { return settings.gain * windowFunction(progress); }
-    float getCurrentPitchRatio() { return smoothPitchRatio.getCurrentValue(); }
-    size_t getIndexInStream() { return indexInStream; }
-
-    GrainBuffer& getGrainBuffer() { return grainBuffer; }
+    float getCurrentGain() const { return settings.gain * windowFunction(progress); }
+    float getCurrentPitchRatio() const { return smoothPitchRatio.getCurrentValue(); }
+    size_t getIndexInStream() const { return indexInStream; }
 
     void updateLoopSettings(LoopSettings settings, bool force = false);
-    void updatePan(float val) { smoothedPan.setTargetValue(val); }
+    void updatePan(const float val) { smoothedPan.setTargetValue(val); }
+
+    void resetBuffer();
+
+    void setBuffer(const std::shared_ptr<InfoBuffer>& buf);
 
 private:
     const size_t indexInStream;
@@ -123,9 +110,7 @@ private:
     float cachedPan {0};
     float spreadVal {0};
 
-    GrainBuffer& grainBuffer;
-    std::shared_ptr<juce::AudioSampleBuffer> currentBuffer;
-    std::shared_ptr<MipmappedBuffer<>> currentMipMapBuffer;
+    std::shared_ptr<InfoBuffer> currentBuffer;
 
     GrainSettings settings;
 

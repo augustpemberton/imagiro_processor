@@ -24,7 +24,6 @@
 #include "src/parameter/ProxyParameter.h"
 #include "src/parameter/modulation/generators/GeneratorChainManager.h"
 
-#include "src/grain/GrainBuffer.h"
 #include "src/grain/Grain.h"
 #include "src/dsp/filter/CascadedOnePoleFilter.h"
 #include "src/dsp/filter/CascadedBiquadFilter.h"
@@ -34,3 +33,8 @@
 #include "src/dsp/transient/TransientDetector.h"
 
 #include "src/valuedata/Serialize.h"
+#include "src/valuedata/Serializers.h"
+#include "src/grain/GrainSettingsSerializer.h"
+#include "src/grain/GrainSerializer.h"
+
+#include "src/bufferpool/FileBufferCache.h"

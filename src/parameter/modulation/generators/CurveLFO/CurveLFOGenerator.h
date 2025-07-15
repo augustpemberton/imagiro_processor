@@ -187,6 +187,7 @@ protected:
         if (voiceIndex == source.getMatrix()->getMostRecentVoiceIndex()) {
             mostRecentPhase = voiceLFOs[voiceIndex].getPhase();
         }
+
         return v;
     }
 

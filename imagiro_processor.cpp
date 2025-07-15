@@ -10,6 +10,6 @@
 #include "src/envelope/adsr/ADSR.cpp"
 #include "src/parameter/modulation/ModMatrix.cpp"
 #include "src/grain/Grain.cpp"
-#include "src/grain/GrainBuffer.cpp"
 #include "src/BufferFileLoader.cpp"
 #include "src/dsp/transient/TransientDetector.cpp"
+#include "src/bufferpool/FileBufferCache.cpp"

@@ -5,20 +5,19 @@
 #pragma once
 #include "imagiro_processor/src/Processor.h"
 #include "Parameters.h"
-#include "../../grain/GrainBuffer.h"
 #include "../../grain/Grain.h"
-#include "imagiro_processor/src/dsp/FastRandom.h"
+#include "imagiro_processor/src/bufferpool/FileBufferCache.h"
 #include "imagiro_processor/src/dsp/XORRandom.h"
 #include "imagiro_processor/src/dsp/filter/CascadedOnePoleFilter.h"
-#include "imagiro_processor/src/grain/GrainBuffer.h"
+#include "imagiro_processor/src/valuedata/Serialize.h"
 
 using namespace imagiro;
-class NoiseProcessor : public Processor, GrainBuffer::Listener {
+class NoiseProcessor : public Processor, FileBufferCache::Listener {
 public:
     NoiseProcessor()
         : Processor(NoiseProcessorParameters::PARAMETERS_YAML,
             ParameterLoader(), getDefaultProperties()),
-        grain(grainBuffer, sampleDataBuffer)
+        grain(sampleDataBuffer)
     {
         tightnessParam->addListener(this);
 
@@ -36,33 +35,28 @@ public:
                 0, 1, 0.01, true
             }
         });
-        grainBuffer.addListener(this);
+        fbc.addListener(this);
+
+        filePath.setOnChanged([&](auto& path) {
+            loadFilePath(path);
+        });
+    }
+
+    ~NoiseProcessor() override {
+        fbc.removeListener(this);
     }
 
     void loadFilePath(const std::string& path) {
         const juce::File file (path);
         if (!file.exists()) return;
 
-        grainBuffer.loadFileIntoBuffer(file);
+        fbc.requestBuffer(path);
     }
 
-    choc::value::Value OnMessageReceived(std::string type, const choc::value::ValueView &data) override {
-        if (type == "loadFile") {
-            loadFilePath(data.getWithDefault(""));
-        }
-        return {};
-    }
-
-    void OnBufferUpdated(GrainBuffer &) override {
-        playGrainFlag = true;
-        getValueData().set("filePath", grainBuffer.getLastLoadedFile().getFullPathName().toStdString(), true);
-    }
-
-    void OnValueDataUpdated(ValueData &s, const std::string &key, const choc::value::ValueView &newValue) override {
-        if (key == "filePath") {
-            if (grainBuffer.getLastLoadedFile().getFullPathName().toStdString() != newValue.toString()) {
-                loadFilePath(newValue.toString());
-            }
+    void onBufferLoaded(const BufferCacheKey& key, const std::shared_ptr<InfoBuffer> buffer) override {
+        if (key.path == filePath.get()) {
+            loadedBuffer = buffer;
+            playGrainFlag = true;
         }
     }
 
@@ -82,11 +76,11 @@ public:
         } else if (p == highpassParam) {
             hpFilter.setCutoff(p->getUserValue());
         } else if (p == pitchParam) {
-            grain.setStreamPitch(p->getProcessorValue());
+            grain.setPitch(p->getProcessorValue());
         }
     }
 
-    void prepareToPlay(double sampleRate, int samplesPerBlock) override {
+    void prepareToPlay(const double sampleRate, const int samplesPerBlock) override {
         Processor::prepareToPlay(sampleRate, samplesPerBlock);
         env.setSampleRate(sampleRate);
         gateGain.reset(static_cast<int>(sampleRate * 0.01));
@@ -103,13 +97,8 @@ public:
         grain.prepareToPlay(sampleRate, samplesPerBlock);
     }
 
-    bool isFileLoaded() {
-        if (!grainBuffer.getLastLoadedFile().exists()) return false;
-        if (!grainBuffer.getBuffer()) return false;
-        const auto& mmBuffer = grainBuffer.getBuffer()->getBuffer(0);
-        if (!mmBuffer) return false;
-        if (mmBuffer->getNumSamples() == 0) return false;
-        return true;
+    bool isFileLoaded() const {
+        return loadedBuffer != nullptr;
     }
 
     void fillNoiseBuffer(const int numSamples) {
@@ -151,9 +140,9 @@ public:
         static constexpr auto noiseNormalizationGain = 1;
         for (auto s = 0; s < buffer.getNumSamples(); s++) {
             float monoSample {0};
-            float gateValue = gateGain.getNextValue();
+            const float gateValue = gateGain.getNextValue();
             for (auto c = 0; c < buffer.getNumChannels(); c++) {
-                auto drySample = buffer.getSample(c, s);
+                const auto drySample = buffer.getSample(c, s);
                 monoSample += drySample;
 
                 auto noiseSample = noiseBuffer.getSample(c%noiseBuffer.getNumChannels(), s);
@@ -161,7 +150,7 @@ public:
                 noiseSample *= gainParam->getSmoothedValue(s);
                 noiseSample *= noiseNormalizationGain;
 
-                auto outputSample = drySample + noiseSample;
+                const auto outputSample = drySample + noiseSample;
                 buffer.setSample(c, s, outputSample);
             }
             monoSample /= static_cast<float>(buffer.getNumChannels());
@@ -181,17 +170,20 @@ private:
 
     Parameter *pitchParam;
 
-    GrainBuffer grainBuffer;
     Grain grain;
 
-    EnvelopeFollower<float> env {50, 150};
+    EnvelopeFollower<> env {50, 150};
     juce::SmoothedValue<float> gateGain;
 
-    CascadedOnePoleFilter<4> lpFilter;
-    CascadedOnePoleFilter<4> hpFilter;
+    CascadedOnePoleFilter<> lpFilter;
+    CascadedOnePoleFilter<> hpFilter;
 
     juce::AudioSampleBuffer noiseBuffer;
     std::vector<GrainSampleData> sampleDataBuffer;
+
+    FileBufferCache fbc;
+    SerializableValue<std::string> filePath {valueData, "filePath", "", true};
+    std::shared_ptr<InfoBuffer> loadedBuffer;
 
     bool playGrainFlag {false};
 

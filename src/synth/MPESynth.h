@@ -16,13 +16,26 @@ public:
         virtual void onVoiceStarted(size_t voiceIndex) {}
         virtual void onVoiceReleased(size_t voiceIndex) {}
         virtual void onVoiceFinished(size_t voiceIndex) {}
+        virtual void onSynthSubBlockStarted(MPESynth& synth, int startSample, int numSamples) {}
     };
 
     void addListener(Listener* l) { listeners.add(l); }
     void removeListener(Listener* l) { listeners.remove(l); }
 
-    explicit MPESynth(const int maxVoices = MAX_MOD_VOICES / 2){
+    explicit MPESynth(const int maxVoices = MAX_MOD_VOICES / 2) {
         setMaxVoices(maxVoices);
+    }
+
+    void renderNextSubBlock(juce::AudioSampleBuffer& out, int startSample, int numSamples) override {
+        // update the MultichannelValues
+        // MPESynthesiserBase::renderNextSubBlock(out, startSample, numSamples);
+
+        // allow mod matrix to update
+        listeners.call(&Listener::onSynthSubBlockStarted, *this, startSample, numSamples);
+
+        // start and stop voices
+        processVoiceCommands();
+
     }
 
     void setMaxVoices(int maxVoices) {
@@ -43,7 +56,7 @@ public:
 
         voiceAgeQueue.push_back(*freeVoiceIndex);
         setNoteForVoice(*freeVoiceIndex, note);
-        startVoice(note, *freeVoiceIndex);
+        startVoiceCommands.push_back({note, *freeVoiceIndex});
         listeners.call(&Listener::onVoiceStarted, *freeVoiceIndex);
     }
 
@@ -55,10 +68,22 @@ public:
             if (!n) continue;
 
             if (n->noteID == note.noteID) {
-                stopVoice(i, false);
+                stopVoiceCommands.push_back({static_cast<size_t>(i), false});
                 listeners.call(&Listener::onVoiceReleased, i);
             }
         }
+    }
+
+    void processVoiceCommands() {
+        for (const auto& [note, voiceIndex] : startVoiceCommands) {
+            startVoice(note, voiceIndex);
+        }
+        for (const auto& [voiceIndex, quickstop] : stopVoiceCommands) {
+            stopVoice(voiceIndex, quickstop);
+        }
+
+        startVoiceCommands.clear();
+        stopVoiceCommands.clear();
     }
 
     void handleMidiEvent(const juce::MidiMessage &m) override {
@@ -99,6 +124,18 @@ protected:
     int maxVoices;
 
     juce::ListenerList<Listener> listeners;
+
+    struct StartVoiceCommand {
+        RetunedMPENote note;
+        size_t voiceIndex;
+    };
+    struct StopVoiceCommand {
+        size_t voiceIndex;
+        bool quickstop;
+    };
+
+    beman::inplace_vector<StartVoiceCommand, 128> startVoiceCommands;
+    beman::inplace_vector<StopVoiceCommand, 128> stopVoiceCommands;
 
     MultichannelValue<MAX_MOD_VOICES> pressureValue {false};
     MultichannelValue<MAX_MOD_VOICES> pitchbendValue {true};

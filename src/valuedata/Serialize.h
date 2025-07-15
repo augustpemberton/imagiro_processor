@@ -1,3 +1,5 @@
+#pragma once
+
 #include <utility>
 #include "ValueData.h"
 
@@ -25,7 +27,7 @@ private:
     // Optional change callback
     std::function<void(const T&)> onChanged;
 
-    moodycamel::ReaderWriterQueue<T> realtimeUpdateQueue;
+    moodycamel::ReaderWriterQueue<T> realtimeUpdateQueue {4};
 
 public:
     SerializableValue(ValueData& valueData, std::string key,
@@ -63,7 +65,7 @@ public:
     // Set the value and sync to string data
     void set(const T& newValue) {
         value = newValue;
-        realtimeUpdateQueue.enqueue(newValue);
+        realtimeUpdateQueue.try_enqueue(newValue);
         syncToValueData();
         
         if (onChanged) {

@@ -5,6 +5,7 @@
 
 BufferFileLoader::BufferFileLoader(): juce::Thread("Buffer file loader") {
     afm.registerBasicFormats();
+    startTimerHz(20);
 }
 
 BufferFileLoader::~BufferFileLoader() {
@@ -18,8 +19,21 @@ void BufferFileLoader::loadFileIntoBuffer(const juce::File &fileToLoad, bool nor
     startThread();
 }
 
+void BufferFileLoader::timerCallback() {
+    if (loadProgressFlag) {
+        listeners.call(&Listener::OnFileLoadProgress, progress);
+        loadProgressFlag = false;
+    }
+
+    if (loadCompleteFlag) {
+        loadCompleteFlag = false;
+        listeners.call(&Listener::OnFileLoadComplete, loadedBuffer);
+        loadedBuffer.reset();
+    }
+}
+
 void BufferFileLoader::run() {
-    auto buffer = std::make_shared<juce::AudioSampleBuffer>();
+    auto buffer = std::make_shared<InfoBuffer>();
 
     DBG("loading file " + fileToLoad.getFullPathName());
     auto reader = std::unique_ptr<juce::AudioFormatReader>(afm.createReaderFor(fileToLoad));
@@ -36,8 +50,10 @@ void BufferFileLoader::run() {
     double ratio = oversampleRatio;
     int nInterpSamples = (int)(ratio * (int)reader->lengthInSamples);
 
-    buffer->clear();
-    buffer->setSize((int)reader->numChannels, nInterpSamples);
+    buffer->buffer.clear();
+    buffer->buffer.setSize((int)reader->numChannels, nInterpSamples);
+    buffer->file = fileToLoad;
+    buffer->sampleRate = reader->sampleRate;
 
     // for (auto c=0; c<buffer->getNumChannels(); c++) {
     //     for (auto s=0; s<buffer->getNumSamples(); s++) {
@@ -53,7 +69,7 @@ void BufferFileLoader::run() {
     juce::AudioSampleBuffer tempInterpBuffer ( reader->numChannels, nInterpSamples);
 
     std::vector<juce::LinearInterpolator> interpolator;
-    interpolator.resize(std::min((int)reader->numChannels, buffer->getNumChannels()));
+    interpolator.resize(std::min((int)reader->numChannels, buffer->buffer.getNumChannels()));
 
     reader->read(tempLoadBuffer.getArrayOfWritePointers(), tempLoadBuffer.getNumChannels(),
                  0, reader->lengthInSamples);
@@ -74,7 +90,7 @@ void BufferFileLoader::run() {
         int numOutputSamples = (int)(numInputSamples * ratio);
 
         // interpolate
-        for (auto c = 0; c < std::min(buffer->getNumChannels(), (int) reader->numChannels); c++) {
+        for (auto c = 0; c < std::min(buffer->buffer.getNumChannels(), (int) reader->numChannels); c++) {
             if (ratio == 1) {
                 juce::FloatVectorOperations::copy(
                     tempInterpBuffer.getWritePointer(c, outN),
@@ -89,8 +105,8 @@ void BufferFileLoader::run() {
 
         // load into buffer
         {
-            for (auto c = 0; c < std::min(buffer->getNumChannels(), (int) reader->numChannels); c++) {
-                buffer->copyFrom(c, outN, tempInterpBuffer.getReadPointer(c, outN),
+            for (auto c = 0; c < std::min(buffer->buffer.getNumChannels(), (int) reader->numChannels); c++) {
+                buffer->buffer.copyFrom(c, outN, tempInterpBuffer.getReadPointer(c, outN),
                                  numOutputSamples);
             }
             magnitude = std::max(magnitude, tempInterpBuffer.getMagnitude(outN, numOutputSamples));
@@ -98,12 +114,16 @@ void BufferFileLoader::run() {
 
         outN += numOutputSamples;
 
-        listeners.call(&Listener::OnFileLoadProgress, outN / (float) nInterpSamples);
+        progress = outN / static_cast<float>(nInterpSamples);
+        loadCompleteFlag = true;
     }
+
+    buffer->maxMagnitude = magnitude;
 
     if (normalizeFile) {
-        buffer->applyGain(1.f / magnitude);
+        buffer->buffer.applyGain(1.f / magnitude);
     }
 
-    listeners.call(&Listener::OnFileLoadComplete, buffer, targetSampleRate, normalizeFile ? 1.f : magnitude);
+    loadedBuffer = buffer;
+    loadCompleteFlag = true;
 }

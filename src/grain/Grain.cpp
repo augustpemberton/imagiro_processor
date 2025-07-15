@@ -5,9 +5,9 @@
 
 #include "imagiro_processor/src/dsp/interpolation.h"
 
-Grain::Grain(GrainBuffer &buffer, std::vector<GrainSampleData> &data, size_t i)
+Grain::Grain(std::vector<GrainSampleData> &data, size_t i)
     : indexInStream(i), isLooping(false), sampleDataBuffer(data), windowFunction(),
-      cachedPanCoeffs{}, grainBuffer(buffer), gain(0), pointer(0),
+      cachedPanCoeffs{}, gain(0), pointer(0),
       sampleRate(0)
 {
 }
@@ -45,25 +45,20 @@ float *Grain::calculatePanCoeffs(const float val) {
 }
 
 void Grain::play(int sampleDelay) {
-    currentMipMapBuffer = grainBuffer.getBuffer();
-    if (!currentMipMapBuffer) return;
-
-    int mipMapLevel = static_cast<int>(std::abs(smoothPitchRatio.getTargetValue()));
-
-    currentBuffer = currentMipMapBuffer->getBuffer(mipMapLevel);
-    if (!currentBuffer) return;
-
-    if (currentBuffer->getNumSamples() <= 0) return;
+    if (!currentBuffer) {
+        jassertfalse;
+        return;
+    }
 
     updateSampleRateRatio();
 
-    auto spawnPosition = settings.position * static_cast<float>(currentBuffer->getNumSamples());
+    auto spawnPosition = settings.position * static_cast<float>(currentBuffer->buffer.getNumSamples());
 
     setNewLoopSettingsInternal(settings.loopSettings);
 
     if (settings.loopSettings.loopActive) {
-        const auto loopStart = settings.loopSettings.getLoopStartSample(currentBuffer->getNumSamples());
-        const auto loopEnd = settings.loopSettings.getLoopEndSample(currentBuffer->getNumSamples());
+        const auto loopStart = settings.loopSettings.getLoopStartSample(currentBuffer->buffer.getNumSamples());
+        const auto loopEnd = settings.loopSettings.getLoopEndSample(currentBuffer->buffer.getNumSamples());
         bool pastLoop = false;
         if (!settings.reverse) {
             pastLoop = spawnPosition >= loopEnd;
@@ -76,7 +71,7 @@ void Grain::play(int sampleDelay) {
 
     pointer = spawnPosition;
     pointer = std::min(
-        static_cast<double>(currentBuffer->getNumSamples()) - INTERP_POST_SAMPLES - INTERP_PRE_SAMPLES - 1 -
+        static_cast<double>(currentBuffer->buffer.getNumSamples()) - INTERP_POST_SAMPLES - INTERP_PRE_SAMPLES - 1 -
         quickfadeSamples, pointer);
     pointer = std::max(static_cast<double>(INTERP_PRE_SAMPLES), pointer);
     progress = 0;
@@ -107,14 +102,10 @@ int Grain::getSamplesUntilEndOfBuffer() {
     if (settings.reverse) {
         s = (int) ((pointer - INTERP_PRE_SAMPLES) / maxPitchRatio);
     } else {
-        s = (int) ((currentBuffer->getNumSamples() - INTERP_POST_SAMPLES - pointer) / (maxPitchRatio));
+        s = (int) ((currentBuffer->buffer.getNumSamples() - INTERP_POST_SAMPLES - pointer) / (maxPitchRatio));
     }
 
     return s;
-
-    // auto wrapped = imagiro::wrapWithinRange(s, 0, grainBuffer.getNumSamples() / maxPitchRatio) - INTERP_POST_SAMPLES;
-    // if (wrapped < 1000) jassertfalse;
-    // return wrapped;
 }
 
 void Grain::updateLoopSettings(LoopSettings s, bool force) {
@@ -124,9 +115,15 @@ void Grain::updateLoopSettings(LoopSettings s, bool force) {
     else setNewLoopSettingsInternal(s);
 }
 
+void Grain::resetBuffer() { currentBuffer.reset(); }
+
+void Grain::setBuffer(const std::shared_ptr<InfoBuffer>& buf) {
+    if (buf == currentBuffer) return;
+    currentBuffer = buf;
+}
+
 void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int numSamples, bool setNotAdd) {
-    if (currentBuffer == nullptr) return;
-    if (currentMipMapBuffer == nullptr) return;
+    jassert(currentBuffer); // make sure to setBuffer() first!
 
     if (samplesUntilStart > 0) {
         auto delay = samplesUntilStart;
@@ -174,7 +171,7 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
     }
 
     // Cache frequently accessed values
-    const auto numBufferChannels = currentBuffer->getNumChannels();
+    const auto numBufferChannels = currentBuffer->buffer.getNumChannels();
     const auto numOutChannels = out.getNumChannels();
     const bool isLoopActive = settings.loopSettings.loopActive;
     const bool isReverse = settings.reverse;
@@ -260,7 +257,7 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
         for (int c = 0; c < numOutChannels; c++) {
             auto inChannel = c % numBufferChannels;
             auto stereoOutChannel = c % 2;
-            const auto* bufferPointer = currentBuffer->getReadPointer(c);
+            const auto* bufferPointer = currentBuffer->buffer.getReadPointer(c);
 
             for (int s = 0; s < samplesThisChunk; s++) {
                 const auto &sample = sampleDataBuffer[s];
@@ -327,19 +324,20 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
 
 
 void Grain::updateSampleRateRatio() {
-    if (!currentMipMapBuffer) return;
-    sampleRateRatio = currentMipMapBuffer->getSampleRate() / sampleRate;
+    if (!currentBuffer) return;
+    sampleRateRatio = currentBuffer->sampleRate / sampleRate;
 }
 
 void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
     settings.loopSettings = loopSettings;
 
     // check if we've just gone over the current position
-    const auto loopStartSample = settings.loopSettings.getLoopStartSample(currentBuffer->getNumSamples());
-    const auto loopCrossfadeSamples = settings.loopSettings.getCrossfadeSamples(currentBuffer->getNumSamples());
-    const auto loopEndSample = settings.loopSettings.getLoopEndSample(currentBuffer->getNumSamples());
-    const auto loopFadeStart = settings.loopSettings.getCrossfadeStartSample(currentBuffer->getNumSamples());
-    const auto loopLengthSamples = settings.loopSettings.getLoopLengthSamples(currentBuffer->getNumSamples());
+    const auto bufferLength = currentBuffer->buffer.getNumSamples();
+    const auto loopStartSample = settings.loopSettings.getLoopStartSample(bufferLength);
+    const auto loopCrossfadeSamples = settings.loopSettings.getCrossfadeSamples(bufferLength);
+    const auto loopEndSample = settings.loopSettings.getLoopEndSample(bufferLength);
+    const auto loopFadeStart = settings.loopSettings.getCrossfadeStartSample(bufferLength);
+    const auto loopLengthSamples = settings.loopSettings.getLoopLengthSamples(bufferLength);
 
     auto newLengthSamples = loopLengthSamples;
     auto newLoopCrossfadeSamples = loopCrossfadeSamples;
@@ -347,7 +345,7 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
     // adding a little padding to compensate for float rounding
     const auto nextPointerPos = pointer + getCurrentPitchRatio();
     const auto bufferStart = INTERP_PRE_SAMPLES;
-    const auto bufferEnd = currentBuffer->getNumSamples() - 1 - INTERP_POST_SAMPLES;
+    const auto bufferEnd = currentBuffer->buffer.getNumSamples() - 1 - INTERP_POST_SAMPLES;
 
     if (!settings.reverse) {
         auto minLoopEnd = std::min(bufferEnd, static_cast<int>(nextPointerPos + loopCrossfadeSamples));
@@ -356,7 +354,7 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
             newLoopCrossfadeSamples = std::min(newLoopCrossfadeSamples,
                                                minLoopEnd - static_cast<int>(nextPointerPos + 1));
             newLengthSamples = minLoopEnd - loopStartSample;
-            const auto newLengthPercentage = newLengthSamples / static_cast<float>(currentBuffer->getNumSamples());
+            const auto newLengthPercentage = newLengthSamples / static_cast<float>(bufferLength);
             settings.loopSettings.loopLength = newLengthPercentage;
         }
     } else {
@@ -367,10 +365,10 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
                                                static_cast<int>(nextPointerPos) - maxLoopStart);
             newLengthSamples = loopEndSample - maxLoopStart;
 
-            const auto newStartPercentage = maxLoopStart / static_cast<float>(currentBuffer->getNumSamples());
+            const auto newStartPercentage = maxLoopStart / static_cast<float>(bufferLength);
             settings.loopSettings.loopStart = newStartPercentage;
 
-            const auto newLengthPercentage = newLengthSamples / static_cast<float>(currentBuffer->getNumSamples());
+            const auto newLengthPercentage = newLengthSamples / static_cast<float>(bufferLength);
             settings.loopSettings.loopLength = newLengthPercentage;
         }
     }
@@ -390,8 +388,6 @@ void Grain::stop(bool fadeout) {
     if (fadeout) stopFlag = true;
     else {
         playing = false;
-        currentBuffer.reset();
-        currentMipMapBuffer.reset();
         listeners.call(&Listener::OnGrainFinished, *this);
     }
 }
@@ -408,7 +404,7 @@ void Grain::prepareToPlay(double sr, int maxBlockSize) {
 }
 
 void Grain::updateCachedLoopBoundaries() {
-    const auto numSamples = currentBuffer->getNumSamples();
+    const auto numSamples = currentBuffer->buffer.getNumSamples();
     cachedLoopBoundaries.loopStartSample = settings.loopSettings.getLoopStartSample(numSamples);
     cachedLoopBoundaries.loopEndSample = settings.loopSettings.getLoopEndSample(numSamples);
     cachedLoopBoundaries.loopCrossfadeSamples = settings.loopSettings.getCrossfadeSamples(numSamples);
