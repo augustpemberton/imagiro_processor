@@ -25,7 +25,7 @@ public:
 
         virtual void OnFileLoadProgress(float progress) {}
         virtual void OnFileLoadComplete(std::shared_ptr<InfoBuffer> buffer) {}
-        virtual void OnFileLoadError(const juce::String& error) {}
+        virtual void OnFileLoadError(const std::string& error) {}
     };
 
     void addListener(Listener* l) { listeners.add(l); }

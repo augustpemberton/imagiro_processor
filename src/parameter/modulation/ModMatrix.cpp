@@ -12,6 +12,10 @@ namespace imagiro {
         matrix.reserve(MAX_MOD_CONNECTIONS);
     }
 
+    ModMatrix::~ModMatrix() {
+        listeners.call(&Listener::OnMatrixDestroyed, *this);
+    }
+
     void ModMatrix::removeConnection(const SourceID& sourceID, TargetID targetID) {
         matrix.erase({sourceID, targetID});
         updatedSourcesSinceLastCalculate.insert(sourceID);
@@ -143,14 +147,23 @@ namespace imagiro {
         if (!sourceValues.contains(sourceID)) return;
         const auto oldVal = sourceValues[sourceID]->value.getGlobalValue();
         sourceValues[sourceID]->value.setGlobalValue(value);
-        if (oldVal != value) updatedSourcesSinceLastCalculate.insert(sourceID);
+
+        if (oldVal != value) {
+            updatedSourcesSinceLastCalculate.insert(sourceID);
+            listeners.call(&Listener::OnSourceValueUpdated, sourceID);
+        }
+
     }
 
     void ModMatrix::setVoiceSourceValue(const SourceID& sourceID, size_t voiceIndex, float value) {
         if (!sourceValues.contains(sourceID)) return;
         const auto oldVal = sourceValues[sourceID]->value.getVoiceValue(voiceIndex);
         sourceValues[sourceID]->value.setVoiceValue(value, voiceIndex);
-        if (oldVal != value) updatedSourcesSinceLastCalculate.insert(sourceID);
+        if (oldVal != value) {
+            updatedSourcesSinceLastCalculate.insert(sourceID);
+            listeners.call(&Listener::OnSourceValueUpdated, sourceID);
+        }
+
     }
 
     void ModMatrix::resetSourceValue(const SourceID& sourceID) {

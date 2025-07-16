@@ -12,7 +12,7 @@
 namespace imagiro {
     class Processor;
 
-    class Parameter : protected juce::RangedAudioParameter, juce::Timer, ModTarget::Listener {
+    class Parameter : protected juce::RangedAudioParameter, ModTarget::Listener {
     public:
         class Listener {
         public:
@@ -219,6 +219,8 @@ namespace imagiro {
         void setModTarget(const ModTarget& target) { modTarget = target; }
         void OnTargetUpdated() override;
 
+        void callAsyncListenersIfNeeded();
+
     protected:
         std::vector<ParameterConfig> configs;
 
@@ -228,7 +230,6 @@ namespace imagiro {
 
         virtual void valueChanged();
 
-        void timerCallback() override;
 
         std::string uid;
         std::string name;

@@ -19,7 +19,7 @@
 class Preset;
 
 namespace imagiro {
-    class Processor : public ProcessorBase, ValueData::Listener, public Parameter::Listener, private juce::AudioProcessorListener {
+    class Processor : public ProcessorBase, protected juce::MultiTimer, ValueData::Listener, public Parameter::Listener, private juce::AudioProcessorListener {
     public:
         Processor(juce::String parametersYAMLString,
                   const ParameterLoader& loader = ParameterLoader(),
@@ -54,6 +54,7 @@ namespace imagiro {
         Parameter* addParam (std::unique_ptr<Parameter> p);
         Parameter* getParameter (const juce::String& uid);
         const juce::Array<Parameter*>& getPluginParameters();
+        void timerCallback(int timerID) override;
 
         // =================================================================
         choc::value::Value handleMessage(const std::string& type, const choc::value::ValueView& data);

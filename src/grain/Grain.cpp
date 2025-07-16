@@ -12,25 +12,15 @@ Grain::Grain(std::vector<GrainSampleData> &data, size_t i)
 {
 }
 
+// Note: this will be called while the grain is running if stream settings change, so it needs to be fast
+// if something is slow to configure, just do it one time in play()
 void Grain::configure(GrainSettings s) {
     settings = s;
-    settings.position = std::clamp(settings.position, 0.f, 1.f);
+    updateLoopSettings(settings.loopSettings);
+
+    // TODO this should be faster, and not calling random each time, use a multiplier instead
     spreadVal = (imagiro::rand01() * 2 - 1) * settings.spread;
     calculatePanCoeffs(settings.pan + spreadVal);
-
-    // if the grain is infinitely long, don't use the window function, just play full volume
-    if (s.duration < 0) {
-        progressPerSample = 0;
-        windowFunction.initialise([s](float p) {
-            return 1.f;
-        }, 0.f, 1.f, 2);
-    } else {
-        progressPerSample = 1.f / (s.duration * (float) sampleRate);
-
-        windowFunction.initialise([s](float p) {
-            return getGrainShapeGain(p, s.shape, s.skew);
-        }, 0.f, 1.f, 100);
-    }
 
     smoothPitchRatio.setTargetValue(settings.getPitchRatio());
 }
@@ -50,9 +40,23 @@ void Grain::play(int sampleDelay) {
         return;
     }
 
+    // if the grain is infinitely long, don't use the window function, just play full volume
+    if (settings.duration < 0) {
+        progressPerSample = 0;
+        windowFunction.initialise([](float p) {
+            return 1.f;
+        }, 0.f, 1.f, 2);
+    } else {
+        progressPerSample = 1.f / (settings.duration * (float) sampleRate);
+        windowFunction.initialise([shape = settings.shape, skew = settings.skew](const float p) {
+            return getGrainShapeGain(p, shape, skew);
+        }, 0.f, 1.f, 100);
+    }
+
+
     updateSampleRateRatio();
 
-    auto spawnPosition = settings.position * static_cast<float>(currentBuffer->buffer.getNumSamples());
+    auto spawnPosition = std::clamp(settings.position, 0.f, 1.f) * static_cast<float>(currentBuffer->buffer.getNumSamples());
 
     setNewLoopSettingsInternal(settings.loopSettings);
 
@@ -89,11 +93,11 @@ void Grain::play(int sampleDelay) {
     loopFadeProgress = 0;
 }
 
-float Grain::getGrainSpeed() {
+float Grain::getGrainSpeed() const {
     return settings.getPitchRatio();
 }
 
-int Grain::getSamplesUntilEndOfBuffer() {
+int Grain::getSamplesUntilEndOfBuffer() const {
     auto maxPitchRatio = std::max(std::abs(smoothPitchRatio.getCurrentValue()),
                                   std::abs(smoothPitchRatio.getTargetValue()));
     maxPitchRatio *= sampleRateRatio;
@@ -161,7 +165,7 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
     }
 
     if (progressPerSample > 0) {
-        auto samplesUntilEndOfGrain = (int) ((1 - progress) / progressPerSample);
+        auto samplesUntilEndOfGrain = static_cast<int>((1 - progress) / progressPerSample);
         numSamples = std::min(numSamples, samplesUntilEndOfGrain);
     }
 
@@ -183,12 +187,12 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
         auto startPitchRatio = smoothPitchRatio.getCurrentValue() * sampleRateRatio;
         smoothPitchRatio.skip(samplesThisChunk);
         auto endPitchRatio = smoothPitchRatio.getCurrentValue() * sampleRateRatio;
-        auto pitchRatioPerSample = (endPitchRatio - startPitchRatio) / (float) samplesThisChunk;
+        auto pitchRatioPerSample = (endPitchRatio - startPitchRatio) / static_cast<float>(samplesThisChunk);
 
         auto startPan = smoothedPan.getCurrentValue();
         smoothedPan.skip(samplesThisChunk);
         auto endPan = smoothedPan.getCurrentValue();
-        auto panPerSample = (endPan - startPan) / (float) samplesThisChunk;
+        auto panPerSample = (endPan - startPan) / static_cast<float>(samplesThisChunk);
 
         auto quickfadeGainStart = quickfadeGain;
         int maxQuickfadeSamples = quickfading
@@ -205,7 +209,7 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
         double pos = pointer;
         bool looping = isLooping;
         for (int s = 0; s < samplesThisChunk; s++) {
-            auto pitchRatio = startPitchRatio + (float) s * pitchRatioPerSample;
+            auto pitchRatio = startPitchRatio + static_cast<float>(s) * pitchRatioPerSample;
             pos += pitchRatio;
 
             // Handle loop wrapping
@@ -257,27 +261,27 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
         for (int c = 0; c < numOutChannels; c++) {
             auto inChannel = c % numBufferChannels;
             auto stereoOutChannel = c % 2;
-            const auto* bufferPointer = currentBuffer->buffer.getReadPointer(c);
+            const auto* bufferPointer = currentBuffer->buffer.getReadPointer(inChannel);
 
             for (int s = 0; s < samplesThisChunk; s++) {
                 const auto &sample = sampleDataBuffer[s];
 
-                auto v = imagiro::interp4p3o_2x(bufferPointer, sample.position);
+                auto v = interp4p3o_2x(bufferPointer, sample.position);
 
                 // Apply loop crossfade if needed
                 if (sample.loopFadePointer >= 0) {
-                    const auto fadeSample = imagiro::interp4p3o_2x(bufferPointer,
+                    const auto fadeSample = interp4p3o_2x(bufferPointer,
                                                                    static_cast<float>(sample.loopFadePointer));
                     v = v * (1 - sample.loopFadeProgress) + fadeSample * sample.loopFadeProgress;
                 }
 
                 // Apply window function
-                v *= windowFunction.processSampleUnchecked(progress + (float) s * progressPerSample);
+                v *= windowFunction.processSampleUnchecked(progress + static_cast<float>(s) * progressPerSample);
                 v *= settings.gain;
 
                 // Apply quickfade
                 if (quickfading) {
-                    const auto quickfadeAmount = quickfadeGainStart - quickfadeGainPerSample * (float) s;
+                    const auto quickfadeAmount = quickfadeGainStart - quickfadeGainPerSample * static_cast<float>(s);
                     if (quickfadeAmount <= 0.f) break;
                     v *= quickfadeAmount;
                 }
@@ -299,8 +303,8 @@ void Grain::processBlock(juce::AudioSampleBuffer &out, int outStartSample, int n
             loopFadeProgress = sampleDataBuffer[samplesThisChunk - 1].loopFadeProgress;
         }
 
-        progress += progressPerSample * (float) samplesThisChunk;
-        if (quickfading) quickfadeGain -= quickfadeGainPerSample * (float) samplesThisChunk;
+        progress += progressPerSample * static_cast<float>(samplesThisChunk);
+        if (quickfading) quickfadeGain -= quickfadeGainPerSample * static_cast<float>(samplesThisChunk);
 
         numSamples -= samplesThisChunk;
     }
@@ -336,7 +340,6 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
     const auto loopStartSample = settings.loopSettings.getLoopStartSample(bufferLength);
     const auto loopCrossfadeSamples = settings.loopSettings.getCrossfadeSamples(bufferLength);
     const auto loopEndSample = settings.loopSettings.getLoopEndSample(bufferLength);
-    const auto loopFadeStart = settings.loopSettings.getCrossfadeStartSample(bufferLength);
     const auto loopLengthSamples = settings.loopSettings.getLoopLengthSamples(bufferLength);
 
     auto newLengthSamples = loopLengthSamples;
@@ -344,7 +347,7 @@ void Grain::setNewLoopSettingsInternal(const LoopSettings loopSettings) {
 
     // adding a little padding to compensate for float rounding
     const auto nextPointerPos = pointer + getCurrentPitchRatio();
-    const auto bufferStart = INTERP_PRE_SAMPLES;
+    constexpr auto bufferStart = INTERP_PRE_SAMPLES;
     const auto bufferEnd = currentBuffer->buffer.getNumSamples() - 1 - INTERP_POST_SAMPLES;
 
     if (!settings.reverse) {
@@ -399,7 +402,7 @@ void Grain::prepareToPlay(double sr, int maxBlockSize) {
     smoothPitchRatio.reset(sr, 0.01);
     smoothedPan.reset(sr, 0.01);
 
-    quickfadeSamples = (int) (quickfadeSeconds * (float) sr);
+    quickfadeSamples = static_cast<int>(quickfadeSeconds * (float) sr);
     quickfadeGainPerSample = 1.f / static_cast<float>(quickfadeSamples);
 }
 

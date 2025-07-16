@@ -57,7 +57,7 @@ public:
     void removeListener(Listener* l) { listeners.remove(l); }
 
     int getSamplesUntilStart() const { return samplesUntilStart; }
-    int getSamplesUntilEndOfBuffer();
+    int getSamplesUntilEndOfBuffer() const;
 
     void setPitch(const float pitch, const bool skipSmoothing = false) {
         settings.pitch = pitch;
@@ -75,6 +75,7 @@ public:
     void resetBuffer();
 
     void setBuffer(const std::shared_ptr<InfoBuffer>& buf);
+    const std::shared_ptr<InfoBuffer>& getBuffer() { return currentBuffer; }
 
 private:
     const size_t indexInStream;
@@ -102,7 +103,7 @@ private:
     juce::dsp::LookupTableTransform<float> windowFunction;
     static float getGrainShapeGain(float p, float sym, float skew);
 
-    float getGrainSpeed();
+    float getGrainSpeed() const;
 
     juce::SmoothedValue<float> smoothedPan {0.5};
     float* calculatePanCoeffs(float val);

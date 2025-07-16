@@ -28,6 +28,7 @@ namespace imagiro {
 
         valueData.addListener(this);
 
+        startTimer(0, 8);
     }
 
     Processor::~Processor() {
@@ -37,6 +38,7 @@ namespace imagiro {
         }
         juce::AudioProcessor::removeListener(this);
         valueData.removeListener(this);
+        stopTimer(0);
     }
 
     void Processor::reset() {
@@ -77,6 +79,14 @@ namespace imagiro {
     }
 
     const juce::Array<Parameter*>& Processor::getPluginParameters() { return allParameters; }
+
+    void Processor::timerCallback(const int timerID) {
+        if (timerID == 0) {
+            for (const auto& p : allParameters) {
+                p->callAsyncListenersIfNeeded();
+            }
+        }
+    }
 
     choc::value::Value Processor::handleMessage(const std::string& type, const choc::value::ValueView& data) {
         if (type == "SetValueData") {

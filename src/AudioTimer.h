@@ -31,6 +31,7 @@ public:
     }
 
     void setSampleRate(double sr) {
+        if (sr == sampleRate) return;
         sampleRate = sr;
         secondsPerTick = static_cast<float>(1.0 / sr);
     }
@@ -41,9 +42,6 @@ public:
 
     void setActive(bool _active) {
         active = _active;
-        if (!this->active) {
-            secondsSinceLastTick = -1;
-        }
     }
 
     void reset() {

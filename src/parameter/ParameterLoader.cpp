@@ -69,7 +69,10 @@ namespace imagiro {
 
 //        if (type == "number") {
 //           // nothing to do
-        if (type == "percent") {
+        if (type == "note") {
+            config.textFunction = DisplayFunctions::midiNumberDisplay;
+            config.valueFunction = DisplayFunctions::midiNumberInput;
+        } else if (type == "percent") {
             config.textFunction = DisplayFunctions::percentDisplay;
             config.valueFunction = DisplayFunctions::percentInput;
         } else if (type == "db") {

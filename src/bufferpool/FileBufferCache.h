@@ -8,12 +8,13 @@
 #include "../BufferFileLoader.h"
 #include <immer/map.hpp>
 #include <immer/map_transient.hpp>
+#include <immer/atom.hpp>
+#include <immer/box.hpp>
 #include <memory>
 #include <atomic>
+#include <queue>
 
 #include "InfoBuffer.h"
-#include "immer/atom.hpp"
-#include "immer/box.hpp"
 
 struct BufferCacheEntry {
     std::shared_ptr<InfoBuffer> buffer;
@@ -24,14 +25,14 @@ struct BufferCacheEntry {
 
     BufferCacheEntry(const BufferCacheEntry& other) {
         buffer = other.buffer;
-        isLoading = other.isLoading.load();
-        hasError = other.hasError.load();
+        isLoading.store(other.isLoading.load());
+        hasError.store(other.hasError.load());
     }
 
     BufferCacheEntry& operator=(const BufferCacheEntry& other) {
         buffer = other.buffer;
-        isLoading = other.isLoading.load();
-        hasError = other.hasError.load();
+        isLoading.store(other.isLoading.load());
+        hasError.store(other.hasError.load());
         return *this;
     }
 };
@@ -49,7 +50,7 @@ struct BufferCacheKey {
 template<>
 struct std::hash<BufferCacheKey> {
     std::size_t operator()(const BufferCacheKey& k) const noexcept {
-        const std::size_t h1 = std::hash<juce::String>{}(k.path);
+        const std::size_t h1 = std::hash<std::string>{}(k.path);  // FIX: use std::string
         const std::size_t h2 = std::hash<bool>{}(k.normalize);
         return h1 ^ h2 << 1;
     }
@@ -63,7 +64,7 @@ public:
     struct Listener {
         virtual ~Listener() = default;
         virtual void onBufferLoaded(const BufferCacheKey& key, std::shared_ptr<InfoBuffer> buffer) {}
-        virtual void onBufferLoadError(const BufferCacheKey& key, const juce::String& error) {}
+        virtual void onBufferLoadError(const BufferCacheKey& key, const std::string& error) {}
         virtual void onBufferLoadProgress(const BufferCacheKey& key, float progress) {}
     };
 
@@ -71,23 +72,27 @@ public:
     void removeListener(Listener* l) { listeners.remove(l); }
 
     // Get buffer if available, returns nullptr if not loaded (AUDIO THREAD SAFE)
-    std::shared_ptr<InfoBuffer> getBuffer(const juce::String& filepath, bool normalize = false) const;
+    std::shared_ptr<InfoBuffer> getBuffer(const std::string& filepath, bool normalize = false) const;
     std::shared_ptr<InfoBuffer> getBuffer(const BufferCacheKey& key) const;
 
+    // Get buffer if available, blocking until loaded
+    std::shared_ptr<InfoBuffer> getBufferBlocking(const std::string& filepath, bool normalize = false, int timeoutMs = 10000);
+    std::shared_ptr<InfoBuffer> getBufferBlocking(const BufferCacheKey& key, int timeoutMs = 10000);
+
     // Request buffer to be loaded (non-blocking)
-    void requestBuffer(const juce::String& filepath, bool normalize = false);
+    void requestBuffer(const std::string& filepath, bool normalize = false);
     void requestBuffer(const BufferCacheKey& key);
 
     // Check if buffer is available (AUDIO THREAD SAFE)
-    bool isBufferAvailable(const juce::String& filepath, bool normalize = false) const;
+    bool isBufferAvailable(const std::string& filepath, bool normalize = false) const;
     bool isBufferAvailable(const BufferCacheKey& key) const;
 
     // Check if buffer is currently loading (AUDIO THREAD SAFE)
-    bool isBufferLoading(const juce::String& filepath, bool normalize = false) const;
+    bool isBufferLoading(const std::string& filepath, bool normalize = false) const;
     bool isBufferLoading(const BufferCacheKey& key) const;
 
     // Remove buffer from cache
-    void removeBuffer(const juce::String& filepath);
+    void removeBuffer(const std::string& filepath);
     void removeBuffer(const BufferCacheKey& key);
 
     // Clear all buffers
@@ -99,7 +104,7 @@ public:
     // BufferFileLoader::Listener callbacks
     void OnFileLoadProgress(float progress) override;
     void OnFileLoadComplete(std::shared_ptr<InfoBuffer> buffer) override;
-    void OnFileLoadError(const juce::String& error) override;
+    void OnFileLoadError(const std::string& error) override;
 
 private:
     juce::ListenerList<Listener> listeners;
@@ -110,10 +115,12 @@ private:
     // BufferFileLoader for actual loading
     BufferFileLoader loader;
     BufferCacheKey currentLoadingKey;
-    bool isCurrentlyLoading = false;
+    std::atomic<bool> isCurrentlyLoading = false;
+    std::queue<BufferCacheKey> loadingQueue;
+    std::mutex queueMutex;
 
     // Helper functions
-    static BufferCacheKey createKey(const juce::String& filepath, bool normalize = false);
+    static BufferCacheKey createKey(const std::string& filepath, bool normalize = false);
 
     // Message thread operations
     void addToCache(const BufferCacheKey& key, const BufferCacheEntry& entry);
@@ -122,7 +129,13 @@ private:
 
     // Message processing
     void performAutomaticCleanup();
-    void startNextLoad();
+    void processQueue();
+    bool tryStartNextLoad();
+    void clearQueue();
+
+    std::mutex blockingMutex;
+    std::condition_variable blockingCondition;
+    std::unordered_map<BufferCacheKey, std::shared_ptr<std::promise<std::shared_ptr<InfoBuffer>>>> blockingPromises;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FileBufferCache)
 };

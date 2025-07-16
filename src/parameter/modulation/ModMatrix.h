@@ -24,6 +24,9 @@ namespace imagiro {
             virtual void OnMatrixUpdated() {}
             virtual void OnRecentVoiceUpdated(size_t) {}
             virtual void OnTargetValueUpdated(const TargetID& targetID) {}
+            virtual void OnSourceValueUpdated(const SourceID& sourceID) {}
+
+            virtual void OnMatrixDestroyed(ModMatrix& m) {}
         };
 
         void addListener(Listener* l) { listeners.add(l); }
@@ -37,6 +40,7 @@ namespace imagiro {
         };
 
         ModMatrix();
+        ~ModMatrix();
 
         SourceID registerSource(std::string name = "", SourceType type = SourceType::Misc, bool isBipolar = false);
         void updateSource(SourceID id, const std::string &name = "", SourceType type = SourceType::Misc, bool isBipolar = false);

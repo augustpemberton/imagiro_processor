@@ -23,21 +23,27 @@ namespace imagiro {
             if (m) setModMatrix(*m);
         }
 
-        ~ModTarget() override {
-            if (matrix) matrix->removeListener(this);
-        }
-
         ModTarget(const ModTarget& other) {
             id = other.id;
             name = other.name;
             matrix = other.matrix;
+            if (matrix) setModMatrix(*matrix);
+        }
+
+        ~ModTarget() override {
+            if (matrix) matrix->removeListener(this);
         }
 
         ModTarget& operator=(const ModTarget& other) {
             id = other.id;
             name = other.name;
             matrix = other.matrix;
+            if (matrix) setModMatrix(*matrix);
             return *this;
+        }
+
+        void OnMatrixDestroyed(ModMatrix& m) override {
+            matrix = nullptr;
         }
 
         void OnTargetValueUpdated(const TargetID &targetID) override {
@@ -46,7 +52,7 @@ namespace imagiro {
         }
 
         void setModMatrix(ModMatrix& m) {
-            if (matrix) matrix->removeListener(this);
+            if (matrix != nullptr) matrix->removeListener(this);
             matrix = &m;
             id = matrix->registerTarget(name);
             matrix->addListener(this);

@@ -56,8 +56,8 @@ public:
     T& get() { return value; }
 
     // Access the real-time value
-    const T& getRT() const { return value; }
-    T& getRT() { return value; }
+    const T& getRT() const { return realtimeValue; }
+    T& getRT() { return realtimeValue; }
     void updateRT() {
         while (realtimeUpdateQueue.try_dequeue(realtimeValue)) { }
     }

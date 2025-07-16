@@ -6,13 +6,13 @@
 #include "diffuse-delay/DiffuseDelayProcessor.h"
 #include "juce_audio_processors/juce_audio_processors.h"
 
-class ProcessorChainProcessor : public Processor, juce::Timer {
+class ProcessorChainProcessor : public Processor {
 public:
     using ProcessorChain = std::vector<std::shared_ptr<Processor>>;
 
-    ProcessorChainProcessor(unsigned int numChannels = 2)
+    explicit ProcessorChainProcessor(unsigned int numChannels = 2)
         : Processor("", ParameterLoader(), getProperties(numChannels)) {
-        startTimerHz(20);
+        startTimer(1, 1000. / 10.);
     }
 
     static BusesProperties getProperties(unsigned int numChannels = 2) {
@@ -91,17 +91,19 @@ private:
         }
     }
 
-    void timerCallback() override {
-        ProcessorChain tempChain;
-        while (chainsToPrepare.try_dequeue(tempChain)) {
-            prepareChainInternal(tempChain);
-            fadingOut = true;
-            preparedChains.enqueue(tempChain);
-        }
+    void timerCallback(int timerID) override {
+        if (timerID == 1) {
+            ProcessorChain tempChain;
+            while (chainsToPrepare.try_dequeue(tempChain)) {
+                prepareChainInternal(tempChain);
+                fadingOut = true;
+                preparedChains.enqueue(tempChain);
+            }
 
-        // take deallocate chains off the fifo, so they deallocate here once they go out of scope
-        while (chainsToDeallocate.try_dequeue(tempChain)) {
-        }
+            // take deallocate chains off the fifo, so they deallocate here once they go out of scope
+            while (chainsToDeallocate.try_dequeue(tempChain)) {
+            }
+        } else Processor::timerCallback(timerID);
     }
 
     void prepareProcessor(Processor &p) const {

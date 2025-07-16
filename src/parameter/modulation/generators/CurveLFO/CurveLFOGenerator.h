@@ -10,7 +10,7 @@
 #include "choc/text/choc_JSON.h"
 #include "../../../../synth/MPESynth.h"
 
-class CurveLFOGenerator : public ModGenerator, MPESynth::Listener, juce::Timer {
+class CurveLFOGenerator : public ModGenerator, MPESynth::Listener {
 public:
     CurveLFOGenerator(MPESynth& synth, ModMatrix& m, const std::string& uid, const std::string& name)
         : ModGenerator(CurveLFOGeneratorParameters::PARAMETERS_YAML, m, uid, name, false),
@@ -36,8 +36,7 @@ public:
             {1.f, 0.f, 0.f}
         });
         valueData.set("curve", defaultCurve.getState(), true);
-
-        startTimerHz(120);
+        startTimer(1, 1.0 / 90.0);
     }
 
     ~CurveLFOGenerator() override {
@@ -46,7 +45,6 @@ public:
         phase->removeListener(this);
         playbackMode->removeListener(this);
         bipolar->removeListener(this);
-        stopTimer();
     }
 
     void onVoiceStarted(const size_t voiceIndex) override {
@@ -71,7 +69,10 @@ public:
         source.setVoiceValue(0, voiceIndex);
         activeVoices.erase(voiceIndex);
 
-        if (!mono->getBoolValue() && activeVoices.empty()) mostRecentPhase = -1;
+        if (!mono->getBoolValue() && activeVoices.empty()) {
+            mostRecentPhase = -1;
+            phaseUpdated = true;
+        }
     }
 
     void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override {
@@ -92,8 +93,13 @@ public:
         }
     }
 
-    void timerCallback() override {
-        emitMessage("setDisplayPhase", choc::value::Value(mostRecentPhase.load()));
+    void timerCallback(const int timerID) override {
+        if (timerID == 1) {
+            if (phaseUpdated) {
+                phaseUpdated = false;
+                emitMessage("setDisplayPhase", choc::value::Value(mostRecentPhase.load()));
+            }
+        } else Processor::timerCallback(timerID);
     }
 
 protected:
@@ -106,6 +112,7 @@ protected:
     Parameter* bipolar { getParameter("bipolar") };
 
     std::atomic<float> mostRecentPhase {0};
+    std::atomic<bool> phaseUpdated {false};
 
     void parameterChangedSync(Parameter* p) override {
         ModGenerator::parameterChangedSync(p);
@@ -169,7 +176,10 @@ protected:
         }
         v *= depth->getProcessorValue();
 
-        mostRecentPhase = lfo.getPhase();
+        if (lfo.getPhase() != mostRecentPhase) {
+            mostRecentPhase = lfo.getPhase();
+            phaseUpdated = true;
+        }
         return v;
     }
 
@@ -185,7 +195,11 @@ protected:
         v *= depth->getProcessorValue(voiceIndex);
 
         if (voiceIndex == source.getMatrix()->getMostRecentVoiceIndex()) {
-            mostRecentPhase = voiceLFOs[voiceIndex].getPhase();
+            const auto phase = voiceLFOs[voiceIndex].getPhase();
+            if (phase != mostRecentPhase) {
+                mostRecentPhase = phase;
+                phaseUpdated = true;
+            }
         }
 
         return v;

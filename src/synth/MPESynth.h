@@ -122,6 +122,7 @@ public:
 
 protected:
     int maxVoices;
+    ModMatrix* modMatrix {nullptr};
 
     juce::ListenerList<Listener> listeners;
 
