@@ -11,6 +11,7 @@
 #include "juce_core/system/juce_PlatformDefs.h"
 #include "../valuedata/Serialize.h"
 #include "2d/Path2D.h"
+#include "choc/text/choc_JSON.h"
 
 using namespace imagiro;
 
@@ -72,14 +73,40 @@ struct Serializer<CurvePoint> {
     static CurvePoint load(const choc::value::ValueView& state) {
         CurvePoint point;
         try {
-            point.position = Serializer<Point2D>::load(state["position"]);
+            if (state.hasObjectMember("x")) {
+                // here for compatibility with old mappings, where x and y are directly in the point
+                point.position = Serializer<Point2D>::load(state);
+            } else {
+                point.position = Serializer<Point2D>::load(state["position"]);
+            }
             point.curve = state["curve"].getWithDefault(0.f);
         } catch (...) {
+            DBG(choc::json::toString(state));
             jassertfalse;
         }
         return point;
     }
 };
+
+
+static Curve loadLegacyCurve(const choc::value::ValueView& state) {
+    Curve c;
+    for (auto i=0; i<state["segments"].size(); i++) {
+        c.addPoint(CurvePoint{
+            state["segments"][i]["start"]["x"].getWithDefault(0.f),
+            state["segments"][i]["start"]["y"].getWithDefault(0.f),
+            0
+        });
+        if (i == state["segments"].size() - 1) {
+            c.addPoint(CurvePoint{
+                state["segments"][i]["end"]["x"].getWithDefault(0.f),
+                state["segments"][i]["end"]["y"].getWithDefault(0.f),
+                0
+            });
+        }
+    }
+    return c;
+}
 
 template<>
 struct Serializer<Curve> {
@@ -94,9 +121,17 @@ struct Serializer<Curve> {
     static Curve load(const choc::value::ValueView& state) {
         Curve curve;
         try {
-            for (const auto& pointState : state) {
-                const auto point = Serializer<CurvePoint>::load(pointState);
-                curve.addPoint(point);
+            if (state.isObject() && state.hasObjectMember("segments")) {
+                DBG("loading legacy curve");
+                DBG(choc::json::toString(state));
+                curve = loadLegacyCurve(state);
+            } else {
+                DBG("loading new curve");
+                DBG(choc::json::toString(state));
+                for (const auto& pointState : state) {
+                    const auto point = Serializer<CurvePoint>::load(pointState);
+                    curve.addPoint(point);
+                }
             }
         } catch (...) {
             jassertfalse;
