@@ -1,5 +1,11 @@
 #pragma once
 
+#include "src/curve/Serializers.h"
+#include "src/valuedata/Serialize.h"
+#include "src/valuedata/Serializers.h"
+#include "src/grain/GrainSettingsSerializer.h"
+#include "src/grain/GrainSerializer.h"
+
 #include "src/Processor.h"
 #include "src/config/AuthorizationManager.h"
 #include "src/config/Resources.h"
@@ -31,10 +37,5 @@
 
 #include "src/dsp/transient/Transient.h"
 #include "src/dsp/transient/TransientDetector.h"
-
-#include "src/valuedata/Serialize.h"
-#include "src/valuedata/Serializers.h"
-#include "src/grain/GrainSettingsSerializer.h"
-#include "src/grain/GrainSerializer.h"
 
 #include "src/bufferpool/FileBufferCache.h"

@@ -26,6 +26,9 @@ public:
         voiceValues.fill(0);
         globalValue = 0;
         alteredVoices.clear();
+        for (auto i=0; i<NumChannels; i++) {
+            resetVoices.insert(i);
+        }
     }
 
     void setVoiceValue(float value, size_t voiceIndex) {
@@ -34,14 +37,21 @@ public:
         if (!imagiro::almostEqual(value, 0.f)) {
             alteredVoices.insert(voiceIndex);
         } else {
-            alteredVoices.erase(voiceIndex);
+            resetVoices.insert(voiceIndex);
         }
     }
 
-    float getVoiceValue(size_t voiceIndex) const { return voiceValues[voiceIndex]; }
+    float getVoiceValue(size_t voiceIndex) const {
+        return voiceValues[voiceIndex];
+    }
 
     const auto& getAlteredVoices() const { return alteredVoices; }
     const std::set<size_t>& getVoiceValues() const { return voiceValues; }
+
+    void removeResetVoices() {
+        for (auto i : resetVoices) alteredVoices.erase(i);
+        resetVoices.clear();
+    }
 
     choc::value::Value getState() const {
         auto v = choc::value::createObject("MultichannelValue");
@@ -61,5 +71,9 @@ private:
     float globalValue {0};
     std::array<float, NumChannels> voiceValues {0};
     FixedHashSet<size_t, NumChannels> alteredVoices {};
+
+    // we use this to be able to know which values just got set to 0 in the listener
+    FixedHashSet<size_t, NumChannels> resetVoices {};
+
     bool bipolar {false};
 };

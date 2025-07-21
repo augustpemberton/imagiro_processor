@@ -31,11 +31,12 @@ public:
         source.setBipolar(bipolar->getBoolValue());
 
         const auto defaultCurve = Curve({
-            {0.f, 0.f, 0.f},
-            {0.5f, 1.f, 0.f},
-            {1.f, 0.f, 0.f}
+            CurvePoint{Point2D{0.f, 0.f}, 0.f},
+            CurvePoint{Point2D{0.5f, 1.f}, 0.f},
+            CurvePoint{Point2D{1.f, 0.f}, 0.f}
         });
-        valueData.set("curve", defaultCurve.getState(), true);
+
+        valueData.set("curve", Serializer<Curve>::serialize(defaultCurve), true);
         startTimer(1, 1.0 / 90.0);
     }
 
@@ -75,7 +76,7 @@ public:
         }
     }
 
-    void prepareToPlay(double sampleRate, int maximumExpectedSamplesPerBlock) override {
+    void prepareToPlay(const double sampleRate, const int maximumExpectedSamplesPerBlock) override {
         Processor::prepareToPlay(sampleRate, maximumExpectedSamplesPerBlock);
         lfo.setSampleRate(sampleRate);
         for (auto& v : voiceLFOs) {
@@ -85,7 +86,7 @@ public:
 
     void OnValueDataUpdated(ValueData &s, const std::string &key, const choc::value::ValueView &newValue) override {
         if (key == "curve") {
-            const auto curve = Curve::fromState(newValue);
+            const auto curve = Serializer<Curve>::load(newValue);
             lfo.setTable(curve.getLookupTable());
             for (auto& v : voiceLFOs) {
                 v.setTable(curve.getLookupTable());

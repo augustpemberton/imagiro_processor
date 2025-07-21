@@ -20,11 +20,21 @@ namespace imagiro {
     public:
         struct Listener {
             virtual ~Listener() = default;
-
-            virtual void OnMatrixUpdated() {}
             virtual void OnRecentVoiceUpdated(size_t) {}
-            virtual void OnTargetValueUpdated(const TargetID& targetID) {}
-            virtual void OnSourceValueUpdated(const SourceID& sourceID) {}
+
+            virtual void OnConnectionAdded(const SourceID& source, const TargetID& target) {}
+            virtual void OnConnectionUpdated(const SourceID& source, const TargetID& target) {}
+            virtual void OnConnectionRemoved(const SourceID& source, const TargetID& target) {}
+
+            virtual void OnTargetValueUpdated(const TargetID& targetID, const int voiceIndex) {}
+            virtual void OnTargetValueAdded(const TargetID& targetID) {}
+            virtual void OnTargetValueRemoved(const TargetID& targetID) {}
+            virtual void OnTargetValueReset(const TargetID& targetID) {}
+
+            virtual void OnSourceValueUpdated(const SourceID& sourceID, const int voiceIndex) {}
+            virtual void OnSourceValueAdded(const SourceID& sourceID) {}
+            virtual void OnSourceValueRemoved(const SourceID& sourceID) {}
+            virtual void OnSourceValueReset(const SourceID& sourceID) {}
 
             virtual void OnMatrixDestroyed(ModMatrix& m) {}
         };
@@ -84,10 +94,9 @@ namespace imagiro {
                 float depth {0};
                 float attackMS {0};
                 float releaseMS {0};
-                bool bipolar {false};
             };
 
-            Connection(double sr = 48000, Settings s = {0, 10, 10, false})
+            Connection(double sr = 48000, Settings s = {0, 10, 10})
                 : sampleRate(sr), settings(s)
             {
                 setSettings(s);
@@ -131,6 +140,7 @@ namespace imagiro {
             std::array<EnvelopeFollower<float>, MAX_MOD_VOICES> voiceValueEnvelopeFollowers;
         };
 
+        void queueConnection(const SourceID& sourceID, const TargetID& targetID, Connection::Settings connectionSettings);
         void setConnection(const SourceID& sourceID, const TargetID& targetID, Connection::Settings connectionSettings);
         void removeConnection(const SourceID& sourceID, TargetID targetID);
 
@@ -189,8 +199,6 @@ namespace imagiro {
         FixedHashSet<SourceID, MAX_MOD_TARGETS> updatedSourcesSinceLastCalculate {};
         FixedHashSet<SourceID, MAX_MOD_TARGETS> updatedTargetsSinceLastCalculate {};
 
-        void matrixUpdated();
-
         moodycamel::ReaderWriterQueue<SourceID> sourcesToDelete {48};
         moodycamel::ReaderWriterQueue<SourceID> targetsToDelete {48};
 
@@ -200,10 +208,18 @@ namespace imagiro {
         moodycamel::ReaderWriterQueue<std::pair<SourceID, std::shared_ptr<SourceValue>>> newSourcesQueue {48};
         moodycamel::ReaderWriterQueue<std::pair<TargetID, std::shared_ptr<TargetValue>>> newTargetsQueue {48};
 
+        struct ConnectionDefinition {
+            SourceID sourceID;
+            TargetID targetID;
+            Connection::Settings connectionSettings;
+        };
+
+        moodycamel::ReaderWriterQueue<ConnectionDefinition> updatedConnectionsQueue {48};
+
         std::atomic<bool> recacheSerializedMatrixFlag {false};
         SerializedMatrix cachedSerializedMatrix;
 
-        FixedHashSet<TargetID, MAX_MOD_TARGETS> updatedTargets;
+        FixedHashSet<TargetID, MAX_MOD_TARGETS> updatedTargets {};
 
         int nextSourceID {0};
         int nextTargetID {0};

@@ -136,6 +136,7 @@ private:
     bool quickfading {false};
 
     bool playing {false};
+    bool isReverse {false};
     bool firstBlockFlag {false};
     bool stopFlag {false};
 

@@ -83,7 +83,7 @@ public:
         float totalPhase = phase + currentPhaseOffset;
 
         // Wrap total phase to [0, 1]
-        if (totalPhase >= 1.0f) totalPhase -= 1.0f;
+        if (totalPhase > 1.0f) totalPhase -= 1.0f;
 
         // Get value from lookup table
         const auto v = lookupTable->get(totalPhase * static_cast<float>(tableSize - 1));

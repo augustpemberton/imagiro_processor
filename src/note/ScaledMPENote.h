@@ -7,6 +7,7 @@
 
 #include "../curve/Curve.h"
 
+using namespace imagiro;
 struct ScaledMPENote : public juce::MPENote {
     using juce::MPENote::MPENote;
 
