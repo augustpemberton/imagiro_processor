@@ -2,6 +2,7 @@
 
 #include <utility>
 #include "ValueData.h"
+#include "imagiro_util/src/readerwriterqueue/readerwriterqueue.h"
 
 template<typename T>
 struct Serializer {
