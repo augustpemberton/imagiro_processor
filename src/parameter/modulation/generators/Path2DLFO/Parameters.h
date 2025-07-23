@@ -53,10 +53,5 @@ syncToHost:
   type: toggle
   default: 1
 
-bipolar:
-  name: "bipolar"
-  type: toggle
-  default: 1
-
 )";
 };

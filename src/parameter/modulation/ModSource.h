@@ -8,23 +8,15 @@
 namespace imagiro {
     class ModSource {
     public:
-        ModSource(std::string sourceName = "", ModMatrix* m = nullptr,
-                  ModMatrix::SourceType sourceType = ModMatrix::SourceType::Misc,
-                  bool bipolar = false)
-                : name(std::move(sourceName)), matrix(m), isBipolar(bipolar),
-                  type (sourceType)
+        ModSource(std::string sourceName = "", ModMatrix* m = nullptr)
+                : name(std::move(sourceName)), matrix(m)
         {
             if (m) setModMatrix(*m);
         }
 
         void setModMatrix(ModMatrix& m) {
             matrix = &m;
-            id = matrix->registerSource(name, type, isBipolar);
-        }
-
-        void setBipolar(bool bipolar) {
-            isBipolar = bipolar;
-            matrix->updateSource(id, name, type, isBipolar);
+            id = matrix->registerSource(name);
         }
 
         void resetValue() const {
@@ -54,8 +46,7 @@ namespace imagiro {
                 jassertfalse;
                 return;
             }
-            if (isBipolar) v = std::clamp(v, -1.f, 1.f);
-            else v = std::clamp(v, 0.f, 1.f);
+            v = std::clamp(v, 0.f, 1.f);
 
             matrix->setVoiceSourceValue(id, voiceIndex, v);
         }
@@ -79,7 +70,5 @@ namespace imagiro {
         SourceID id;
         std::string name;
         ModMatrix* matrix;
-        bool isBipolar;
-        ModMatrix::SourceType type;
     };
 }

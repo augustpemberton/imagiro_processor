@@ -13,7 +13,7 @@
 class CurveLFOGenerator : public ModGenerator, MPESynth::Listener {
 public:
     CurveLFOGenerator(MPESynth& synth, ModMatrix& m, const std::string& uid, const std::string& name)
-        : ModGenerator(CurveLFOGeneratorParameters::PARAMETERS_YAML, m, uid, name, false),
+        : ModGenerator(CurveLFOGeneratorParameters::PARAMETERS_YAML, m, uid, name),
         synth(synth)
     {
         lfo.setFrequency(0.5);
@@ -26,9 +26,6 @@ public:
         frequency->addListener(this);
         phase->addListener(this);
         playbackMode->addListener(this);
-        bipolar->addListener(this);
-
-        source.setBipolar(bipolar->getBoolValue());
 
         const auto defaultCurve = Curve({
             CurvePoint{Point2D{0.f, 0.f}, 0.f},
@@ -45,7 +42,6 @@ public:
         frequency->removeListener(this);
         phase->removeListener(this);
         playbackMode->removeListener(this);
-        bipolar->removeListener(this);
     }
 
     void onVoiceStarted(const size_t voiceIndex) override {
@@ -110,7 +106,6 @@ protected:
     Parameter* playbackMode { getParameter("playbackMode") };
     Parameter* mono { getParameter("mono") };
     Parameter* syncToHost { getParameter("syncToHost") };
-    Parameter* bipolar { getParameter("bipolar") };
 
     std::atomic<float> mostRecentPhase {0};
     std::atomic<bool> phaseUpdated {false};
@@ -135,8 +130,6 @@ protected:
             }
         } else if (p == mono) {
             if (!p->getBoolValue()) mostRecentPhase = -1;
-        } else if (p == bipolar) {
-            source.setBipolar(bipolar->getBoolValue());
         }
     }
 
@@ -171,10 +164,6 @@ protected:
         if (isLockedToTransport()) syncLFOToHost(lfo);
 
         auto v = lfo.process(numSamples);
-        if (bipolar->getBoolValue()) {
-            v -= 0.5;
-            v *= 2;
-        }
         v *= depth->getProcessorValue();
 
         if (lfo.getPhase() != mostRecentPhase) {
@@ -189,10 +178,6 @@ protected:
         if (isLockedToTransport()) syncLFOToHost(voiceLFOs[voiceIndex]);
 
         auto v = voiceLFOs[voiceIndex].process(numSamples);
-        if (bipolar->getBoolValue()) {
-            v -= 0.5;
-            v *= 2;
-        }
         v *= depth->getProcessorValue(voiceIndex);
 
         if (voiceIndex == source.getMatrix()->getMostRecentVoiceIndex()) {

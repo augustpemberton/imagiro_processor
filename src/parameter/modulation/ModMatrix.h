@@ -26,12 +26,12 @@ namespace imagiro {
             virtual void OnConnectionUpdated(const SourceID& source, const TargetID& target) {}
             virtual void OnConnectionRemoved(const SourceID& source, const TargetID& target) {}
 
-            virtual void OnTargetValueUpdated(const TargetID& targetID, const int voiceIndex) {}
+            virtual void OnTargetValueUpdated(const TargetID& targetID, const int voiceIndex = -1) {}
             virtual void OnTargetValueAdded(const TargetID& targetID) {}
             virtual void OnTargetValueRemoved(const TargetID& targetID) {}
             virtual void OnTargetValueReset(const TargetID& targetID) {}
 
-            virtual void OnSourceValueUpdated(const SourceID& sourceID, const int voiceIndex) {}
+            virtual void OnSourceValueUpdated(const SourceID& sourceID, const int voiceIndex = -1) {}
             virtual void OnSourceValueAdded(const SourceID& sourceID) {}
             virtual void OnSourceValueRemoved(const SourceID& sourceID) {}
             virtual void OnSourceValueReset(const SourceID& sourceID) {}
@@ -42,34 +42,22 @@ namespace imagiro {
         void addListener(Listener* l) { listeners.add(l); }
         void removeListener(Listener* l) { listeners.remove(l); }
 
-        enum class SourceType {
-            Note = 0,
-            LFO = 1,
-            Env = 2,
-            Misc = 3
-        };
-
         ModMatrix();
         ~ModMatrix();
 
-        SourceID registerSource(std::string name = "", SourceType type = SourceType::Misc, bool isBipolar = false);
-        void updateSource(SourceID id, const std::string &name = "", SourceType type = SourceType::Misc, bool isBipolar = false);
+        SourceID registerSource(std::string name = "");
+        void updateSource(SourceID id, const std::string &name = "");
         TargetID registerTarget(std::string name = "");
-
 
         void removeSource(const SourceID& id) { sourcesToDelete.enqueue(id); }
         void removeTarget(const TargetID& id) { targetsToDelete.enqueue(id); }
 
         struct SourceValue {
             std::string name;
-            bool bipolar;
-            SourceType type;
             MultichannelValue<MAX_MOD_VOICES> value;
 
             choc::value::Value getState() const {
                 auto v = choc::value::createObject("SourceValue");
-                v.addMember("bipolar", bipolar);
-                v.addMember("type", static_cast<int>(type));
                 v.addMember("name", name);
                 // v.addMember("values", value.getState());
                 return v;
@@ -92,11 +80,12 @@ namespace imagiro {
         public:
             struct Settings {
                 float depth {0};
+                bool bipolar {false};
                 float attackMS {0};
                 float releaseMS {0};
             };
 
-            Connection(double sr = 48000, Settings s = {0, 10, 10})
+            Connection(double sr = 48000, Settings s = {0, false, 10, 10})
                 : sampleRate(sr), settings(s)
             {
                 setSettings(s);

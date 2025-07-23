@@ -49,7 +49,6 @@ protected:
         activeVoices = sources.getActiveVoices();
         if (queuedActiveSource != nullptr) {
             activeSource = queuedActiveSource;
-            source.setBipolar(activeSource->value.getBipolar());
             queuedActiveSource = nullptr;
         }
 

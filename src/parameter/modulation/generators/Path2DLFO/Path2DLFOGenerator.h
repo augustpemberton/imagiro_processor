@@ -25,8 +25,8 @@ public:
     };
 
     explicit Path2DLFO(MPESynth& synth, ModMatrix& modMatrix, Processor& processor, const std::string& baseName = "Path2D LFO")
-        : sourceX(baseName + " X", &modMatrix, ModMatrix::SourceType::Misc, true),
-          sourceY(baseName + " Y", &modMatrix, ModMatrix::SourceType::Misc, true),
+        : sourceX(baseName + " X", &modMatrix),
+          sourceY(baseName + " Y", &modMatrix),
           synth(synth)
     {
         synth.addListener(this);
@@ -36,7 +36,6 @@ public:
         depth = processor.getParameter("pathDepth");
         depthX = processor.getParameter("pathDepthX");
         depthY = processor.getParameter("pathDepthY");
-        bipolar = processor.getParameter("pathBipolar");
         timingModeParam = processor.getParameter("pathTimingMode");
         playbackMode = processor.getParameter("pathPlaybackMode");
         mono = processor.getParameter("pathMono");
@@ -45,14 +44,11 @@ public:
         // Add listeners
         frequency->addListener(this);
         phase->addListener(this);
-        bipolar->addListener(this);
         timingModeParam->addListener(this);
         playbackMode->addListener(this);
         mono->addListener(this);
 
         setFrequency(frequency->getProcessorValue());
-        sourceX.setBipolar(bipolar->getBoolValue());
-        sourceY.setBipolar(bipolar->getBoolValue());
 
         // Set default path (triangle-like shape)
         Path2D defaultPath;
@@ -81,7 +77,6 @@ public:
     ~Path2DLFO() override {
         frequency->removeListener(this);
         phase->removeListener(this);
-        bipolar->removeListener(this);
         timingModeParam->removeListener(this);
         playbackMode->removeListener(this);
         mono->removeListener(this);
@@ -113,7 +108,15 @@ public:
     void process(const int numSamples = 1) {
         if (mono->getBoolValue()) {
             processGlobal(numSamples);
+
+            for (const auto& voiceIndex : activeVoices) {
+                sourceX.setVoiceValue(0.5f, voiceIndex);
+                sourceY.setVoiceValue(0.5f, voiceIndex);
+            }
         } else {
+            sourceX.setGlobalValue(0.5f);
+            sourceY.setGlobalValue(0.5f);
+
             // Process all active voices
             for (const auto& voiceIndex : activeVoices) {
                 processVoice(voiceIndex, numSamples);
@@ -134,8 +137,8 @@ public:
         const float depthScaleX = depthX->getProcessorValue();
         const float depthScaleY = depthY->getProcessorValue();
 
-        sourceX.setGlobalValue(xValue * depthScale * depthScaleX * 2 - 1);
-        sourceY.setGlobalValue(yValue * depthScale * depthScaleY * 2 - 1);
+        sourceX.setGlobalValue(xValue * depthScale * depthScaleX);
+        sourceY.setGlobalValue(yValue * depthScale * depthScaleY);
     }
 
     // Per-voice processing
@@ -151,8 +154,8 @@ public:
         const float depthScaleX = depthX->getProcessorValue(voiceIndex);
         const float depthScaleY = depthY->getProcessorValue(voiceIndex);
 
-        sourceX.setVoiceValue(xValue * depthScale * depthScaleX * 2 - 1, voiceIndex);
-        sourceY.setVoiceValue(yValue * depthScale * depthScaleY * 2 - 1, voiceIndex);
+        sourceX.setVoiceValue(xValue * depthScale * depthScaleX, voiceIndex);
+        sourceY.setVoiceValue(yValue * depthScale * depthScaleY, voiceIndex);
     }
 
     void onVoiceStarted(const size_t voiceIndex) override {
@@ -185,8 +188,8 @@ public:
         activeVoices.erase(voiceIndex);
 
         // Clear voice values
-        sourceX.setVoiceValue(0.0f, voiceIndex);
-        sourceY.setVoiceValue(0.0f, voiceIndex);
+        sourceX.setVoiceValue(0.5f, voiceIndex);
+        sourceY.setVoiceValue(0.5f, voiceIndex);
     }
 
     // Get current phase for display purposes
@@ -221,9 +224,6 @@ public:
             setFrequency(p->getProcessorValue());
         } else if (p == phase) {
             setPhaseOffset(p->getProcessorValue());
-        } else if (p == bipolar) {
-            sourceX.setBipolar(p->getBoolValue());
-            sourceY.setBipolar(p->getBoolValue());
         } else if (p == timingModeParam) {
             const auto mode = static_cast<TimingMode>(static_cast<int>(p->getProcessorValue()));
             setTimingMode(mode);
@@ -240,13 +240,13 @@ public:
         } else if (p == mono) {
             if (!p->getBoolValue()) {
                 // Clear global values when switching to poly
-                sourceX.setGlobalValue(0.0f);
-                sourceY.setGlobalValue(0.0f);
+                sourceX.setGlobalValue(0.5f);
+                sourceY.setGlobalValue(0.5f);
             } else {
                 // Clear all voice values when switching to mono
                 for (size_t i = 0; i < MAX_MOD_VOICES; ++i) {
-                    sourceX.setVoiceValue(0.0f, i);
-                    sourceY.setVoiceValue(0.0f, i);
+                    sourceX.setVoiceValue(0.5f, i);
+                    sourceY.setVoiceValue(0.5f, i);
                 }
             }
         }
@@ -278,7 +278,6 @@ private:
     Parameter* depth;
     Parameter* depthX;
     Parameter* depthY;
-    Parameter* bipolar;
     Parameter* timingModeParam;
     Parameter* playbackMode;
     Parameter* mono;
