@@ -66,7 +66,7 @@ namespace imagiro {
                 return;
             }
 
-            matrix->setConnection(id, targetID, connectionSettings);
+            matrix->queueConnection(id, targetID, connectionSettings);
         }
 
         SourceID getID() {

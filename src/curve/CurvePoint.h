@@ -3,25 +3,19 @@
 //
 
 #pragma once
-#include "choc/containers/choc_Value.h"
+#include "Point2D.h"
 
-struct CurvePoint {
-    float x;
-    float y;
-    float curve;
+namespace imagiro {
+    struct CurvePoint {
+        Point2D position;
+        float curve;
 
-    choc::value::Value getState() const {
-        auto val = choc::value::createObject("CurvePoint");
-        val.addMember("x", choc::value::Value(x));
-        val.addMember("y", choc::value::Value(y));
-        val.addMember("curve", choc::value::Value(curve));
-        return val;
-    }
+        explicit CurvePoint(const float x = 0.f, const float y = 0.f, const float curve = 0.f)
+            : position(x, y), curve(curve) {
+        }
 
-    static CurvePoint fromState(const choc::value::ValueView& val) {
-        const auto x = val["x"].getWithDefault(0.f);
-        const auto y = val["y"].getWithDefault(0.f);
-        const auto curve = val["curve"].getWithDefault(0.f);
-        return {x, y, curve};
-    }
-};
+        explicit CurvePoint(const Point2D pos, const float curve = 0.f)
+            : position(pos), curve(curve) {
+        }
+    };
+}

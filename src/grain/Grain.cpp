@@ -15,13 +15,15 @@ Grain::Grain(std::vector<GrainSampleData> &data, size_t i)
 // Note: this will be called while the grain is running if stream settings change, so it needs to be fast
 // if something is slow to configure, just do it one time in play()
 void Grain::configure(GrainSettings s) {
+
+    // don't update reverse while playing
+    if (isPlaying()) {
+        s.reverse = settings.reverse;
+    }
+
     settings = s;
     updateLoopSettings(settings.loopSettings);
-
-    // TODO this should be faster, and not calling random each time, use a multiplier instead
-    spreadVal = (imagiro::rand01() * 2 - 1) * settings.spread;
     calculatePanCoeffs(settings.pan + spreadVal);
-
     smoothPitchRatio.setTargetValue(settings.getPitchRatio());
 }
 
@@ -39,6 +41,8 @@ void Grain::play(int sampleDelay) {
         jassertfalse;
         return;
     }
+
+    spreadVal = (imagiro::rand01() * 2 - 1) * settings.spread;
 
     // if the grain is infinitely long, don't use the window function, just play full volume
     if (settings.duration < 0) {

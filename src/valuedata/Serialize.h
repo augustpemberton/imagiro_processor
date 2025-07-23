@@ -59,8 +59,10 @@ public:
     // Access the real-time value
     const T& getRT() const { return realtimeValue; }
     T& getRT() { return realtimeValue; }
-    void updateRT() {
-        while (realtimeUpdateQueue.try_dequeue(realtimeValue)) { }
+    bool updateRT() {
+        bool updated = false;
+        while (realtimeUpdateQueue.try_dequeue(realtimeValue)) { updated = true; }
+        return updated;
     }
 
     // Set the value and sync to string data

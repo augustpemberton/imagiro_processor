@@ -24,10 +24,9 @@ namespace imagiro {
         }
 
         ModTarget(const ModTarget& other) {
+            if (other.matrix) setModMatrix(*other.matrix);
             id = other.id;
             name = other.name;
-            matrix = other.matrix;
-            if (matrix) setModMatrix(*matrix);
         }
 
         ~ModTarget() override {
@@ -35,10 +34,9 @@ namespace imagiro {
         }
 
         ModTarget& operator=(const ModTarget& other) {
+            if (other.matrix) setModMatrix(*other.matrix);
             id = other.id;
             name = other.name;
-            matrix = other.matrix;
-            if (matrix) setModMatrix(*matrix);
             return *this;
         }
 
@@ -46,7 +44,7 @@ namespace imagiro {
             matrix = nullptr;
         }
 
-        void OnTargetValueUpdated(const TargetID &targetID) override {
+        void OnTargetValueUpdated(const TargetID &targetID, int voiceIndex) override {
             if (targetID != id) return;
             listeners.call(&Listener::OnTargetUpdated);
         }
@@ -77,7 +75,7 @@ namespace imagiro {
                 return;
             }
 
-            matrix->setConnection(std::move(sourceID), id, connectionSettings);
+            matrix->queueConnection(std::move(sourceID), id, connectionSettings);
         }
 
         TargetID getID() {

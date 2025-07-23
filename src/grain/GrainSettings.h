@@ -3,7 +3,8 @@
 //
 
 #pragma once
-#include "imagiro_processor/src/dsp/interpolation.h"
+#include "../dsp/interpolation.h"
+#include "../parameter/Parameter.h"
 
 using namespace imagiro;
 
@@ -77,5 +78,8 @@ struct GrainSettings {
 
     float getPitchRatio() const {
         return (reverse ? -1.f : 1.f) * std::pow(2.f, pitch / 12.f);
+    }
+    float getPitchRatio(bool isReverse) const {
+        return (isReverse ? -1.f : 1.f) * std::pow(2.f, pitch / 12.f);
     }
 };
