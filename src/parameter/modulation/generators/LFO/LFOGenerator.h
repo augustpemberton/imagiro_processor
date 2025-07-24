@@ -12,7 +12,7 @@
 class LFOGenerator : public ModGenerator, MPESynth::Listener {
 public:
     LFOGenerator(MPESynth& synth, ModMatrix& m, const std::string& uid, const std::string& name)
-        : ModGenerator(LFOGeneratorParameters::PARAMETERS_YAML, m, uid, name, true),
+        : ModGenerator(LFOGeneratorParameters::PARAMETERS_YAML, m, uid, name),
         synth(synth)
     {
         lfo.setFrequency(0.5f);

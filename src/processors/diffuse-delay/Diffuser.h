@@ -60,6 +60,7 @@ struct DiffusionStep {
         diffusionOffset.reset(sampleRate, 0.2);
         diffusionSkew.reset(sampleRate, 0.2);
         lfoAmount.reset(sampleRate, 0.01);
+        lfoFreq.reset(sampleRate, 0.01);
     }
 
     void setDiffusionLength(double offset, double skewTime) {
@@ -86,7 +87,7 @@ struct DiffusionStep {
         // Delay
         Array delayed;
         const auto lfoFreqVal = lfoFreq.getNextValue();
-        const auto lfoAmountVal = lfoAmount.getNextValue();
+        auto lfoAmountVal = lfoAmount.getNextValue() / std::max(0.001, lfoFreqVal);
         for (int c = 0; c < channels; ++c) {
             auto freq = lerp(lfoFreqVal * 0.8, lfoFreqVal * 1.2, c/(double)channels);
             lfoPhase[c] += freq/ sampleRate;
@@ -188,7 +189,7 @@ struct DiffuserHalfLengths {
 
     void setModAmount(double amount) {
         for (auto &step : steps) {
-            step.lfoAmount.setTargetValue(amount * 0.005);
+            step.lfoAmount.setTargetValue(amount * 0.05);
         }
     }
 

@@ -10,10 +10,9 @@ public:
     ModGenerator(const juce::String &parametersYAML,
                  ModMatrix &m,
                  const std::string &uid,
-                 const std::string &name = "",
-                 const bool bipolar = false)
+                 const std::string &name = "")
         : Processor(parametersYAML, ParameterLoader(), BusesProperties()),
-          source(name, &m, ModMatrix::SourceType::Misc, bipolar) {
+          source(name, &m) {
 
         auto bp = std::move(
             ParameterLoader().loadParameters(

@@ -113,7 +113,7 @@ public:
         if (sync) processorGraph.setChain(processorList);
         else processorGraph.queueChain(processorList);
 
-        cleanupOldItems(oldChain);
+        // cleanupOldItems(oldChain);
         listeners.call(&Listener::OnChainUpdated);
     }
 

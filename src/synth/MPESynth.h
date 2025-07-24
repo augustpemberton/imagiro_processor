@@ -160,7 +160,21 @@ protected:
         listeners.call(&Listener::onVoiceFinished, voiceIndex);
     }
 
+    virtual bool isVoiceReadyToStart(size_t voiceIndex) {
+        return true;
+    }
+
     std::optional<size_t> findFreeVoice() {
+        std::optional<size_t> voiceIndex = {};
+        for (auto i = 0u; i < playingNotes.size(); i++) {
+            if (!playingNotes[i].has_value() && isVoiceReadyToStart(i)) {
+                voiceIndex = i;
+                break;
+            }
+        }
+
+        if (!voiceIndex.has_value()) return {};
+
         if (activeVoices.size() >= maxVoices) {
             auto oldestVoiceIt = voiceAgeQueue.begin();
             auto oldestVoice = *oldestVoiceIt;
@@ -168,13 +182,7 @@ protected:
             voiceAgeQueue.erase(oldestVoiceIt);
         }
 
-        for (auto i = 0u; i < playingNotes.size(); i++) {
-            if (!playingNotes[i].has_value()) return i;
-        }
-
-        // This shouldn't happen if our tracking is correct
-        jassertfalse;
-        return {};
+        return voiceIndex;
     }
 
     void setNoteForVoice(const size_t voiceIndex, RetunedMPENote note,
@@ -183,14 +191,14 @@ protected:
         const auto initialNoteOffset = note.getNote() - 60;
         const auto noteProportion = (initialNoteOffset - pitchRange.getRange().getStart())
                                     / pitchRange.getRange().getLength();
-        initialNoteValue.setVoiceValue((noteProportion - 0.5f) * 2, voiceIndex);
+        initialNoteValue.setVoiceValue(noteProportion - 0.5f, voiceIndex);
 
         initialVelocityValue.setVoiceValue(note.noteOnVelocity.asUnsignedFloat(), voiceIndex);
         pressureValue.setVoiceValue(note.pressure.asUnsignedFloat(), voiceIndex);
 
         const auto pitchBendRange = getZoneLayout().getLowerZone().perNotePitchbendRange;
         const auto pitchbendProportion = note.totalPitchbendInSemitones / pitchBendRange;
-        pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion), voiceIndex);
+        pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion) * 0.5, voiceIndex);
 
         activeVoices.insert(voiceIndex);
         playingNotes[voiceIndex] = note;
