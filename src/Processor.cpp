@@ -213,94 +213,98 @@ namespace imagiro {
     }
 
     void Processor::processBlock(juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
+        try {
+            // skip smoothing on first buffer
+            // in case we changed this parameter before starting the processor
+            if (firstBufferFlag) {
+                firstBufferFlag = false;
+                if (auto mixParam = getParameter("mix")) {
+                    mixGain.setCurrentAndTargetValue(mixParam->getProcessorValue());
+                }
+                if (auto bypassParam = getParameter("bypass")) {
+                    bypassGain.setCurrentAndTargetValue(1 - bypassParam->getProcessorValue());
+                }
 
-        // skip smoothing on first buffer
-        // in case we changed this parameter before starting the processor 
-        if (firstBufferFlag) {
-            firstBufferFlag = false;
-            if (auto mixParam = getParameter("mix")) {
-                mixGain.setCurrentAndTargetValue(mixParam->getProcessorValue());
+                for (auto param : getPluginParameters()) {
+                    param->callValueChangedListeners();
+                }
             }
-            if (auto bypassParam = getParameter("bypass")) {
-                bypassGain.setCurrentAndTargetValue(1 - bypassParam->getProcessorValue());
+
+            if (getTotalNumInputChannels() == 0) {
+                buffer.clear();
             }
 
             for (auto param : getPluginParameters()) {
-                param->callValueChangedListeners();
+                param->startBlock(buffer.getNumSamples());
             }
-        }
 
-        if (getTotalNumInputChannels() == 0) {
-            buffer.clear();
-        }
+            if (nextPreset) {
+                loadPreset(*nextPreset);
+                nextPreset = nullptr;
+            }
 
-        for (auto param : getPluginParameters()) {
-            param->startBlock(buffer.getNumSamples());
-        }
+            auto oldSampleRate = lastSampleRate.load();
+            lastSampleRate = getSampleRate();
+            if (!almostEqual(lastSampleRate.load(), oldSampleRate)) {
+                bpmListeners.call(&BPMListener::sampleRateChanged, lastSampleRate);
+            }
 
-        if (nextPreset) {
-            loadPreset(*nextPreset);
-            nextPreset = nullptr;
-        }
+            auto oldBPM = lastBPM.load();
+            lastBPM = getBPM();
 
-        auto oldSampleRate = lastSampleRate.load();
-        lastSampleRate = getSampleRate();
-        if (!almostEqual(lastSampleRate.load(), oldSampleRate)) {
-            bpmListeners.call(&BPMListener::sampleRateChanged, lastSampleRate);
-        }
-
-        auto oldBPM = lastBPM.load();
-        lastBPM = getBPM();
-
-        if (!almostEqual(lastBPM.load(), oldBPM)) {
-            bpmListeners.call(&BPMListener::bpmChanged, lastBPM);
-            for (auto& parameter : allParameters) {
-                if (parameter->getConfig()->processorValueChangesWithBPM) {
-                    parameter->callValueChangedListeners();
+            if (!almostEqual(lastBPM.load(), oldBPM)) {
+                bpmListeners.call(&BPMListener::bpmChanged, lastBPM);
+                for (auto& parameter : allParameters) {
+                    if (parameter->getConfig()->processorValueChangesWithBPM) {
+                        parameter->callValueChangedListeners();
+                    }
                 }
             }
-        }
 
-        playhead = getPlayHead();
-        if (playhead) {
-            posInfo = playhead->getPosition();
+            playhead = getPlayHead();
+            if (playhead) {
+                posInfo = playhead->getPosition();
 
-            if (posInfo.hasValue()) {
-                auto playing = posInfo->getIsPlaying();
-                if (playing != lastPlaying) {
-                    bpmListeners.call(&BPMListener::playChanged, playing);
-                    lastPlaying = playing;
+                if (posInfo.hasValue()) {
+                    auto playing = posInfo->getIsPlaying();
+                    if (playing != lastPlaying) {
+                        bpmListeners.call(&BPMListener::playChanged, playing);
+                        lastPlaying = playing;
+                    }
                 }
             }
-        }
 
-        for (auto c=0; c < getTotalNumOutputChannels(); c++)
-            for(auto s=0; s<buffer.getNumSamples(); s++)
-                dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
+            for (auto c=0; c < getTotalNumOutputChannels(); c++)
+                for(auto s=0; s<buffer.getNumSamples(); s++)
+                    dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
-        modMatrix.processMatrixUpdates();
+            modMatrix.processMatrixUpdates();
 
-        const auto gainStart = bypassGain.getCurrentValue() * mixGain.getCurrentValue();
-        const auto gainTarget = bypassGain.getTargetValue() * mixGain.getTargetValue();
+            const auto gainStart = bypassGain.getCurrentValue() * mixGain.getCurrentValue();
+            const auto gainTarget = bypassGain.getTargetValue() * mixGain.getTargetValue();
 
-        if (gainStart > 0 || gainTarget > 0)
-        {
-            juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
-            process(buffer, midiMessages);
-        }
-
-        cpuLoad.store(static_cast<float>(measurer.getLoadAsProportion()));
-
-        // apply bypass and mix
-        for (auto s=0; s<buffer.getNumSamples(); s++) {
-            auto gain = bypassGain.getNextValue();
-            gain *= mixGain.getNextValue();
-            for (auto c=0; c<getTotalNumOutputChannels(); c++) {
-                auto v = buffer.getSample(c, s) * (gain);
-                v += dryBufferLatencyCompensationLine.popSample(c) * (1 -gain);
-                buffer.setSample(c, s, v);
+            if (gainStart > 0 || gainTarget > 0)
+            {
+                juce::AudioProcessLoadMeasurer::ScopedTimer s(measurer);
+                process(buffer, midiMessages);
             }
+
+            cpuLoad.store(static_cast<float>(measurer.getLoadAsProportion()));
+
+            // apply bypass and mix
+            for (auto s=0; s<buffer.getNumSamples(); s++) {
+                auto gain = bypassGain.getNextValue();
+                gain *= mixGain.getNextValue();
+                for (auto c=0; c<getTotalNumOutputChannels(); c++) {
+                    auto v = buffer.getSample(c, s) * (gain);
+                    v += dryBufferLatencyCompensationLine.popSample(c) * (1 -gain);
+                    buffer.setSample(c, s, v);
+                }
+            }
+        } catch (std::exception& e) {
+            DBG(e.what());
         }
+
     }
 
     void Processor::parameterChanged(imagiro::Parameter *param) {
@@ -395,8 +399,10 @@ namespace imagiro {
     void Processor::audioProcessorParameterChanged(AudioProcessor *processor, int parameterIndex, float newValue) {}
 
     juce::AudioProcessorParameter* Processor::getBypassParameter() const {
-        if (const std::string bypassUID = "bypass"; parameterMap.contains (bypassUID))
+        juce::String bypassUID = "bypass";
+        if (parameterMap.contains (bypassUID)) {
             return parameterMap.at(bypassUID)->asJUCEParameter();
+        }
 
         return nullptr;
     }

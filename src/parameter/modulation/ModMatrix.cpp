@@ -46,7 +46,7 @@ namespace imagiro {
 
         // TODO make sure this happens on the audio thread
         if (matrix.contains({sourceID, targetID})) {
-            matrix.at({sourceID, targetID}).setSettings(settings);
+            matrix[{sourceID, targetID}].setSettings(settings);
         } else {
             matrix.insert({{sourceID, targetID}, {sampleRate, settings}});
         }
@@ -126,7 +126,11 @@ namespace imagiro {
             connection.getGlobalEnvelopeFollower().skip(numSamples);
             auto v = connection.getGlobalEnvelopeFollower().getCurrentValue();
 
-            if (connectionSettings.bipolar) v -= 0.5f;
+            if (connectionSettings.bipolar && !sourceValues[sourceID]->bipolar) {
+                v -= 0.5f;
+            } else if (!connectionSettings.bipolar && sourceValues[sourceID]->bipolar) {
+                v += 0.5f;
+            }
             v *= connectionSettings.depth;
 
             targetValues[targetID]->value.setGlobalValue(targetValues[targetID]->value.getGlobalValue() + v);
@@ -139,7 +143,12 @@ namespace imagiro {
                 connection.getVoiceEnvelopeFollower(i).skip(numSamples);
                 auto va = connection.getVoiceEnvelopeFollower(i).getCurrentValue();
 
-                if (connectionSettings.bipolar) va -= 0.5f;
+                if (connectionSettings.bipolar && !sourceValues[sourceID]->bipolar) {
+                    va -= 0.5f;
+                } else if (!connectionSettings.bipolar && sourceValues[sourceID]->bipolar) {
+                    va += 0.5f;
+                }
+
                 va *= connectionSettings.depth;
 
                 targetValues[targetID]->value.setVoiceValue(targetValues[targetID]->value.getVoiceValue(i) + va, i);
@@ -205,20 +214,20 @@ namespace imagiro {
 
         SourceID deleteSource;
         while (sourcesToDelete.try_dequeue(deleteSource)) {
+            if (!sourceValues.contains(deleteSource)) continue;
             sourcesToDeallocate.enqueue(sourceValues.at(deleteSource));
             sourceValues[deleteSource]->value.resetValue();
             sourceValues.erase(deleteSource);
 
             erase_if(matrix, [&, deleteSource](const auto& entry) {
-                if (entry.first.first == deleteSource) {
-                    // reset any linked target values here, as if we are deleting the last connected source to that target,
-                    // it won't get recalculated to 0 as it's not in the matrix anymore
-                    if (targetValues.contains(entry.first.second)) {
-                        targetValues.at(entry.first.second)->value.resetValue();
-                        listeners.call(&Listener::OnTargetValueReset, entry.first.second);
-                    }
-                    return true;
+                if (entry.first.first != deleteSource) return false;
+
+                if (targetValues.contains(entry.first.second)) {
+                    targetValues.at(entry.first.second)->value.resetValue();
+                    listeners.call(&Listener::OnTargetValueReset, entry.first.second);
                 }
+
+                return true;
             });
 
             listeners.call(&Listener::OnSourceValueRemoved, deleteSource);
@@ -226,6 +235,7 @@ namespace imagiro {
 
         TargetID deleteTarget;
         while (targetsToDelete.try_dequeue(deleteTarget)) {
+            if (!targetValues.contains(deleteSource)) continue;
             targetsToDeallocate.enqueue(targetValues.at(deleteTarget));
             targetValues[deleteTarget]->value.resetValue();
 
@@ -249,20 +259,21 @@ namespace imagiro {
         }
     }
 
-    SourceID ModMatrix::registerSource(std::string name) {
+    SourceID ModMatrix::registerSource(std::string name, bool bipolar) {
         const auto id = nextSourceID++;
 
         if (name.empty()) {
             name = "source" + std::to_string(id);
         }
 
-        updateSource(id, name);
+        updateSource(id, name, bipolar);
         return id;
     }
 
-    void ModMatrix::updateSource(SourceID id, const std::string& name) {
+    void ModMatrix::updateSource(SourceID id, const std::string& name, bool bipolar) {
         auto sourceValue = std::make_shared<SourceValue>();
         sourceValue->name = name;
+        sourceValue->bipolar = bipolar;
         newSourcesQueue.enqueue({id, sourceValue});
     }
 

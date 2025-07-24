@@ -45,8 +45,8 @@ namespace imagiro {
         ModMatrix();
         ~ModMatrix();
 
-        SourceID registerSource(std::string name = "");
-        void updateSource(SourceID id, const std::string &name = "");
+        SourceID registerSource(std::string name = "", bool bipolar = false);
+        void updateSource(SourceID id, const std::string &name = "", bool bipolar = false);
         TargetID registerTarget(std::string name = "");
 
         void removeSource(const SourceID& id) { sourcesToDelete.enqueue(id); }
@@ -54,11 +54,13 @@ namespace imagiro {
 
         struct SourceValue {
             std::string name;
+            bool bipolar;
             MultichannelValue<MAX_MOD_VOICES> value;
 
             choc::value::Value getState() const {
                 auto v = choc::value::createObject("SourceValue");
                 v.addMember("name", name);
+                v.addMember("bipolar", bipolar);
                 // v.addMember("values", value.getState());
                 return v;
             }
@@ -175,7 +177,7 @@ namespace imagiro {
 
     private:
         std::atomic<size_t> mostRecentVoiceIndex {0};
-        juce::LightweightListenerList<Listener> listeners;
+        juce::ListenerList<Listener> listeners;
         double sampleRate {48000};
 
         std::list<size_t> noteOnStack;

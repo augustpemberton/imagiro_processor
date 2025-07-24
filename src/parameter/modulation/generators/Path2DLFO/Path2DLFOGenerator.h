@@ -25,8 +25,8 @@ public:
     };
 
     explicit Path2DLFO(MPESynth& synth, ModMatrix& modMatrix, Processor& processor, const std::string& baseName = "Path2D LFO")
-        : sourceX(baseName + " X", &modMatrix),
-          sourceY(baseName + " Y", &modMatrix),
+        : sourceX(baseName + " X", &modMatrix, true),
+          sourceY(baseName + " Y", &modMatrix, true),
           synth(synth)
     {
         synth.addListener(this);
@@ -108,15 +108,7 @@ public:
     void process(const int numSamples = 1) {
         if (mono->getBoolValue()) {
             processGlobal(numSamples);
-
-            for (const auto& voiceIndex : activeVoices) {
-                sourceX.setVoiceValue(0.5f, voiceIndex);
-                sourceY.setVoiceValue(0.5f, voiceIndex);
-            }
         } else {
-            sourceX.setGlobalValue(0.5f);
-            sourceY.setGlobalValue(0.5f);
-
             // Process all active voices
             for (const auto& voiceIndex : activeVoices) {
                 processVoice(voiceIndex, numSamples);
@@ -137,8 +129,8 @@ public:
         const float depthScaleX = depthX->getProcessorValue();
         const float depthScaleY = depthY->getProcessorValue();
 
-        sourceX.setGlobalValue(xValue * depthScale * depthScaleX);
-        sourceY.setGlobalValue(yValue * depthScale * depthScaleY);
+        sourceX.setGlobalValue((xValue - 0.5f) * depthScale * depthScaleX);
+        sourceY.setGlobalValue((yValue - 0.5f) * depthScale * depthScaleY);
     }
 
     // Per-voice processing
@@ -154,8 +146,8 @@ public:
         const float depthScaleX = depthX->getProcessorValue(voiceIndex);
         const float depthScaleY = depthY->getProcessorValue(voiceIndex);
 
-        sourceX.setVoiceValue(xValue * depthScale * depthScaleX, voiceIndex);
-        sourceY.setVoiceValue(yValue * depthScale * depthScaleY, voiceIndex);
+        sourceX.setVoiceValue((xValue - 0.5f) * depthScale * depthScaleX, voiceIndex);
+        sourceY.setVoiceValue((yValue - 0.5f) * depthScale * depthScaleY, voiceIndex);
     }
 
     void onVoiceStarted(const size_t voiceIndex) override {
@@ -178,7 +170,7 @@ public:
         }
 
         // Retrigger if needed
-        if (playbackMode->getProcessorValue() != 1) {
+        if (playbackMode->getProcessorValue() == 0) {
             voiceXLFOs[voiceIndex].setPhase(0.0f);
             voiceYLFOs[voiceIndex].setPhase(0.0f);
         }
@@ -188,8 +180,8 @@ public:
         activeVoices.erase(voiceIndex);
 
         // Clear voice values
-        sourceX.setVoiceValue(0.5f, voiceIndex);
-        sourceY.setVoiceValue(0.5f, voiceIndex);
+        sourceX.setVoiceValue(0.f, voiceIndex);
+        sourceY.setVoiceValue(0.f, voiceIndex);
     }
 
     // Get current phase for display purposes
@@ -228,7 +220,7 @@ public:
             const auto mode = static_cast<TimingMode>(static_cast<int>(p->getProcessorValue()));
             setTimingMode(mode);
         } else if (p == playbackMode) {
-            const bool envMode = p->getProcessorValue() == 2;
+            const bool envMode = p->getProcessorValue() == 1;
             xLFO.setStopAfterOneOscillation(envMode);
             yLFO.setStopAfterOneOscillation(envMode);
             for (auto& voiceLFO : voiceXLFOs) {
@@ -240,13 +232,13 @@ public:
         } else if (p == mono) {
             if (!p->getBoolValue()) {
                 // Clear global values when switching to poly
-                sourceX.setGlobalValue(0.5f);
-                sourceY.setGlobalValue(0.5f);
+                sourceX.setGlobalValue(0.f);
+                sourceY.setGlobalValue(0.f);
             } else {
                 // Clear all voice values when switching to mono
                 for (size_t i = 0; i < MAX_MOD_VOICES; ++i) {
-                    sourceX.setVoiceValue(0.5f, i);
-                    sourceY.setVoiceValue(0.5f, i);
+                    sourceX.setVoiceValue(0.f, i);
+                    sourceY.setVoiceValue(0.f, i);
                 }
             }
         }
