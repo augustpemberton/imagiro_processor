@@ -122,12 +122,8 @@ struct Serializer<Curve> {
         Curve curve;
         try {
             if (state.isObject() && state.hasObjectMember("segments")) {
-                DBG("loading legacy curve");
-                DBG(choc::json::toString(state));
                 curve = loadLegacyCurve(state);
             } else {
-                DBG("loading new curve");
-                DBG(choc::json::toString(state));
                 for (const auto& pointState : state) {
                     const auto point = Serializer<CurvePoint>::load(pointState);
                     curve.addPoint(point);

@@ -39,3 +39,4 @@
 #include "src/dsp/transient/TransientDetector.h"
 
 #include "src/bufferpool/FileBufferCache.h"
+#include "imagiro_processor/src/valuedata/Serialize.h"
