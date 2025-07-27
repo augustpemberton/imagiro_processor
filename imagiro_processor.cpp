@@ -12,4 +12,8 @@
 #include "src/grain/Grain.cpp"
 #include "src/BufferFileLoader.cpp"
 #include "src/dsp/transient/TransientDetector.cpp"
+
+#include "src/bufferpool/BufferLoader.cpp"
+#include "src/bufferpool/BufferRequest.cpp"
+#include "src/bufferpool/BufferRequestHandle.cpp"
 #include "src/bufferpool/FileBufferCache.cpp"

@@ -50,14 +50,16 @@ public:
         const juce::File file (path);
         if (!file.exists()) return;
 
-        fbc.requestBuffer(path);
+        auto request = fbc.request(path).execute();
     }
 
-    void onBufferLoaded(const BufferCacheKey& key, const std::shared_ptr<InfoBuffer> buffer) override {
-        if (key.path == filePath.get()) {
-            loadedBuffer = buffer;
-            playGrainFlag = true;
-        }
+    void onBufferLoaded(const CacheKey& key, const std::shared_ptr<InfoBuffer> buffer) override {
+        // TODO
+        DBG("TODO! noise processor loading");
+        // if (key.path == filePath.get()) {
+        //     loadedBuffer = buffer;
+        //     playGrainFlag = true;
+        // }
     }
 
     static BusesProperties getDefaultProperties() {
