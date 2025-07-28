@@ -7,7 +7,7 @@
 // Main interface combining cache and loader
 class FileBufferCache {
 public:
-    FileBufferCache(size_t maxCacheSize = 500 * 1024 * 1024);
+    FileBufferCache(size_t maxCacheSize = 2 * 1024 * 1024 * 1024); // 2GB
     ~FileBufferCache();
 
     // Fluent API entry point

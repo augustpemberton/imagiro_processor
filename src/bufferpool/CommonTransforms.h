@@ -1,18 +1,21 @@
 #pragma once
+#include <utility>
+
 #include "Transform.h"
 #include "imagiro_processor/src/dsp/filter/CascadedBiquadFilter.h"
 #include "juce_dsp/juce_dsp.h"
 
 class LoadTransform : public Transform {
 public:
-    LoadTransform(const std::string& path,
-                  size_t startSample = 0,
-                  size_t endSample = 0,
-                  int numChannels = 0)
-        : filePath(path)
-          , startSample(startSample)
-          , endSample(endSample)
-          , numChannels(numChannels) {
+    LoadTransform(std::string path,
+                  const int startSample = 0,
+                  const int endSample = 0,
+                  const int numChannels = 0)
+        : filePath(std::move(path)),
+          startSample(std::max(0, startSample)),
+          endSample(std::max(0,endSample)),
+          numChannels(std::max(0, numChannels)) {
+
     }
 
     bool process(juce::AudioSampleBuffer& buffer, double& sampleRate) const override {
