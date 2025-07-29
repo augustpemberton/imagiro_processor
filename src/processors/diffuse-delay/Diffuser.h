@@ -104,9 +104,9 @@ struct DiffusionStep {
         // Mix with a Hadamard matrix
         Array mixed = delayed;
         // flip
-        // for (int c = 0; c < channels; ++c) {
-        //     if (flipPolarity[c]) mixed[c] *= -1;
-        // }
+        for (int c = 0; c < channels; ++c) {
+            if (flipPolarity[c]) mixed[c] *= -1;
+        }
 
         // mix
         Hadamard<double, channels>::inPlace(mixed.data());
