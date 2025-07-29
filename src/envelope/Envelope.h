@@ -78,6 +78,7 @@ public:
     void reset() {
         adsr.reset();
         quickfading = false;
+        outputLevel = 0.f;
     }
 
     void applyToBuffer(juce::AudioSampleBuffer& buffer, int numChannels, int numSamples) {
@@ -122,8 +123,5 @@ private:
     const int downsampleRate = 6;
     const float downsampleInv = 1.f / (float) downsampleRate;
     float downsampleCounter = 0;
-
-    float prevEnv {0};
-    float nextEnv {0};
 
 };
