@@ -6,7 +6,7 @@
 
 class FileBufferCache;
 
-class BufferRequestHandle {
+class BufferRequestHandle : std::enable_shared_from_this<BufferRequestHandle> {
     friend class FileBufferCache;
     friend class BufferRequest;
 

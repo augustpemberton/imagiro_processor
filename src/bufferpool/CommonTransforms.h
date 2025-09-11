@@ -8,19 +8,18 @@
 class LoadTransform : public Transform {
 public:
     LoadTransform(std::string path,
+                  juce::AudioFormatManager& afm,
                   const int startSample = 0,
                   const int endSample = 0,
                   const int numChannels = 0)
         : filePath(std::move(path)),
           startSample(std::max(0, startSample)),
-          endSample(std::max(0,endSample)),
-          numChannels(std::max(0, numChannels)) {
-
+          endSample(std::max(0, endSample)),
+          numChannels(std::max(0, numChannels)),
+          afm(afm) {
     }
 
     bool process(juce::AudioSampleBuffer& buffer, double& sampleRate) const override {
-        auto& afm = getAudioFormatManager();
-
         const auto file = juce::File(filePath);
         if (!file.existsAsFile()) {
             lastError = "File does not exist: " + filePath;
@@ -94,16 +93,7 @@ private:
     int numChannels;
     mutable std::string lastError;
 
-    // Static audio format manager for all load transforms
-    static juce::AudioFormatManager& getAudioFormatManager() {
-        static juce::AudioFormatManager manager;
-        static bool initialized = false;
-        if (!initialized) {
-            manager.registerBasicFormats();
-            initialized = true;
-        }
-        return manager;
-    }
+    juce::AudioFormatManager& afm;
 };
 
 // Bandpass filter transform

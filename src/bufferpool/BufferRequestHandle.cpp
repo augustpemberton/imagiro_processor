@@ -8,14 +8,12 @@ BufferRequestHandle::BufferRequestHandle(FileBufferCache* c, const CacheKey& k)
     future = promise->get_future().share();
 
     // Start loading asynchronously on message thread
-    juce::MessageManager::callAsync([this, c, k]() {
-        if (!requestStarted.exchange(true)) {
-            auto result = c->requestBuffer(k);
-            try {
-                promise->set_value(result.value());
-            } catch (...) {
-                promise->set_value(Result<std::shared_ptr<InfoBuffer>>::unexpected_type("Exception during loading"));
-            }
+    juce::MessageManager::callAsync([p = this->promise, c, k]() {
+        auto result = c->requestBuffer(k);
+        try {
+            p->set_value(result.value());
+        } catch (...) {
+            p->set_value(Result<std::shared_ptr<InfoBuffer>>::unexpected_type("Exception during loading"));
         }
     });
 }

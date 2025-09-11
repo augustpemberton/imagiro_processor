@@ -27,18 +27,21 @@ Result<std::shared_ptr<InfoBuffer>> BufferLoader::requestBuffer(const CacheKey& 
     }
 
     // Check if already loading
+    bool alreadyLoading = false;
     {
         std::lock_guard<std::mutex> lock(activeRequestsMutex);
         auto it = activeRequests.find(keyHash);
         if (it != activeRequests.end()) {
             // Already loading, add to waiters
             it->second.push_back(promise);
-            return future.get(); // Block until ready
+            alreadyLoading = true;
         }
-
-        // Mark as loading
-        activeRequests[keyHash] = {promise};
     }
+
+    if (alreadyLoading) return future.get();
+
+    // Mark as loading
+    activeRequests[keyHash] = {promise};
 
     // Mark in cache as loading
     cache.markLoading(keyHash);
@@ -192,7 +195,7 @@ void BufferLoader::notifyWaiters(size_t keyHash, const Result<std::shared_ptr<In
             activeRequests.erase(it);
         }
     }
-    
+
     // Notify all promises
     for (auto& promise : promises) {
         promise->set_value(result);

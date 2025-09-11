@@ -4,6 +4,7 @@
 FileBufferCache::FileBufferCache(size_t maxCacheSize) {
     cache = std::make_unique<BufferCache>(maxCacheSize);
     loader = std::make_unique<BufferLoader>(*cache);
+    afm.registerBasicFormats();
 }
 
 FileBufferCache::~FileBufferCache() = default;

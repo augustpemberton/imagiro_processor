@@ -30,6 +30,7 @@ public:
 private:
     friend class BufferRequest;
     friend class BufferRequestHandle;
+    juce::AudioFormatManager afm;
 
     std::unique_ptr<BufferCache> cache;
     std::unique_ptr<BufferLoader> loader;

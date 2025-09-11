@@ -16,10 +16,7 @@ private:
     FileBufferCache* cache;
     CacheKey key;
 
-    BufferRequest(FileBufferCache* c, const std::string& path) : cache(c) {
-        // Start with a LoadTransform
-        key.transforms.push_back(std::make_unique<LoadTransform>(path));
-    }
+    BufferRequest(FileBufferCache* c, const std::string& path);
 
 public:
     // Set sample range

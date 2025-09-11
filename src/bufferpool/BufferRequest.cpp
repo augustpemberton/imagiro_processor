@@ -1,10 +1,15 @@
 #include "BufferRequest.h"
 #include "FileBufferCache.h"
 
+BufferRequest::BufferRequest(FileBufferCache* c, const std::string& path): cache(c) {
+    // Start with a LoadTransform
+    key.transforms.push_back(std::make_unique<LoadTransform>(path, cache->afm));
+}
+
 BufferRequest& BufferRequest::range(size_t start, size_t end) {
     if (auto* load = dynamic_cast<LoadTransform*>(key.transforms[0].get())) {
         key.transforms[0] = std::make_unique<LoadTransform>(
-            load->getFilePath(), start, end, 0);
+            load->getFilePath(), cache->afm, start, end, 0);
     }
     return *this;
 }
@@ -14,6 +19,7 @@ BufferRequest& BufferRequest::channels(int num) {
         auto current = std::make_unique<LoadTransform>(*load);
         key.transforms[0] = std::make_unique<LoadTransform>(
             current->getFilePath(),
+            cache->afm,
             current->getStartSample(),
             current->getEndSample(),
             num);
