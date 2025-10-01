@@ -191,13 +191,14 @@ namespace imagiro {
 
     DisplayValue DisplayFunctions::syncDisplay(float val, const Parameter*) {
         auto f = fractionString(val);
-        return {f, "note"};
+        return {f, " note"};
     }
-    float DisplayFunctions::syncInput(juce::String frac, const Parameter*) {
-        if (!frac.contains("/")) return frac.getFloatValue();
+    float DisplayFunctions::syncInput(juce::String time, const Parameter*) {
+        time = time.trim();
+        if (!time.contains("/")) return time.getFloatValue();
 
         juce::StringArray f;
-        f.addTokens(frac, "/", "");
+        f.addTokens(time, "/", "");
         if (f.size() != 2) return f[0].getFloatValue();
         return f[0].getFloatValue() / f[1].getFloatValue();
     }
