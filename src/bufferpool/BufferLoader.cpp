@@ -1,5 +1,7 @@
 #include "BufferLoader.h"
 
+#include "CommonTransforms.h"
+
 BufferLoader::BufferLoader(BufferCache& cache) 
     : juce::Thread("BufferLoader"), cache(cache) {
     startThread();

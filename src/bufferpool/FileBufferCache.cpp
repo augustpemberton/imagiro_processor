@@ -1,7 +1,7 @@
 #include "FileBufferCache.h"
 #include "BufferRequestHandle.h"
 
-FileBufferCache::FileBufferCache(size_t maxCacheSize) {
+FileBufferCache::FileBufferCache(uint64_t maxCacheSize) {
     cache = std::make_unique<BufferCache>(maxCacheSize);
     loader = std::make_unique<BufferLoader>(*cache);
     afm.registerBasicFormats();

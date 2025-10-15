@@ -4,34 +4,31 @@
 
 #pragma once
 #include "Preset.h"
-#include "imagiro_processor/src/config/Resources.h"
 
-class FileBackedPreset {
-public:
-    FileBackedPreset();
-    FileBackedPreset (Preset  p, juce::File file);
-    choc::value::Value getState() const;
-    choc::value::Value getUIState() const;
+namespace imagiro {
+    class FileBackedPreset {
+    public:
+        FileBackedPreset();
+        FileBackedPreset (Preset  p, juce::File file);
+        choc::value::Value getState() const;
+        choc::value::Value getUIState() const;
 
-    static std::optional<FileBackedPreset> createFromFile(const juce::File& file, imagiro::Processor* validateProcessor = nullptr);
-    void saveToFile(juce::File f);
-    void save();
+        static std::optional<FileBackedPreset> createFromFile(const juce::File& file, imagiro::Processor* validateProcessor = nullptr);
+        void saveToFile(juce::File f);
+        void save();
 
-    static FileBackedPreset save (Preset p, const std::string& category);
+        static FileBackedPreset save (Preset p, const std::string& category);
 
-    juce::File getFile() const;
-    juce::String getPresetRelativePath() const;
+        juce::File getFile() const;
+        juce::String getPresetRelativePath() const;
 
-    bool getFavorite();
-    void setFavorite(bool fav);
+        bool getFavorite();
+        void setFavorite(bool fav);
 
-    const Preset& getPreset() const { return preset; }
+        const Preset& getPreset() const { return preset; }
 
-private:
-    Preset preset;
-    juce::File file;
-
-//    juce::SharedResourcePointer<Resources> resources;
-};
-
-
+    private:
+        Preset preset;
+        juce::File file;
+    };
+}

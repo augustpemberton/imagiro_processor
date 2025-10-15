@@ -13,7 +13,10 @@
 
 #include <imagiro_util/imagiro_util.h>
 
+#include "DisplayValue.h"
+
 namespace imagiro {
+    class Parameter;
 
 
     struct DisplayFunctions {

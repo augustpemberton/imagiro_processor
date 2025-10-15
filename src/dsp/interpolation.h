@@ -6,6 +6,7 @@
 
 #define INTERP_PRE_SAMPLES 2
 #define INTERP_POST_SAMPLES 4
+#include "imagiro_util/src/util.h"
 
 namespace imagiro {
     static float interp_linear(const juce::AudioSampleBuffer& b, int channel, double index) {
@@ -121,8 +122,7 @@ namespace imagiro {
                                         z * (odd2 * 0.25f - odd1 + odd3 * 0.25f)));
     }
 
-    static juce::AudioSampleBuffer repitchBuffer(const juce::AudioSampleBuffer& input, float pitchShiftSemitones) {
-        // Calculate the pitch shift factor
+    static juce::AudioSampleBuffer repitchBuffer(const juce::AudioSampleBuffer& input, float pitchShiftSemitones) {         // Calculate the pitch shift factor
         float pitchShiftFactor = std::pow(2.0f, pitchShiftSemitones / 12.0f);
 
         int numChannels = input.getNumChannels();
@@ -130,6 +130,8 @@ namespace imagiro {
         int outputLength = std::round(inputLength / pitchShiftFactor);
 
         juce::AudioSampleBuffer output(numChannels, outputLength);
+
+        if (almostEqual(pitchShiftSemitones, 0.f)) return input;
 
         for (int channel = 0; channel < numChannels; ++channel) {
             for (int outputSample = 0; outputSample < outputLength; ++outputSample) {

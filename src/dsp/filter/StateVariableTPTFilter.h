@@ -23,6 +23,8 @@
   ==============================================================================
 */
 
+#include <juce_dsp/juce_dsp.h>
+
 namespace imagiro
 {
 enum class StateVariableTPTFilterType

@@ -3,56 +3,58 @@
 //
 
 #pragma once
-#include <juce_data_structures/juce_data_structures.h>
-#include <utility>
 #include "choc/containers/choc_Value.h"
+#include "../parameter/Parameter.h"
 
 #define PRESET_EXT ".impreset"
 
-class Preset {
-public:
-    Preset(bool isDAWSaveState = false);
-    virtual ~Preset() = default;
-    Preset(const Preset& other) = default;
+namespace imagiro {
+    class Processor;
 
-    virtual choc::value::Value getState() const;
-    virtual choc::value::Value getUIState() const;
-    static Preset fromState(const choc::value::ValueView& state,
-                            bool isDAWState = false,
-                            imagiro::Processor* validateProcessor = nullptr);
+    class Preset {
+    public:
+        Preset(bool isDAWSaveState = false);
+        virtual ~Preset() = default;
+        Preset(const Preset& other) = default;
 
-    void addParamState(imagiro::Parameter::ParamState param);
-    void removeParamState(juce::String paramID);
-    std::vector<imagiro::Parameter::ParamState> getParamStates() const;
+        virtual choc::value::Value getState() const;
+        virtual choc::value::Value getUIState() const;
+        static Preset fromState(const choc::value::ValueView& state,
+                                bool isDAWState = false,
+                                Processor* validateProcessor = nullptr);
 
-    bool isValid() const { return validPreset; }
+        void addParamState(Parameter::ParamState param);
+        void removeParamState(juce::String paramID);
+        std::vector<Parameter::ParamState> getParamStates() const;
 
-    std::string getName() const { return name; }
-    std::string getDescription() const { return description; }
-    void setName(const std::string& name) {this->name = name;}
-    void setDescription(const std::string& description) {this->description = description;}
+        bool isValid() const { return validPreset; }
 
-    choc::value::Value& getData() { return data; }
+        std::string getName() const { return name; }
+        std::string getDescription() const { return description; }
+        void setName(const std::string& name) {this->name = name;}
+        void setDescription(const std::string& description) {this->description = description;}
 
-    bool isDAWSaveState() const { return dawState; }
-    bool isAvailable() const { return available; }
+        choc::value::Value& getData() { return data; }
 
-    void setModMatrix(SerializedMatrix m) { serializedModMatrix = m; }
-    const SerializedMatrix& getModMatrix() { return serializedModMatrix; }
+        bool isDAWSaveState() const { return dawState; }
+        bool isAvailable() const { return available; }
 
-protected:
-    bool dawState {false};
-    std::string name;
-    std::string description;
-    choc::value::Value data;
+        void setModMatrix(SerializedMatrix m) { serializedModMatrix = m; }
+        const SerializedMatrix& getModMatrix() { return serializedModMatrix; }
 
-    std::vector<imagiro::Parameter::ParamState> paramStates;
-    SerializedMatrix serializedModMatrix;
+    protected:
+        bool dawState {false};
+        std::string name;
+        std::string description;
+        choc::value::Value data;
 
-    bool validPreset;
-    bool available {true};
-    std::string errorString;
+        std::vector<Parameter::ParamState> paramStates;
+        SerializedMatrix serializedModMatrix;
 
-    JUCE_LEAK_DETECTOR (Preset)
-};
+        bool validPreset;
+        bool available {true};
+        std::string errorString;
 
+        JUCE_LEAK_DETECTOR (Preset)
+    };
+}

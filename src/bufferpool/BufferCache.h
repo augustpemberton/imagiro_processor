@@ -8,7 +8,7 @@
 // Pure cache management, thread-safe
 class BufferCache {
 public:
-    BufferCache(size_t maxSize = 500 * 1024 * 1024) 
+    BufferCache(const uint64_t maxSize = 500 * 1024 * 1024)
         : maxCacheSize(maxSize) {}
     
     // Try to get a buffer from cache (thread-safe, non-blocking)
@@ -84,7 +84,7 @@ private:
     immer::atom<immer::map<size_t, CacheEntry>> cache {};
     
     std::atomic<size_t> currentCacheSize{0};
-    size_t maxCacheSize;
+    uint64_t maxCacheSize;
     
     void evictLRU() {
         auto currentCache = cache.load();

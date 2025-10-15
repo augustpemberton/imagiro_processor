@@ -23,6 +23,7 @@
 #ifndef ADRS_h
 #define ADRS_h
 
+#include <imagiro_util/imagiro_util.h>
 
 class ADSR {
 public:

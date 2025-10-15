@@ -7,6 +7,12 @@
 
 #include <utility>
 
+#include "./Parameter.h"
+#include "./ParameterConfig.h"
+#include "ParameterHelpers.h"
+#include "../Processor.h"
+#include <imagiro_util/imagiro_util.h>
+
 namespace imagiro {
     std::vector<std::unique_ptr<Parameter>> ParameterLoader::loadParameters(const juce::String& YAMLString, Processor& processor) const {
         std::vector<std::unique_ptr<Parameter>> parameters;

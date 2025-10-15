@@ -41,8 +41,8 @@ public:
     void prepareFilterSpec() {
         const juce::dsp::ProcessSpec spec{
             getSampleRate(),
-            static_cast<juce::uint32>(getBlockSize()),
-            static_cast<juce::uint32>(getTotalNumOutputChannels())};
+            static_cast<uint32_t>(getBlockSize()),
+            static_cast<uint32_t>(getTotalNumOutputChannels())};
         filter.prepare(spec);
 
         updateFilter(frequencyParam->getProcessorValue());

@@ -31,221 +31,223 @@
     #endif
 #endif
 
-class Resources {
+namespace imagiro {
+    class Resources {
 
-public:
-    static juce::SharedResourcePointer<Resources> getInstance() {
-        return juce::SharedResourcePointer<Resources>();
-    }
-
-    juce::int64 lastOpened;
-
-    Resources()
-        : errorLogger(getDataFolder().getChildFile("error-log.txt"), "======= log started ========")
-    {
-        lastOpened = juce::Time::currentTimeMillis();
-    }
-
-    ~Resources() {
-        auto timeOpened = juce::Time::currentTimeMillis() - lastOpened;
-
-        auto configTimeOpened = getConfigFile()->getIntValue("timeOpened", 0);
-        getConfigFile()->setValue("timeOpened", timeOpened + configTimeOpened);
-        getConfigFile()->save();
-    }
-
-    juce::FileLogger& getErrorLogger() {
-        return errorLogger;
-    }
-
-    static juce::File getDataFolder() {
-
-        auto dataFolder = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-#if JUCE_MAC
-                .getChildFile ("Application Support")
-#endif
-                .getChildFile (COMPANY_NAME)
-                        .getChildFile (RESOURCE_NAME);
-
-        if (!dataFolder.exists())
-            dataFolder.createDirectory();
-
-        return dataFolder;
-    }
-
-    static juce::File getSystemDataFolder() {
-
-        auto dataFolder = juce::File::getSpecialLocation (juce::File::commonApplicationDataDirectory)
-#if JUCE_MAC
-                .getChildFile ("Application Support")
-#endif
-                .getChildFile (COMPANY_NAME)
-                .getChildFile (RESOURCE_NAME);
-
-        if (!dataFolder.exists())
-            dataFolder.createDirectory();
-
-        return dataFolder;
-    }
-
-    std::unique_ptr<juce::PropertiesFile> propertiesFile;
-    std::unique_ptr<juce::PropertiesFile>& getConfigFile() {
-        if (!propertiesFile) {
-            juce::PropertiesFile::Options options;
-            //options.storageFormat = juce::PropertiesFile::storeAsBinary;
-
-            auto configFile = getDataFolder().getChildFile("config");
-            if (configFile.exists()) configFile.create();
-
-            propertiesFile = std::make_unique<juce::PropertiesFile>(configFile, options);
+    public:
+        static juce::SharedResourcePointer<Resources> getInstance() {
+            return juce::SharedResourcePointer<Resources>();
         }
 
-        return propertiesFile;
-    }
+        juce::int64 lastOpened;
 
-    juce::File presetsFolder;
-    juce::File getPresetsFolder() {
-        if (!presetsFolder.exists()) {
-            auto folder = getDataFolder().getChildFile("Presets");
-            if (!folder.exists()) folder.createDirectory();
-            presetsFolder = folder;
+        Resources()
+            : errorLogger(getDataFolder().getChildFile("error-log.txt"), "======= log started ========")
+        {
+            lastOpened = juce::Time::currentTimeMillis();
         }
-        return presetsFolder;
-    }
 
-    void reloadPresets(imagiro::Processor* validateProcessor = nullptr) {
-        reloadPresetsMap(validateProcessor);
-    }
+        ~Resources() {
+            auto timeOpened = juce::Time::currentTimeMillis() - lastOpened;
 
-    void reloadPresetsMap(imagiro::Processor* validateProcessor = nullptr) {
-        std::map<juce::String, std::vector<FileBackedPreset>> presetsMap;
-        auto categories = getPresetsFolder().findChildFiles(juce::File::findDirectories, false);
-        categories.sort();
-        for (const auto& folder: categories) {
-            auto ps = folder.findChildFiles(juce::File::findFiles, false, "*.impreset");
-            std::vector<FileBackedPreset> categoryPresets;
-            for (const auto& p: ps) {
-                auto preset = FileBackedPreset::createFromFile(p, validateProcessor);
-                if (preset.has_value())
-                    categoryPresets.push_back(*preset);
+            auto configTimeOpened = getConfigFile()->getIntValue("timeOpened", 0);
+            getConfigFile()->setValue("timeOpened", timeOpened + configTimeOpened);
+            getConfigFile()->save();
+        }
+
+        juce::FileLogger& getErrorLogger() {
+            return errorLogger;
+        }
+
+        static juce::File getDataFolder() {
+
+            auto dataFolder = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+    #if JUCE_MAC
+                    .getChildFile ("Application Support")
+    #endif
+                    .getChildFile (COMPANY_NAME)
+                            .getChildFile (RESOURCE_NAME);
+
+            if (!dataFolder.exists())
+                dataFolder.createDirectory();
+
+            return dataFolder;
+        }
+
+        static juce::File getSystemDataFolder() {
+
+            auto dataFolder = juce::File::getSpecialLocation (juce::File::commonApplicationDataDirectory)
+    #if JUCE_MAC
+                    .getChildFile ("Application Support")
+    #endif
+                    .getChildFile (COMPANY_NAME)
+                    .getChildFile (RESOURCE_NAME);
+
+            if (!dataFolder.exists())
+                dataFolder.createDirectory();
+
+            return dataFolder;
+        }
+
+        std::unique_ptr<juce::PropertiesFile> propertiesFile;
+        std::unique_ptr<juce::PropertiesFile>& getConfigFile() {
+            if (!propertiesFile) {
+                juce::PropertiesFile::Options options;
+                //options.storageFormat = juce::PropertiesFile::storeAsBinary;
+
+                auto configFile = getDataFolder().getChildFile("config");
+                if (configFile.exists()) configFile.create();
+
+                propertiesFile = std::make_unique<juce::PropertiesFile>(configFile, options);
             }
 
-            std::sort(categoryPresets.begin(), categoryPresets.end(), [&](FileBackedPreset& a, FileBackedPreset& b) {
-                return a.getPreset().getName() < b.getPreset().getName();
+            return propertiesFile;
+        }
+
+        juce::File presetsFolder;
+        juce::File getPresetsFolder() {
+            if (!presetsFolder.exists()) {
+                auto folder = getDataFolder().getChildFile("Presets");
+                if (!folder.exists()) folder.createDirectory();
+                presetsFolder = folder;
+            }
+            return presetsFolder;
+        }
+
+        void reloadPresets(imagiro::Processor* validateProcessor = nullptr) {
+            reloadPresetsMap(validateProcessor);
+        }
+
+        void reloadPresetsMap(imagiro::Processor* validateProcessor = nullptr) {
+            std::map<juce::String, std::vector<FileBackedPreset>> presetsMap;
+            auto categories = getPresetsFolder().findChildFiles(juce::File::findDirectories, false);
+            categories.sort();
+            for (const auto& folder: categories) {
+                auto ps = folder.findChildFiles(juce::File::findFiles, false, "*.impreset");
+                std::vector<FileBackedPreset> categoryPresets;
+                for (const auto& p: ps) {
+                    auto preset = FileBackedPreset::createFromFile(p, validateProcessor);
+                    if (preset.has_value())
+                        categoryPresets.push_back(*preset);
+                }
+
+                std::sort(categoryPresets.begin(), categoryPresets.end(), [&](FileBackedPreset& a, FileBackedPreset& b) {
+                    return a.getPreset().getName() < b.getPreset().getName();
+                });
+
+                presetsMap[folder.getFileNameWithoutExtension()] = categoryPresets;
+            }
+            cachedPresetsMap = presetsMap;
+
+            reloadPresetsList();
+        }
+
+        std::map<juce::String, std::vector<FileBackedPreset>> cachedPresetsMap;
+
+        std::map<juce::String, std::vector<FileBackedPreset>> getPresets(bool reload = false) {
+            if (reload || cachedPresetsMap.empty()) reloadPresetsMap();
+            return cachedPresetsMap;
+        }
+
+        std::vector<FileBackedPreset> cachedPresetsList;
+
+        void reloadPresetsList() {
+            std::vector<FileBackedPreset> presetsList;
+            auto categories = cachedPresetsMap;
+            for (const auto& category : categories) {
+                for (const auto& preset : category.second) {
+                    if (preset.getPreset().isAvailable()) presetsList.push_back(preset);
+                }
+            }
+
+            cachedPresetsList = presetsList;
+        }
+
+        std::vector<FileBackedPreset> getPresetsList(bool reload = false) {
+            if (cachedPresetsList.empty() || reload) reloadPresetsList();
+            return cachedPresetsList;
+        }
+
+        FileBackedPreset getNextPreset(juce::File lastLoadedPresetFile) {
+            auto list = getPresetsList();
+            if (list.empty()) return {};
+            auto it = std::find_if(list.begin(), list.end(), [&](const FileBackedPreset& preset) {
+                return preset.getFile() == lastLoadedPresetFile;
             });
-
-            presetsMap[folder.getFileNameWithoutExtension()] = categoryPresets;
-        }
-        cachedPresetsMap = presetsMap;
-
-        reloadPresetsList();
-    }
-
-    std::map<juce::String, std::vector<FileBackedPreset>> cachedPresetsMap;
-
-    std::map<juce::String, std::vector<FileBackedPreset>> getPresets(bool reload = false) {
-        if (reload || cachedPresetsMap.empty()) reloadPresetsMap();
-        return cachedPresetsMap;
-    }
-
-    std::vector<FileBackedPreset> cachedPresetsList;
-
-    void reloadPresetsList() {
-        std::vector<FileBackedPreset> presetsList;
-        auto categories = cachedPresetsMap;
-        for (const auto& category : categories) {
-            for (const auto& preset : category.second) {
-                if (preset.getPreset().isAvailable()) presetsList.push_back(preset);
+            if (it == list.end()-1 || it == list.end()) {
+                return list.front();
             }
+            return *(it+1);
         }
 
-        cachedPresetsList = presetsList;
-    }
-
-    std::vector<FileBackedPreset> getPresetsList(bool reload = false) {
-        if (cachedPresetsList.empty() || reload) reloadPresetsList();
-        return cachedPresetsList;
-    }
-
-    FileBackedPreset getNextPreset(juce::File lastLoadedPresetFile) {
-        auto list = getPresetsList();
-        if (list.empty()) return {};
-        auto it = std::find_if(list.begin(), list.end(), [&](const FileBackedPreset& preset) {
-            return preset.getFile() == lastLoadedPresetFile;
-        });
-        if (it == list.end()-1 || it == list.end()) {
-            return list.front();
+        FileBackedPreset getPrevPreset(juce::File lastLoadedPresetFile) {
+            auto list = getPresetsList();
+            if (list.empty()) return {};
+            auto it = std::find_if(list.begin(), list.end(), [&](const FileBackedPreset& preset) {
+                return preset.getFile() == lastLoadedPresetFile;
+            });
+            if (it == list.end()) return list.front();
+            if (it == list.begin()) return list.back();
+            return *(it-1);
         }
-        return *(it+1);
-    }
 
-    FileBackedPreset getPrevPreset(juce::File lastLoadedPresetFile) {
-        auto list = getPresetsList();
-        if (list.empty()) return {};
-        auto it = std::find_if(list.begin(), list.end(), [&](const FileBackedPreset& preset) {
-            return preset.getFile() == lastLoadedPresetFile;
-        });
-        if (it == list.end()) return list.front();
-        if (it == list.begin()) return list.back();
-        return *(it-1);
-    }
+        std::optional<juce::ValueTree> favoritesTree;
+        juce::ValueTree getFavoritesTree() {
+            if (!favoritesTree.has_value()) {
+                auto favorites = std::make_unique<juce::XmlElement>("favorites");
+                if (getConfigFile()->containsKey("favorites")) {
+                    favorites = getConfigFile()->getXmlValue("favorites");
+                }
 
-    std::optional<juce::ValueTree> favoritesTree;
-    juce::ValueTree getFavoritesTree() {
-        if (!favoritesTree.has_value()) {
-            auto favorites = std::make_unique<juce::XmlElement>("favorites");
-            if (getConfigFile()->containsKey("favorites")) {
-                favorites = getConfigFile()->getXmlValue("favorites");
+                favoritesTree = juce::ValueTree::fromXml(*favorites);
+            }
+            return favoritesTree.value();
+        }
+
+        bool isPresetFavorite(const FileBackedPreset& p) {
+            auto favTree = getFavoritesTree();
+
+            return std::any_of(
+                    favTree.begin(),
+                    favTree.end(),
+                    [&](auto fav) {
+                        return getPresetsFolder().getChildFile(
+                                fav.getProperty("path", "").toString()) == p.getFile();
+            });
+        }
+
+        void setPresetFavorite(FileBackedPreset& p, bool favorite = true) {
+            auto favoriteTree = getFavoritesTree();
+
+            favoriteTree = (favorite ? addPresetFavorite(favoriteTree, p)
+                              : removePresetFavorite(favoriteTree, p));
+
+            getConfigFile()->setValue("favorites", favoriteTree.createXml().get());
+        }
+
+    private:
+        juce::ValueTree addPresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
+            auto path = p.getFile().getRelativePathFrom(getPresetsFolder());
+            auto newTree = juce::ValueTree("favorite")
+                    .setProperty( "path", path, nullptr);
+
+            favoriteTree.appendChild(newTree, nullptr);
+            return favoriteTree;
+        }
+
+        juce::ValueTree removePresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
+            auto path = p.getFile().getRelativePathFrom(getPresetsFolder());
+
+            for (auto i=0; i<favoriteTree.getNumChildren(); i++) {
+                if (favoriteTree.getChild(i).getProperty("path") == path) {
+                    favoriteTree.removeChild(i, nullptr);
+                    break;
+                }
             }
 
-            favoritesTree = juce::ValueTree::fromXml(*favorites);
-        }
-        return favoritesTree.value();
-    }
-
-    bool isPresetFavorite(const FileBackedPreset& p) {
-        auto favTree = getFavoritesTree();
-
-        return std::any_of(
-                favTree.begin(),
-                favTree.end(),
-                [&](auto fav) {
-                    return getPresetsFolder().getChildFile(
-                            fav.getProperty("path", "").toString()) == p.getFile();
-        });
-    }
-
-    void setPresetFavorite(FileBackedPreset& p, bool favorite = true) {
-        auto favoriteTree = getFavoritesTree();
-
-        favoriteTree = (favorite ? addPresetFavorite(favoriteTree, p)
-                          : removePresetFavorite(favoriteTree, p));
-
-        getConfigFile()->setValue("favorites", favoriteTree.createXml().get());
-    }
-
-private:
-    juce::ValueTree addPresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
-        auto path = p.getFile().getRelativePathFrom(getPresetsFolder());
-        auto newTree = juce::ValueTree("favorite")
-                .setProperty( "path", path, nullptr);
-
-        favoriteTree.appendChild(newTree, nullptr);
-        return favoriteTree;
-    }
-
-    juce::ValueTree removePresetFavorite(juce::ValueTree favoriteTree, FileBackedPreset& p) {
-        auto path = p.getFile().getRelativePathFrom(getPresetsFolder());
-
-        for (auto i=0; i<favoriteTree.getNumChildren(); i++) {
-            if (favoriteTree.getChild(i).getProperty("path") == path) {
-                favoriteTree.removeChild(i, nullptr);
-                break;
-            }
+            return favoriteTree;
         }
 
-        return favoriteTree;
-    }
-
-    juce::FileLogger errorLogger;
-};
+        juce::FileLogger errorLogger;
+    };
+}

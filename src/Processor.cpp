@@ -375,7 +375,7 @@ namespace imagiro {
 
         if (getTotalNumOutputChannels() > 0) {
             dryBufferLatencyCompensationLine.prepare({
-                sampleRate, static_cast<juce::uint32> (samplesPerBlock), static_cast<juce::uint32> (getTotalNumOutputChannels())
+                sampleRate, static_cast<uint32_t> (samplesPerBlock), static_cast<uint32_t> (getTotalNumOutputChannels())
             });
             dryBufferLatencyCompensationLine.setDelay(getLatencySamples());
         }

@@ -5,6 +5,7 @@
 #pragma once
 #include "bufferpool/InfoBuffer.h"
 #include "juce_audio_formats/juce_audio_formats.h"
+#include "juce_events/juce_events.h"
 
 
 class BufferFileLoader : public juce::Thread, juce::Timer {

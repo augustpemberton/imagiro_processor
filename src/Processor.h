@@ -16,9 +16,9 @@
 #include "imagiro_processor/src/config/Resources.h"
 #include "imagiro_processor/src/parameter/ParameterLoader.h"
 
-class Preset;
 
 namespace imagiro {
+    class Preset;
     class Processor : public ProcessorBase, protected juce::MultiTimer, ValueData::Listener, public Parameter::Listener, private juce::AudioProcessorListener {
     public:
         Processor(juce::String parametersYAMLString,

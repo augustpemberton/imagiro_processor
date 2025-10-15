@@ -1,8 +1,8 @@
 #pragma once
 #include "BufferCache.h"
-#include <juce_events/juce_events.h>
 #include <unordered_map>
 #include <mutex>
+#include <imagiro_util/imagiro_util.h>
 
 class BufferLoader : public juce::Thread {
 public:

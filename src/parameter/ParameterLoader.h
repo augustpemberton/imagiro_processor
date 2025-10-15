@@ -7,6 +7,9 @@
 #include <juce_core/juce_core.h>
 
 namespace imagiro {
+    class Parameter;
+    class Processor;
+    struct ParameterConfig;
     struct ParameterLoader {
         virtual ~ParameterLoader() = default;
 
@@ -17,8 +20,8 @@ namespace imagiro {
         std::vector<std::unique_ptr<Parameter>> loadParameters(const juce::String& YAMLString, Processor& processor) const;
 
     protected:
-        virtual std::vector<std::unique_ptr<imagiro::Parameter>> loadParametersFromNode(const juce::String& uid, YAML::Node p, Processor& processor) const ;
-        virtual imagiro::ParameterConfig loadConfig(const juce::String& name, YAML::Node p, Processor& processor) const;
+        virtual std::vector<std::unique_ptr<Parameter>> loadParametersFromNode(const juce::String& uid, YAML::Node p, Processor& processor) const ;
+        virtual ParameterConfig loadConfig(const juce::String& name, YAML::Node p, Processor& processor) const;
 
         static juce::String getString(const YAML::Node& n, const juce::String& key, juce::String defaultValue = "");
         static float getFloat(const YAML::Node& n, const juce::String& key, float defaultValue = 0);
