@@ -6,6 +6,8 @@
 #include "Preset.h"
 
 namespace imagiro {
+    class Resources;
+
     class FileBackedPreset {
     public:
         FileBackedPreset();
@@ -22,7 +24,7 @@ namespace imagiro {
         juce::File getFile() const;
         juce::String getPresetRelativePath() const;
 
-        bool getFavorite();
+        bool getFavorite() const;
         void setFavorite(bool fav);
 
         const Preset& getPreset() const { return preset; }

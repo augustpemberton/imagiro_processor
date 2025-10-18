@@ -35,10 +35,6 @@ namespace imagiro {
     class Resources {
 
     public:
-        static juce::SharedResourcePointer<Resources> getInstance() {
-            return juce::SharedResourcePointer<Resources>();
-        }
-
         juce::int64 lastOpened;
 
         Resources()
@@ -91,6 +87,7 @@ namespace imagiro {
 
         std::unique_ptr<juce::PropertiesFile> propertiesFile;
         std::unique_ptr<juce::PropertiesFile>& getConfigFile() {
+            std::lock_guard g (getConfigFileMutex);
             if (!propertiesFile) {
                 juce::PropertiesFile::Options options;
                 //options.storageFormat = juce::PropertiesFile::storeAsBinary;
@@ -101,6 +98,7 @@ namespace imagiro {
                 propertiesFile = std::make_unique<juce::PropertiesFile>(configFile, options);
             }
 
+            propertiesFile->reload(); // make sure to read the latest contents first
             return propertiesFile;
         }
 
@@ -249,5 +247,6 @@ namespace imagiro {
         }
 
         juce::FileLogger errorLogger;
+        std::mutex getConfigFileMutex;
     };
 }

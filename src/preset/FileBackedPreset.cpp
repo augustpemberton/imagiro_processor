@@ -36,9 +36,11 @@ namespace imagiro {
     }
 
     choc::value::Value FileBackedPreset::getUIState() const {
+        const juce::SharedResourcePointer<Resources> resources;
+
         auto presetState = preset.getUIState();
         presetState.addMember("path", getPresetRelativePath().toStdString());
-        presetState.addMember("favorite", Resources::getInstance()->isPresetFavorite(*this));
+        presetState.addMember("favorite", resources->isPresetFavorite(*this));
         return presetState;
     }
 
@@ -65,10 +67,17 @@ namespace imagiro {
         return fbp;
     }
 
-    bool FileBackedPreset::getFavorite() { return Resources::getInstance()->isPresetFavorite(*this); }
-    void FileBackedPreset::setFavorite(bool fav) { Resources::getInstance()->setPresetFavorite(*this, fav); }
+    bool FileBackedPreset::getFavorite() const {
+        const juce::SharedResourcePointer<Resources> resources;
+        return resources->isPresetFavorite(*this);
+    }
+    void FileBackedPreset::setFavorite(bool fav) {
+        const juce::SharedResourcePointer<Resources> resources;
+        resources->setPresetFavorite(*this, fav);
+    }
 
     juce::String FileBackedPreset::getPresetRelativePath() const {
-        return file.getRelativePathFrom(Resources::getInstance()->getPresetsFolder()).toStdString();
+        const juce::SharedResourcePointer<Resources> resources;
+        return file.getRelativePathFrom(resources->getPresetsFolder()).toStdString();
     }
 }
