@@ -79,9 +79,6 @@ namespace imagiro {
                     .getChildFile (COMPANY_NAME)
                     .getChildFile (RESOURCE_NAME);
 
-            if (!dataFolder.exists())
-                dataFolder.createDirectory();
-
             return dataFolder;
         }
 
