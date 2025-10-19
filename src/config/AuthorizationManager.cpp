@@ -18,9 +18,9 @@ namespace imagiro {
         //#endif
 
         if (ignoreDemo) {
-            auto savedSerial = getProperties()->getValue("serial", "");
+            auto savedSerial = resources->getConfigFile()->getValue("serial", "");
             if (isSerialValid(savedSerial)) return true;
-            else return false;
+            return false;
         }
 
 #ifdef SKIP_AUTH
@@ -48,9 +48,10 @@ namespace imagiro {
     }
 
     void AuthorizationManager::saveSerial(const juce::String& serial) {
-        getProperties()->reload();
-        getProperties()->setValue("serial", serial);
-        getProperties()->save();
+        const auto& configFile = resources->getConfigFile();
+        configFile->reload();
+        configFile->setValue("serial", serial);
+        configFile->save();
 
         loadSavedAuth();
     }
@@ -63,7 +64,7 @@ namespace imagiro {
             return;
         }
 
-        auto savedSerial = getProperties()->getValue("serial", "");
+        auto savedSerial = resources->getConfigFile()->getValue("serial", "");
         if (savedSerial == "") return;
         if (!isSerialValid(savedSerial)) return;
 
@@ -93,11 +94,12 @@ namespace imagiro {
 
     void AuthorizationManager::startDemo() {
         if (hasDemoStarted()) return;
-        if (!getProperties()->containsKey("demoStartTime")) {
-            getProperties()->setValue("demoStartTime", juce::Time::currentTimeMillis());
+        const auto& configFile = resources->getConfigFile();
+        if (!configFile->containsKey("demoStartTime")) {
+            configFile->setValue("demoStartTime", juce::Time::currentTimeMillis());
         }
-        getProperties()->setValue("demoStarted", true);
-        getProperties()->saveIfNeeded();
+        configFile->setValue("demoStarted", true);
+        configFile->saveIfNeeded();
 
         loadSavedAuth();
     }
@@ -108,11 +110,11 @@ namespace imagiro {
     }
 
     bool AuthorizationManager::hasDemoStarted() {
-        return getProperties()->getBoolValue("demoStarted", false);
+        return resources->getConfigFile()->getBoolValue("demoStarted", false);
     }
 
     bool AuthorizationManager::hasDemoFinished() {
-        auto savedSerial = getProperties()->getValue("serial", "");
+        auto savedSerial = resources->getConfigFile()->getValue("serial", "");
         if (savedSerial != "" && isSerialValid(savedSerial)) return true;
 
         if (!hasDemoStarted()) return false;
@@ -123,7 +125,7 @@ namespace imagiro {
         if (!hasDemoStarted()) return juce::RelativeTime(0);
 
         const static auto demoLength = juce::RelativeTime(60*60*24*14);
-        auto demoStartTime = juce::Time(getProperties()->getDoubleValue("demoStartTime"));
+        auto demoStartTime = juce::Time(resources->getConfigFile()->getDoubleValue("demoStartTime"));
         auto demoEndTime = demoStartTime + demoLength;
 
         if (demoEndTime < juce::Time::getCurrentTime()) return juce::RelativeTime(0);
@@ -131,11 +133,13 @@ namespace imagiro {
     }
 
     juce::String AuthorizationManager::getSerial() {
-        return getProperties()->getValue("serial", "");
+        return resources->getConfigFile()->getValue("serial", "");
     }
 
     void AuthorizationManager::logout() {
-        getProperties()->removeValue("serial");
+        const auto& configFile = resources->getConfigFile();
+        configFile->removeValue("serial");
+        configFile->save();
         isAuthorizedCache = false;
     }
 }

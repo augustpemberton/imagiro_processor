@@ -46,9 +46,10 @@ namespace imagiro {
         ~Resources() {
             auto timeOpened = juce::Time::currentTimeMillis() - lastOpened;
 
-            auto configTimeOpened = getConfigFile()->getIntValue("timeOpened", 0);
-            getConfigFile()->setValue("timeOpened", timeOpened + configTimeOpened);
-            getConfigFile()->save();
+            const auto& configFile = getConfigFile();
+            const auto configTimeOpened = configFile->getIntValue("timeOpened", 0);
+            configFile->setValue("timeOpened", timeOpened + configTimeOpened);
+            configFile->save();
         }
 
         juce::FileLogger& getErrorLogger() {

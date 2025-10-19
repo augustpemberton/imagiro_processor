@@ -43,6 +43,5 @@ namespace imagiro {
         std::atomic<bool> isAuthorizedCache {false};
 
         juce::SharedResourcePointer<Resources> resources;
-        std::unique_ptr<juce::PropertiesFile>& getProperties() { return resources->getConfigFile(); }
     };
 }
