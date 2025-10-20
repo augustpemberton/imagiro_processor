@@ -15,7 +15,14 @@ CPMAddPackage(
         OPTIONS "YAML_CPP_BUILD_TESTS OFF"
 )
 
+
+
 add_library(imagiro_processor STATIC)
+
+# important: copy compile definitions from the main project
+target_compile_definitions(imagiro_processor PUBLIC
+        $<TARGET_PROPERTY:${ProjectName},COMPILE_DEFINITIONS>
+)
 
 target_sources(imagiro_processor PRIVATE
         "src/Processor.cpp"
