@@ -147,7 +147,8 @@ namespace imagiro {
         juce::AudioPlayHead* playhead {nullptr};
         juce::Optional<juce::AudioPlayHead::PositionInfo> posInfo;
 
-        ModMatrix modMatrix;
+        std::shared_ptr<ModMatrix> modMatrix { std::make_unique<ModMatrix>() };
+
         juce::Array<Parameter*> allParameters;
         juce::OwnedArray<Parameter> internalParameters;
         juce::ListenerList<ParameterListener> parameterListeners;

@@ -39,9 +39,9 @@ namespace imagiro {
         // so cannot remove listener as it will already be destroyed at this point
     }
 
-    void Parameter::setModMatrix(imagiro::ModMatrix &m) {
+    void Parameter::setModMatrix(std::shared_ptr<ModMatrix> m) {
         modTarget.setModMatrix(m);
-        modMatrix = &m;
+        modMatrix = m;
     }
 
     bool Parameter::isToggle() {

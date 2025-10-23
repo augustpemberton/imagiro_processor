@@ -39,7 +39,7 @@ namespace imagiro {
 
         ~Parameter() override;
 
-        void setModMatrix(ModMatrix& m);
+        void setModMatrix(std::shared_ptr<ModMatrix> m);
 
         RangedAudioParameter* asJUCEParameter() { return this; }
 
@@ -256,7 +256,7 @@ namespace imagiro {
         std::atomic<bool> asyncGestureStartUpdateFlag;
         std::atomic<bool> asyncGestureEndUpdateFlag;
 
-        ModMatrix* modMatrix {nullptr};
+        std::shared_ptr<ModMatrix> modMatrix {nullptr};
         ModTarget modTarget;
 
         float jitterAmount {0};

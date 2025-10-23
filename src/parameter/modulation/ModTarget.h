@@ -17,14 +17,14 @@ namespace imagiro {
         void addListener(Listener* l) { listeners.add(l); }
         void removeListener(Listener* l) { listeners.remove(l); }
 
-        ModTarget(std::string targetName = "", ModMatrix* m = nullptr)
+        ModTarget(std::string targetName = "", const std::shared_ptr<ModMatrix> &m = nullptr)
                 : name(std::move(targetName))
         {
-            if (m) setModMatrix(*m);
+            if (m) setModMatrix(m);
         }
 
         ModTarget(const ModTarget& other) {
-            if (other.matrix) setModMatrix(*other.matrix);
+            if (other.matrix) setModMatrix(other.matrix);
             id = other.id;
             name = other.name;
         }
@@ -34,7 +34,7 @@ namespace imagiro {
         }
 
         ModTarget& operator=(const ModTarget& other) {
-            if (other.matrix) setModMatrix(*other.matrix);
+            if (other.matrix) setModMatrix(other.matrix);
             id = other.id;
             name = other.name;
             return *this;
@@ -49,9 +49,9 @@ namespace imagiro {
             listeners.call(&Listener::OnTargetUpdated);
         }
 
-        void setModMatrix(ModMatrix& m) {
+        void setModMatrix(std::shared_ptr<ModMatrix> m) {
             if (matrix != nullptr) matrix->removeListener(this);
-            matrix = &m;
+            matrix = m;
             id = matrix->registerTarget(name);
             matrix->addListener(this);
         }
@@ -85,7 +85,7 @@ namespace imagiro {
     private:
         TargetID id;
         std::string name;
-        ModMatrix* matrix {nullptr};
+        std::shared_ptr<ModMatrix> matrix {nullptr};
 
         juce::ListenerList<Listener> listeners;
     };

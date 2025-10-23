@@ -278,7 +278,7 @@ namespace imagiro {
                 for(auto s=0; s<buffer.getNumSamples(); s++)
                     dryBufferLatencyCompensationLine.pushSample(c, buffer.getSample(c, s));
 
-            modMatrix.processMatrixUpdates();
+            modMatrix->processMatrixUpdates();
 
             const auto gainStart = bypassGain.getCurrentValue() * mixGain.getCurrentValue();
             const auto gainTarget = bypassGain.getTargetValue() * mixGain.getTargetValue();
@@ -339,7 +339,7 @@ namespace imagiro {
         }
 
 
-        p.setModMatrix(modMatrix.getSerializedMatrix());
+        p.setModMatrix(modMatrix->getSerializedMatrix());
 
         p.getData().addMember("valueData", getValueData().getState(!isDAWSaveState));
 
@@ -358,7 +358,7 @@ namespace imagiro {
             }
         }
 
-        modMatrix.loadSerializedMatrix(preset.getModMatrix());
+        modMatrix->loadSerializedMatrix(preset.getModMatrix());
 
         if (preset.getData().hasObjectMember("valueData")) {
             valueData.loadState(preset.getData()["valueData"], !preset.isDAWSaveState());
@@ -370,7 +370,7 @@ namespace imagiro {
     void Processor::prepareToPlay(double sampleRate, int samplesPerBlock) {
         lastSampleRate = sampleRate;
         setRateAndBufferSizeDetails(sampleRate, samplesPerBlock);
-        modMatrix.prepareToPlay(sampleRate, samplesPerBlock);
+        modMatrix->prepareToPlay(sampleRate, samplesPerBlock);
         measurer.reset(sampleRate, samplesPerBlock);
 
         if (getTotalNumOutputChannels() > 0) {
