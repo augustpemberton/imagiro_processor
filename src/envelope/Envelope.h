@@ -13,7 +13,6 @@ public:
         sampleRate = rate;
         quickfadeRate = static_cast<float>(1.0f / (quickfadeSeconds * sampleRate));
         quickfadeRate *= downsampleRate;
-
         setParameters(params);
     }
 
@@ -23,86 +22,61 @@ public:
         adsr.setDecayRate(params.decay * sampleRate / downsampleRate);
         adsr.setReleaseRate(params.release * sampleRate / downsampleRate);
         adsr.setSustainLevel(params.sustain);
-
         adsr.setTargetRatioA(0.3f * params.attack);
         adsr.setTargetRatioDR(0.02f);
     }
 
-    void noteOn() {
-        adsr.setNoteOn(true);
-    }
-
-    void noteOff() {
-        adsr.setNoteOn(false);
-    }
-
-    void quickFadeOut() {
-        quickfading = true;
-    }
-
-    bool isQuickfadingOut() const {
-        return quickfading;
-    }
-
-    int getQuickfadeLengthSamples() const {
-        return static_cast<int>(quickfadeSeconds * sampleRate);
-    }
-
-    float getNextSample() {
-        downsampleCounter += downsampleInv;
-
-        if (downsampleCounter >= 1) {
-            downsampleCounter = 0;
-
-            float newLevel = quickfading ? (outputLevel - quickfadeRate) : adsr.process();
-
-            if (newLevel < 0.f && quickfading) {
-                quickfading = false;
-                adsr.reset();
-                return 0.f;
-            }
-
-            lastTargetLevel = targetLevel;
-            targetLevel = newLevel;
-        }
-
-        auto newOutput = imagiro::lerp(lastTargetLevel, targetLevel, downsampleCounter);
-        outputLevel = newOutput;
-        return outputLevel;
-    }
-
-    bool isActive() const {
-        return adsr.getState() != ADSR::EnvState::env_idle;
-    }
+    void noteOn() { adsr.setNoteOn(true); }
+    void noteOff() { adsr.setNoteOn(false); }
+    void quickFadeOut() { quickfading = true; }
+    bool isQuickfadingOut() const { return quickfading; }
+    int getQuickfadeLengthSamples() const { return static_cast<int>(quickfadeSeconds * sampleRate); }
+    bool isActive() const { return adsr.getState() != ADSR::EnvState::env_idle; }
+    float getCurrentLevel() const { return outputLevel; }
 
     void reset() {
         adsr.reset();
         quickfading = false;
         outputLevel = 0.f;
-    }
-
-    void applyToBuffer(juce::AudioSampleBuffer& buffer, int numChannels, int numSamples) {
-        auto eW = envTempBuffer.getWritePointer(0);
-
-        // Generate envelope values
-        for (auto s = 0; s < numSamples; s++) {
-            *eW++ = getNextSample();
-        }
-
-        // Apply buffer
-        for (auto c = 0; c < numChannels; c++) {
-            juce::FloatVectorOperations::multiply(buffer.getWritePointer(c),
-                                                  envTempBuffer.getReadPointer(0),
-                                                  numSamples);
-        }
-    }
-
-    float getCurrentLevel() const {
-        return outputLevel;
+        targetLevel = 0.f;
+        lastTargetLevel = 0.f;
+        downsampleCounter = 0.f;
     }
 
     void setMaxBlockSize(int samples) {
         envTempBuffer.setSize(1, samples);
+    }
+
+    forcedinline float getNextSample() {
+        downsampleCounter += downsampleInv;
+
+        if (downsampleCounter >= 1.f) {
+            downsampleCounter = 0.f;
+            lastTargetLevel = targetLevel;
+            targetLevel = quickfading ? (targetLevel - quickfadeRate) : adsr.process();
+
+            if (quickfading && targetLevel < 0.f) {
+                targetLevel = 0.f;
+                quickfading = false;
+                adsr.reset();
+            }
+        }
+
+        outputLevel = lastTargetLevel + (targetLevel - lastTargetLevel) * downsampleCounter;
+        return outputLevel;
+    }
+
+    void applyToBuffer(juce::AudioSampleBuffer& buffer, int numChannels, int numSamples) {
+        float* __restrict envOut = envTempBuffer.getWritePointer(0);
+
+        for (int i = 0; i < numSamples; i++) {
+            envOut[i] = getNextSample();
+        }
+
+        for (int c = 0; c < numChannels; c++) {
+            juce::FloatVectorOperations::multiply(
+                buffer.getWritePointer(c), envOut, numSamples);
+        }
     }
 
 private:
@@ -120,8 +94,7 @@ private:
     float quickfadeRate {0};
     bool quickfading {false};
 
-    const int downsampleRate = 6;
-    const float downsampleInv = 1.f / (float) downsampleRate;
+    const int downsampleRate = 16;
+    const float downsampleInv = 1.f / static_cast<float>(downsampleRate);
     float downsampleCounter = 0;
-
 };
