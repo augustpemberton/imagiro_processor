@@ -8,6 +8,12 @@
     class ADSRParameters : public juce::ADSR::Parameters {
     public:
         using juce::ADSR::Parameters::Parameters;
+        bool operator==(const ADSRParameters& other) const {
+            return attack == other.attack
+            && decay == other.decay
+            && sustain == other.sustain
+            && release == other.release;
+        }
 
         [[nodiscard]] choc::value::Value getState() const {
             auto state = choc::value::createObject("ADSRParams");
