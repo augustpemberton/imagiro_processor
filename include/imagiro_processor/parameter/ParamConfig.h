@@ -6,15 +6,18 @@
 #include <functional>
 #include <string>
 
-#include "ParamFormat.h"
 #include "ParamRange.h"
+#include "ParamRange.h"
+#include "ValueFormatter.h"
+#include "ParamRange.h"
+#include "perfetto.h"
 
 namespace imagiro {
     struct ParamConfig {
         std::string uid;
         std::string name;
-        ParamRange range;
-        ParamFormat format{ParamFormat::number()};
+        ParamRange range {ParamRange::linear(0, 1)};
+        ValueFormatter format{ValueFormatter::number()};
         float (*toProcessor)(float userValue, double bpm, double sampleRate){nullptr};
 
         float defaultValue{0.f};
@@ -28,8 +31,8 @@ namespace imagiro {
             .uid = std::move(uid),
             .name = std::move(name),
             .range = ParamRange::linear(minDb, maxDb),
-            .format = ParamFormat::decibels(),
-            .toProcessor = +[](float db, double, double) {
+            .format = ValueFormatter::decibels(),
+            .toProcessor = +[](float db, double, double) -> float {
                 return juce::Decibels::decibelsToGain(db);
             },
             .defaultValue = defaultDb
@@ -42,7 +45,7 @@ namespace imagiro {
             .uid = std::move(uid),
             .name = std::move(name),
             .range = ParamRange::frequency(minHz, maxHz),
-            .format = ParamFormat::frequency(),
+            .format = ValueFormatter::frequency(),
             .defaultValue = defaultHz
         };
     }
@@ -53,7 +56,7 @@ namespace imagiro {
             .uid = std::move(uid),
             .name = std::move(name),
             .range = ParamRange::logarithmic(minSec, maxSec),
-            .format = ParamFormat::time(),
+            .format = ValueFormatter::time(),
             .defaultValue = defaultSec
         };
     }
@@ -63,7 +66,7 @@ namespace imagiro {
             .uid = std::move(uid),
             .name = std::move(name),
             .range = ParamRange::linear(0.f, 1.f),
-            .format = ParamFormat::percent(),
+            .format = ValueFormatter::percent(),
             .defaultValue = defaultVal
         };
     }
@@ -73,7 +76,7 @@ namespace imagiro {
             .uid = std::move(uid),
             .name = std::move(name),
             .range = ParamRange::toggle(),
-            .format = ParamFormat::toggle(),
+            .format = ValueFormatter::toggle(),
             .defaultValue = defaultVal ? 1.f : 0.f
         };
     }
@@ -84,19 +87,19 @@ namespace imagiro {
             .uid = std::move(uid),
             .name = std::move(name),
             .range = ParamRange::choice(static_cast<int>(choices.size())),
-            .format = ParamFormat::choice(choices),
+            .format = ValueFormatter::choice(choices),
             .defaultValue = static_cast<float>(defaultIndex)
         };
     }
 
     inline ParamConfig makeLinearParam(std::string uid, std::string name,
-                                       float min, float max, float defaultVal,
+                                       float min, float max, float step, float defaultVal,
                                        const std::string &suffix = "", int decimals = 2) {
         return {
             .uid = std::move(uid),
             .name = std::move(name),
-            .range = ParamRange::linear(min, max),
-            .format = ParamFormat::withSuffix(suffix, decimals),
+            .range = ParamRange::linear(min, max, step),
+            .format = ValueFormatter::withSuffix(suffix, decimals),
             .defaultValue = defaultVal
         };
     }

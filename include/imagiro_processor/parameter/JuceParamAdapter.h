@@ -57,7 +57,7 @@ namespace imagiro {
         }
 
         void pushToHost(Handle h) const {
-            const float normalized = controller_.getValue01(h);
+            const float normalized = controller_.getValue01UI(h);
             if (std::abs(juceParams_[h.index]->get() - normalized) < 1e-6f) return;
             juceParams_[h.index]->setValueNotifyingHost(normalized);
         }

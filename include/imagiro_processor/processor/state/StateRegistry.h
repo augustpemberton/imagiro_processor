@@ -30,17 +30,6 @@ public:
     StateRegistry& operator=(const StateRegistry&) = default;
     StateRegistry& operator=(StateRegistry&&) = default;
 
-    // Immutable add - returns new registry and handle via out param
-    [[nodiscard]] StateRegistry add(std::string id, T value, Handle& outHandle) const {
-        StateRegistry result = *this;
-        outHandle = Handle{static_cast<uint32_t>(result.ids_.size())};
-        result.idToHandle_ = result.idToHandle_.set(id, outHandle);
-        result.ids_ = result.ids_.push_back(std::move(id));
-        result.values_ = result.values_.set(outHandle.index, std::move(value));
-        return result;
-    }
-
-    // Mutable version for setup phase - modifies in place, returns handle
     Handle add(std::string id, T value) {
         Handle handle{static_cast<uint32_t>(ids_.size())};
         idToHandle_ = idToHandle_.set(id, handle);

@@ -1,44 +1,46 @@
-//
-// Created by August Pemberton on 11/12/2025.
-//
-
-#pragma once
-
-
 #pragma once
 
 #include <string>
 #include <functional>
 #include <optional>
-#include <cmath>
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 
 namespace imagiro {
-    struct ParamFormat {
+    struct ValueFormatter {
         std::function<std::string(float userValue)> toString;
         std::function<std::optional<float>(const std::string &text)> fromString;
 
-        // Default: just show the number
-        static ParamFormat number(int decimalPlaces = 2) {
+        static float sanitize(float v) {
+            return std::abs(v) < 1e-5f ? 0.f : v;
+        }
+
+        static int decimalPlacesForDigits(float v, int totalDigits) {
+            if (v == 0.f) return totalDigits - 1;
+            int intDigits = static_cast<int>(std::floor(std::log10(std::abs(v)))) + 1;
+            return std::max(0, totalDigits - intDigits);
+        }
+
+        static ValueFormatter number(int digits = 3) {
+            return withSuffix("", digits);
+        }
+
+        static ValueFormatter range(ParamRange range, int digits = 3) {
+            const auto fmt = number(digits);
             return {
-                [=](float v) {
-                    std::ostringstream ss;
-                    ss << std::fixed << std::setprecision(decimalPlaces) << v;
-                    return ss.str();
-                },
-                [](const std::string &s) -> std::optional<float> {
-                    try { return std::stof(s); } catch (...) { return std::nullopt; }
-                }
+                [fmt, range](float v) { return fmt.toString(range.denormalize(v)); },
+                [fmt, range](std::string v) { return range.normalize(fmt.fromString(v).value_or(0)); },
             };
         }
 
-        static ParamFormat withSuffix(const std::string& suffix, int decimalPlaces = 2) {
+        static ValueFormatter withSuffix(const std::string& suffix, int digits = 3) {
             return {
                 [=](float v) {
+                    v = sanitize(v);
                     std::ostringstream ss;
-                    ss << std::fixed << std::setprecision(decimalPlaces) << v;
-                    if (!suffix.empty()) ss << " " << suffix;
+                    ss << std::fixed << std::setprecision(decimalPlacesForDigits(v, digits)) << v;
+                    if (!suffix.empty()) ss << suffix;
                     return ss.str();
                 },
                 [](const std::string& s) -> std::optional<float> {
@@ -48,33 +50,20 @@ namespace imagiro {
             };
         }
 
-        static ParamFormat decibels(int decimalPlaces = 1) {
-            return {
-                [=](float v) {
-                    std::ostringstream ss;
-                    ss << std::fixed << std::setprecision(decimalPlaces) << v << " dB";
-                    return ss.str();
-                },
-                [](const std::string &s) -> std::optional<float> {
-                    try {
-                        // Strip "dB" suffix if present
-                        std::string clean = s;
-                        auto pos = clean.find("dB");
-                        if (pos != std::string::npos) clean = clean.substr(0, pos);
-                        return std::stof(clean);
-                    } catch (...) { return std::nullopt; }
-                }
-            };
+        static ValueFormatter decibels(int digits = 3) {
+            return withSuffix("dB", digits);
         }
 
-        static ParamFormat frequency(int decimalPlaces = 0) {
+        static ValueFormatter frequency(int digits = 3) {
             return {
                 [=](float hz) {
+                    hz = sanitize(hz);
                     std::ostringstream ss;
                     if (hz >= 1000.f) {
-                        ss << std::fixed << std::setprecision(decimalPlaces + 1) << (hz / 1000.f) << " kHz";
+                        float khz = hz / 1000.f;
+                        ss << std::fixed << std::setprecision(decimalPlacesForDigits(khz, digits)) << khz << " kHz";
                     } else {
-                        ss << std::fixed << std::setprecision(decimalPlaces) << hz << " Hz";
+                        ss << std::fixed << std::setprecision(decimalPlacesForDigits(hz, digits)) << hz << " Hz";
                     }
                     return ss.str();
                 },
@@ -89,18 +78,18 @@ namespace imagiro {
                             multiplier = 1000.f;
                         }
 
-                        // Extract just the number
                         return std::stof(clean) * multiplier;
                     } catch (...) { return std::nullopt; }
                 }
             };
         }
 
-        static ParamFormat percent(int decimalPlaces = 0) {
+        static ValueFormatter percent(int digits = 3) {
             return {
                 [=](float v) {
+                    float pct = sanitize(v * 100.f);
                     std::ostringstream ss;
-                    ss << std::fixed << std::setprecision(decimalPlaces) << (v * 100.f) << "%";
+                    ss << std::fixed << std::setprecision(decimalPlacesForDigits(pct, digits)) << pct << "%";
                     return ss.str();
                 },
                 [](const std::string &s) -> std::optional<float> {
@@ -114,15 +103,35 @@ namespace imagiro {
             };
         }
 
-        static ParamFormat time(int decimalPlaces = 2) {
+        static ValueFormatter pan() {
+            return {
+                [=](float v) {
+                    const int mag = static_cast<int>(std::round(std::abs(v-0.5f) * 100));
+                    const auto dir =  almostEqual(v, 0.5f) ? "C" : v > 0.5 ? "R" : "L";
+                    std::ostringstream ss;
+                    ss << std::fixed << mag << dir;
+                    return ss.str();
+                },
+                [](const std::string &s) -> std::optional<float> {
+                    try {
+                        const std::string clean = s.substr(0, s.size() - 1);
+                        const auto mag = std::stof(clean) * 0.01f;
+                        return 0.5 + (s.back() == 'R' ? mag : -mag);
+                    } catch (...) { return std::nullopt; }
+                }
+            };
+        }
+
+        static ValueFormatter time(int digits = 3) {
             return {
                 [=](float seconds) {
+                    seconds = sanitize(seconds);
                     std::ostringstream ss;
                     if (seconds >= 1.f) {
-                        ss << std::fixed << std::setprecision(decimalPlaces) << seconds << " s";
+                        ss << std::fixed << std::setprecision(decimalPlacesForDigits(seconds, digits)) << seconds << " s";
                     } else {
-                        ss << std::fixed << std::setprecision(std::max(0, decimalPlaces - 1)) << (seconds * 1000.f) <<
-                                " ms";
+                        float ms = seconds * 1000.f;
+                        ss << std::fixed << std::setprecision(decimalPlacesForDigits(ms, digits)) << ms << " ms";
                     }
                     return ss.str();
                 },
@@ -141,7 +150,7 @@ namespace imagiro {
             };
         }
 
-        static ParamFormat toggle() {
+        static ValueFormatter toggle() {
             return {
                 [](float v) { return v > 0.5f ? "On" : "Off"; },
                 [](const std::string &s) -> std::optional<float> {
@@ -152,7 +161,7 @@ namespace imagiro {
             };
         }
 
-        static ParamFormat choice(const std::vector<std::string> &choices) {
+        static ValueFormatter choice(const std::vector<std::string> &choices) {
             return {
                 [choices](float v) {
                     const int idx = static_cast<int>(std::round(v));

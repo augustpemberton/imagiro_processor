@@ -53,7 +53,7 @@ namespace imagiro {
                 float normalized = (clamped - min_) / (max_ - min_);
                 if constexpr (std::is_same_v<T, Linear>) {
                     if (m.skew != 1.f) {
-                        normalized = std::pow(normalized, 1.f / m.skew);
+                        normalized = std::pow(normalized, m.skew);
                     }
                 }
                 return normalized;
@@ -74,7 +74,7 @@ namespace imagiro {
 
                 if constexpr (std::is_same_v<T, Linear>) {
                     if (m.skew != 1.f) {
-                        shaped = std::pow(clamped, m.skew);
+                        shaped = std::pow(clamped, 1 / m.skew);
                     }
                 }
 

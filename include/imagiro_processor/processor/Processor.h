@@ -10,15 +10,13 @@
 #include "imagiro_processor/parameter/ParamController.h"
 #include "imagiro_processor/parameter/ParamValue.h"
 #include "state/ProcessState.h"
-#include "state/StateRegistry.h"
 
 namespace imagiro {
 
 class Processor : public ProcessorBase, juce::Timer {
 public:
     explicit Processor(const BusesProperties& ioLayout = getDefaultProperties())
-        : ProcessorBase(ioLayout)
-        , paramController_(paramsRegistry_) {
+        : ProcessorBase(ioLayout) {
         startTimerHz(120);
     }
 
@@ -92,8 +90,6 @@ public:
         }
     }
 
-    // --- Accessors ---
-
     ParamController& params() { return paramController_; }
     const ParamController& params() const { return paramController_; }
 
@@ -106,30 +102,26 @@ protected:
                         const ProcessState& state) = 0;
 
     virtual ProcessState captureState() {
-
-        audioThreadState.setBpm(transport_.bpm());
-        audioThreadState.setSampleRate(transport_.sampleRate());
-        audioThreadState.params() = paramController_.capture();
-
-        return audioThreadState;
+        audioThreadState_.setBpm(transport_.bpm());
+        audioThreadState_.setSampleRate(transport_.sampleRate());
+        audioThreadState_.params() = paramController_.captureAudio();  // Lock-free atomic load + copy
+        return audioThreadState_;
     }
 
     virtual json stateToJson() const {
         json j = json::object();
-        j["params"] = paramsRegistry_;
+        j["params"] = paramController_.registryUI();  // Uses to_json for StateRegistry
         return j;
     }
 
     virtual void loadStateFromJson(const json& j) {
         if (j.contains("params")) {
-            paramsRegistry_ = paramsRegistry_.fromJson(j["params"]);
-            paramController_.recomputeFromJson();
+            auto reg = paramController_.registryUI().fromJson(j["params"]);
+            paramController_.setRegistryUI(std::move(reg));
         }
     }
 
-    ProcessState audioThreadState;
-
-    StateRegistry<ParamValue> paramsRegistry_;
+    ProcessState audioThreadState_;
     ParamController paramController_;
 
     std::unique_ptr<JuceParamAdapter> juceAdapter_;
