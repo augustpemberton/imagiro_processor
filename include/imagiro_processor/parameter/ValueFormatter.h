@@ -152,7 +152,7 @@ namespace imagiro {
 
         static ValueFormatter toggle() {
             return {
-                [](float v) { return v > 0.5f ? "On" : "Off"; },
+                [](float v) { return v > 0.5f ? "on" : "off"; },
                 [](const std::string &s) -> std::optional<float> {
                     if (s == "On" || s == "on" || s == "1" || s == "true") return 1.f;
                     if (s == "Off" || s == "off" || s == "0" || s == "false") return 0.f;
@@ -175,6 +175,68 @@ namespace imagiro {
                         if (choices[i] == s) return static_cast<float>(i);
                     }
                     return std::nullopt;
+                }
+            };
+        }
+
+        static ValueFormatter noteDivision() {
+            return {
+                [](float powerOf2) {
+                    // Convert power of 2 to note division string
+                    // powerOf2 = -4 -> 1/16, -3 -> 1/8, -2 -> 1/4, -1 -> 1/2, 0 -> 1, 1 -> 2, 2 -> 4, 3 -> 8, 4 -> 16
+                    const int power = static_cast<int>(std::round(powerOf2));
+
+                    if (power < 0) {
+                        // Fractions: 1/2, 1/4, 1/8, 1/16, etc.
+                        const int denominator = 1 << (-power);
+                        return "1/" + std::to_string(denominator);
+                    } else if (power == 0) {
+                        return std::string("1");
+                    } else {
+                        // Whole notes: 2, 4, 8, etc.
+                        const int numerator = 1 << power;
+                        return std::to_string(numerator);
+                    }
+                },
+                [](const std::string &s) -> std::optional<float> {
+                    try {
+                        // Parse "1/16", "1/8", "1/4", "1/2", "1", "2", "4", etc.
+                        auto slashPos = s.find('/');
+                        if (slashPos != std::string::npos) {
+                            // It's a fraction like "1/16"
+                            std::string numeratorStr = s.substr(0, slashPos);
+                            std::string denominatorStr = s.substr(slashPos + 1);
+                            int numerator = std::stoi(numeratorStr);
+                            int denominator = std::stoi(denominatorStr);
+
+                            if (numerator != 1) return std::nullopt;
+
+                            // Calculate power of 2 for 1/denominator
+                            // 1/2 -> -1, 1/4 -> -2, 1/8 -> -3, 1/16 -> -4
+                            int power = 0;
+                            int temp = denominator;
+                            while (temp > 1) {
+                                temp >>= 1;
+                                power--;
+                            }
+                            return static_cast<float>(power);
+                        } else {
+                            // It's a whole number like "1", "2", "4", "8"
+                            int value = std::stoi(s);
+                            if (value == 1) return 0.f;
+
+                            // Calculate power of 2
+                            int power = 0;
+                            int temp = value;
+                            while (temp > 1) {
+                                temp >>= 1;
+                                power++;
+                            }
+                            return static_cast<float>(power);
+                        }
+                    } catch (...) {
+                        return std::nullopt;
+                    }
                 }
             };
         }

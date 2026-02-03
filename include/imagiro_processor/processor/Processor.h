@@ -59,6 +59,7 @@ public:
 
         if (bypassMixer_.isProcessingNeeded()) {
             process(buffer, midi, state);
+            afterProcess();
         }
 
         bypassMixer_.applyMix(buffer);
@@ -101,10 +102,13 @@ protected:
                         juce::MidiBuffer& midi,
                         const ProcessState& state) = 0;
 
+    virtual void afterProcess() {}
+
     virtual ProcessState captureState() {
         audioThreadState_.setBpm(transport_.bpm());
         audioThreadState_.setSampleRate(transport_.sampleRate());
         audioThreadState_.params() = paramController_.captureAudio();  // Lock-free atomic load + copy
+        paramController_.dispatchAudioChanges();  // Fire audio signals for changed params
         return audioThreadState_;
     }
 

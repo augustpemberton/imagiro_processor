@@ -7,6 +7,8 @@
 #include <deque>
 #include <atomic>
 #include <memory>
+#include <cmath>
+#include <limits>
 #include <imagiro_util/readerwriterqueue/concurrentqueue.h>
 
 #include "imagiro_processor/processor/state/StateRegistry.h"
@@ -42,6 +44,8 @@ public:
 
         configs_.push_back(std::move(config));
         uiDirty_.emplace_back(false);
+        audioDirty_.emplace_back(false);
+        pendingValues_.emplace_back(std::numeric_limits<float>::quiet_NaN());
         uiSignals_.emplace_back();
         audioSignals_.emplace_back();
 
@@ -72,7 +76,9 @@ public:
     }
 
     void setValue01(Handle h, float normalized) {
-        pendingChanges_.enqueue({h, std::clamp(normalized, 0.f, 1.f)});
+        auto clamped = std::clamp(normalized, 0.f, 1.f);
+        pendingValues_[h.index].store(clamped, std::memory_order_release);
+        pendingChanges_.enqueue({h, clamped});
     }
 
     void resetToDefault(Handle h) {
@@ -103,10 +109,20 @@ public:
     // =====================================================================
 
     float getValueUI(Handle h) const {
+        // Check for pending value first
+        auto pending = pendingValues_[h.index].load(std::memory_order_acquire);
+        if (!std::isnan(pending)) {
+            return configs_[h.index].range.denormalize(pending);
+        }
         return std::atomic_load(&registry_)->get(h).userValue;
     }
 
     float getValue01UI(Handle h) const {
+        // Check for pending value first
+        auto pending = pendingValues_[h.index].load(std::memory_order_acquire);
+        if (!std::isnan(pending)) {
+            return pending;
+        }
         return std::atomic_load(&registry_)->get(h).value01;
     }
 
@@ -143,12 +159,15 @@ public:
 
             if (auto* pv = reg.tryGet(h)) {
                 ParamValue value = *pv;
-                value.userValue = cfg.range.denormalize(value.value01);
+                value.userValue = cfg.range.clamp(value.userValue);
+                value.value01 = cfg.range.normalize(value.userValue);
                 value.toProcessor = cfg.toProcessor;
                 reg = reg.set(h, value);
             }
 
             uiDirty_[i].store(true, std::memory_order_release);
+            // Clear any pending values when loading preset
+            pendingValues_[i].store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_release);
         }
 
         std::atomic_store(&registry_,
@@ -158,6 +177,16 @@ public:
     // =====================================================================
     // Audio thread
     // =====================================================================
+
+    void dispatchAudioChanges() {
+        auto snapshot = std::atomic_load(&registry_);
+
+        for (size_t i = 0; i < configs_.size(); i++) {
+            if (audioDirty_[i].exchange(false, std::memory_order_acq_rel)) {
+                audioSignals_[i](snapshot->get(Handle{static_cast<uint32_t>(i)}).userValue);
+            }
+        }
+    }
 
     StateRegistry<ParamValue> captureAudio() {
         auto current = std::atomic_load(&registry_);
@@ -182,6 +211,9 @@ public:
             current = std::make_shared<StateRegistry<ParamValue>>(
                 current->set(change.handle, value));
             uiDirty_[change.handle.index].store(true, std::memory_order_release);
+            audioDirty_[change.handle.index].store(true, std::memory_order_release);
+            // Clear pending value now that it's been applied
+            pendingValues_[change.handle.index].store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_release);
             changed = true;
         }
 
@@ -203,6 +235,8 @@ private:
 
     std::deque<ParamConfig> configs_;
     std::deque<std::atomic<bool>> uiDirty_;
+    std::deque<std::atomic<bool>> audioDirty_;
+    std::deque<std::atomic<float>> pendingValues_;  // NaN = no pending value
     std::deque<sigslot::signal<float>> uiSignals_;
     std::deque<sigslot::signal<float>> audioSignals_;
 };

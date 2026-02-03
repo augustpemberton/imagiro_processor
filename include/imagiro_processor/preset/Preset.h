@@ -15,6 +15,8 @@ using json = nlohmann::json;
 
 class Preset {
 public:
+    static constexpr int CurrentVersion = 2;
+
     Preset() = default;
     explicit Preset(PresetMetadata meta) : metadata_(std::move(meta)) {}
 
@@ -26,6 +28,7 @@ public:
 
     json toJson() const {
         return json{
+            {"version", CurrentVersion},
             {"metadata", metadata_},
             {"state", state_}
         };
@@ -33,6 +36,11 @@ public:
 
     static std::optional<Preset> fromJson(const json& j) {
         try {
+            // Check version - legacy presets have no version or version < 2
+            if (!j.contains("version") || j["version"].get<int>() < CurrentVersion) {
+                return fromLegacySamplerJson(j);
+            }
+
             Preset p;
             if (j.contains("metadata")) {
                 p.metadata_ = j["metadata"].get<PresetMetadata>();
@@ -40,6 +48,39 @@ public:
             if (j.contains("state")) {
                 p.state_ = j["state"];
             }
+            return p;
+        } catch (...) {
+            return std::nullopt;
+        }
+    }
+
+    static std::optional<Preset> fromLegacySamplerJson(const json& j) {
+        try {
+            Preset p;
+
+            // Convert metadata
+            p.metadata_.name = j.value("name", "");
+            p.metadata_.description = j.value("description", "");
+
+            // Convert paramStates array to params object
+            // Old format: [["gain", 0.0, "default", 0.0], ...]
+            // New format: {"gain": 0.0, ...}
+            if (j.contains("paramStates") && j["paramStates"].is_array()) {
+                json params = json::object();
+                for (const auto& paramState : j["paramStates"]) {
+                    if (paramState.is_array() && paramState.size() >= 2) {
+                        std::string uid = paramState[0].get<std::string>();
+                        params[uid] = paramState[1];
+                    }
+                }
+                p.state_["params"] = params;
+            }
+
+            // Convert "data" to "samplerData"
+            if (j.contains("data")) {
+                p.state_["samplerData"] = j["data"];
+            }
+
             return p;
         } catch (...) {
             return std::nullopt;

@@ -11,14 +11,14 @@ namespace imagiro {
         float (*toProcessor)(float userValue, double bpm, double sampleRate){nullptr};
     };
 
-    // Only serialize value01 - userValue and processorValue are derived
+    // Serialize userValue for human-readable presets - value01 is derived from range
     inline void to_json(nlohmann::json& j, const ParamValue& v) {
-        j = v.value01;
+        j = v.userValue;
     }
 
     inline void from_json(const nlohmann::json& j, ParamValue& v) {
-        v.value01 = j.get<float>();
-        // userValue and processorValue need to be recomputed by ParamController
+        v.userValue = j.get<float>();
+        // value01 needs to be recomputed by ParamController using the param range
     }
 
 } // namespace imagiro
