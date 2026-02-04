@@ -9,6 +9,7 @@
 #include <memory>
 #include <cmath>
 #include <limits>
+#include <imagiro_util/util.h>
 #include <imagiro_util/readerwriterqueue/concurrentqueue.h>
 
 #include "imagiro_processor/processor/state/StateRegistry.h"
@@ -166,6 +167,7 @@ public:
             }
 
             uiDirty_[i].store(true, std::memory_order_release);
+            audioDirty_[i].store(true, std::memory_order_release);
             // Clear any pending values when loading preset
             pendingValues_[i].store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_release);
         }

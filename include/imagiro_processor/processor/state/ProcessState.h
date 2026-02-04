@@ -2,6 +2,7 @@
 #pragma once
 
 #include "StateRegistry.h"
+#include "imagiro_processor/parameter/ParamValue.h"
 #include <unordered_map>
 
 #include "immer/box.hpp"

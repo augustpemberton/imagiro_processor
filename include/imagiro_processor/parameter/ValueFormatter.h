@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <imagiro_util/util.h>
 
 namespace imagiro {
     struct ValueFormatter {
@@ -17,7 +18,7 @@ namespace imagiro {
         }
 
         static int decimalPlacesForDigits(float v, int totalDigits) {
-            if (v == 0.f) return totalDigits - 1;
+            if (v == 0.f) return std::max(0, totalDigits - 1);
             int intDigits = static_cast<int>(std::floor(std::log10(std::abs(v)))) + 1;
             return std::max(0, totalDigits - intDigits);
         }

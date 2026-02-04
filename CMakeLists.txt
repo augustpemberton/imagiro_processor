@@ -42,3 +42,9 @@ target_link_libraries(imagiro_processor PUBLIC
         immer
         nlohmann_json::nlohmann_json
 )
+
+# Tests
+option(IMAGIRO_PROCESSOR_BUILD_TESTS "Build imagiro_processor tests" ON)
+if(IMAGIRO_PROCESSOR_BUILD_TESTS AND TARGET Catch2::Catch2WithMain)
+    add_subdirectory(tests)
+endif()
