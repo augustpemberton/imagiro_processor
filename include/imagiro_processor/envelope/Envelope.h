@@ -67,6 +67,17 @@ public:
     }
 
     void applyToBuffer(juce::AudioSampleBuffer& buffer, int numChannels, int numSamples) {
+        // Fast path: in sustain phase with settled level, output is constant
+        if (!quickfading && adsr.getState() == ADSR::EnvState::env_sustain
+            && lastTargetLevel == targetLevel) {
+            outputLevel = targetLevel;
+            for (int c = 0; c < numChannels; c++) {
+                juce::FloatVectorOperations::multiply(
+                    buffer.getWritePointer(c), targetLevel, numSamples);
+            }
+            return;
+        }
+
         float* __restrict envOut = envTempBuffer.getWritePointer(0);
 
         for (int i = 0; i < numSamples; i++) {
