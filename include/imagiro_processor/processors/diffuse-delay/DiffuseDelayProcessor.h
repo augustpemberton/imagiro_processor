@@ -42,10 +42,10 @@ public:
 
     ~DiffuseDelayProcessor() {
         diffuseParam->removeListener(this);
-        delayParam->addListener(this);
-        feedbackParam->addListener(this);
-        lowpassParam->addListener(this);
-        highpassParam->addListener(this);
+        delayParam->removeListener(this);
+        feedbackParam->removeListener(this);
+        lowpassParam->removeListener(this);
+        highpassParam->removeListener(this);
         modDepthParam->removeListener(this);
         modRateParam->removeListener(this);
     }

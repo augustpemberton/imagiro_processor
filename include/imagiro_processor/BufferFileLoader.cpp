@@ -9,6 +9,7 @@ BufferFileLoader::BufferFileLoader(): juce::Thread("Buffer file loader") {
 }
 
 BufferFileLoader::~BufferFileLoader() {
+    stopTimer();
     stopThread(500);
 }
 

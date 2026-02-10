@@ -25,6 +25,7 @@ namespace imagiro {
         }
 
         ~ChainManager() override {
+            stopTimer();
             resetAllProxies();
         }
 
