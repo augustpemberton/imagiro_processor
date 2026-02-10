@@ -130,10 +130,7 @@ TEST_CASE("ParamController default values", "[param][controller]") {
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, 0.f));
 
         ctrl.setValue(h, -12.f);
-        ctrl.captureAudio();  // Apply pending changes
-
         ctrl.resetToDefault(h);
-        ctrl.captureAudio();
 
         REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(0.0, 0.0001));
     }
@@ -150,7 +147,6 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, 0.f));
 
         ctrl.setValue(h, -12.f);
-        ctrl.captureAudio();  // Apply pending changes
 
         REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-12.0, 0.0001));
     }
@@ -160,13 +156,9 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, 0.f));
 
         ctrl.setValue(h, 100.f);
-        ctrl.captureAudio();
-
         REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(12.0, 0.0001));
 
         ctrl.setValue(h, -100.f);
-        ctrl.captureAudio();
-
         REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-60.0, 0.0001));
     }
 
@@ -175,7 +167,6 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         auto h = ctrl.addParam(makeLinearParam("gain", 0.f, 100.f, 0.f));
 
         ctrl.setValue01(h, 0.5f);
-        ctrl.captureAudio();
 
         REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(50.0, 0.0001));
         REQUIRE_THAT(ctrl.getValue01UI(h), WithinAbs(0.5, 0.0001));
@@ -186,7 +177,6 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         auto h = ctrl.addParam(makeLinearParam("gain", 0.f, 100.f, 0.f));
 
         ctrl.setValue01(h, 1.5f);
-        ctrl.captureAudio();
 
         REQUIRE_THAT(ctrl.getValue01UI(h), WithinAbs(1.0, 0.0001));
     }
@@ -234,7 +224,6 @@ TEST_CASE("ParamController text formatting", "[param][controller]") {
         });
 
         bool success = ctrl.setValueFromTextUI(h, "-6dB");
-        ctrl.captureAudio();
 
         REQUIRE(success);
         REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-6.0, 0.0001));
@@ -326,23 +315,26 @@ TEST_CASE("ParamController state registry", "[param][controller]") {
 
 TEST_CASE("ParamController audio capture", "[param][controller]") {
 
-    SECTION("captureAudio returns current state") {
+    SECTION("snapshotInto returns current state") {
         ParamController ctrl;
         auto h = ctrl.addParam(makeLinearParam("gain", 0.f, 100.f, 50.f));
 
-        auto state = ctrl.captureAudio();
+        std::vector<ParamValue> out(ctrl.size());
+        ctrl.snapshotInto(out);
 
-        REQUIRE_THAT(state.get(h).userValue, WithinAbs(50.0, 0.0001));
+        REQUIRE_THAT(out[h.index].userValue, WithinAbs(50.0, 0.0001));
     }
 
-    SECTION("captureAudio applies pending changes") {
+    SECTION("snapshotInto reflects setValue immediately") {
         ParamController ctrl;
         auto h = ctrl.addParam(makeLinearParam("gain", 0.f, 100.f, 0.f));
 
         ctrl.setValue(h, 75.f);
-        auto state = ctrl.captureAudio();
 
-        REQUIRE_THAT(state.get(h).userValue, WithinAbs(75.0, 0.0001));
+        std::vector<ParamValue> out(ctrl.size());
+        ctrl.snapshotInto(out);
+
+        REQUIRE_THAT(out[h.index].userValue, WithinAbs(75.0, 0.0001));
     }
 
     SECTION("Multiple rapid changes only final value persists") {
@@ -353,8 +345,9 @@ TEST_CASE("ParamController audio capture", "[param][controller]") {
         ctrl.setValue(h, 50.f);
         ctrl.setValue(h, 75.f);
 
-        auto state = ctrl.captureAudio();
+        std::vector<ParamValue> out(ctrl.size());
+        ctrl.snapshotInto(out);
 
-        REQUIRE_THAT(state.get(h).userValue, WithinAbs(75.0, 0.0001));
+        REQUIRE_THAT(out[h.index].userValue, WithinAbs(75.0, 0.0001));
     }
 }

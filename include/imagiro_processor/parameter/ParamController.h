@@ -8,9 +8,7 @@
 #include <atomic>
 #include <memory>
 #include <cmath>
-#include <limits>
 #include <imagiro_util/util.h>
-#include <imagiro_util/readerwriterqueue/concurrentqueue.h>
 
 #include "imagiro_processor/processor/state/StateRegistry.h"
 
@@ -23,10 +21,6 @@ public:
 
     ParamController(const ParamController&) = delete;
     ParamController& operator=(const ParamController&) = delete;
-
-    // =====================================================================
-    // Setup (call before processing starts)
-    // =====================================================================
 
     Handle addParam(ParamConfig config) {
         const auto defaultVal = config.range.clamp(config.defaultValue);
@@ -46,16 +40,12 @@ public:
         configs_.push_back(std::move(config));
         uiDirty_.emplace_back(false);
         audioDirty_.emplace_back(false);
-        pendingValues_.emplace_back(std::numeric_limits<float>::quiet_NaN());
+        values01_.emplace_back(default01);
         uiSignals_.emplace_back();
         audioSignals_.emplace_back();
 
         return h;
     }
-
-    // =====================================================================
-    // Thread-safe
-    // =====================================================================
 
     Handle handle(const std::string& uid) const {
         return std::atomic_load(&registry_)->handle(uid);
@@ -78,8 +68,9 @@ public:
 
     void setValue01(Handle h, float normalized) {
         auto clamped = std::clamp(normalized, 0.f, 1.f);
-        pendingValues_[h.index].store(clamped, std::memory_order_release);
-        pendingChanges_.enqueue({h, clamped});
+        values01_[h.index].store(clamped, std::memory_order_release);
+        uiDirty_[h.index].store(true, std::memory_order_release);
+        audioDirty_[h.index].store(true, std::memory_order_release);
     }
 
     void resetToDefault(Handle h) {
@@ -110,21 +101,12 @@ public:
     // =====================================================================
 
     float getValueUI(Handle h) const {
-        // Check for pending value first
-        auto pending = pendingValues_[h.index].load(std::memory_order_acquire);
-        if (!std::isnan(pending)) {
-            return configs_[h.index].range.denormalize(pending);
-        }
-        return std::atomic_load(&registry_)->get(h).userValue;
+        auto v01 = values01_[h.index].load(std::memory_order_acquire);
+        return configs_[h.index].range.denormalize(v01);
     }
 
     float getValue01UI(Handle h) const {
-        // Check for pending value first
-        auto pending = pendingValues_[h.index].load(std::memory_order_acquire);
-        if (!std::isnan(pending)) {
-            return pending;
-        }
-        return std::atomic_load(&registry_)->get(h).value01;
+        return values01_[h.index].load(std::memory_order_acquire);
     }
 
     std::string getValueTextUI(Handle h) const {
@@ -140,11 +122,23 @@ public:
     }
 
     void dispatchUIChanges() {
-        auto snapshot = std::atomic_load(&registry_);
-
         for (size_t i = 0; i < configs_.size(); i++) {
             if (uiDirty_[i].exchange(false, std::memory_order_acq_rel)) {
-                uiSignals_[i](snapshot->get(Handle{static_cast<uint32_t>(i)}).userValue);
+                auto v01 = values01_[i].load(std::memory_order_acquire);
+                auto userVal = configs_[i].range.denormalize(v01);
+                uiSignals_[i](userVal);
+
+                // Sync to registry for preset serialization
+                const Handle h{static_cast<uint32_t>(i)};
+                auto current = std::atomic_load(&registry_);
+                const ParamValue pv{
+                    .value01 = v01,
+                    .userValue = userVal,
+                    .toProcessor = configs_[i].toProcessor
+                };
+                auto updated = std::make_shared<StateRegistry<ParamValue>>(
+                    current->set(h, pv));
+                std::atomic_store(&registry_, updated);
             }
         }
     }
@@ -164,12 +158,12 @@ public:
                 value.value01 = cfg.range.normalize(value.userValue);
                 value.toProcessor = cfg.toProcessor;
                 reg = reg.set(h, value);
+
+                values01_[i].store(value.value01, std::memory_order_release);
             }
 
             uiDirty_[i].store(true, std::memory_order_release);
             audioDirty_[i].store(true, std::memory_order_release);
-            // Clear any pending values when loading preset
-            pendingValues_[i].store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_release);
         }
 
         std::atomic_store(&registry_,
@@ -181,64 +175,31 @@ public:
     // =====================================================================
 
     void dispatchAudioChanges() {
-        auto snapshot = std::atomic_load(&registry_);
-
         for (size_t i = 0; i < configs_.size(); i++) {
             if (audioDirty_[i].exchange(false, std::memory_order_acq_rel)) {
-                audioSignals_[i](snapshot->get(Handle{static_cast<uint32_t>(i)}).userValue);
+                auto v01 = values01_[i].load(std::memory_order_acquire);
+                auto userVal = configs_[i].range.denormalize(v01);
+                audioSignals_[i](userVal);
             }
         }
     }
 
-    StateRegistry<ParamValue> captureAudio() {
-        auto current = std::atomic_load(&registry_);
-
-        ParamChange change;
-        bool changed = false;
-
-        while (pendingChanges_.try_dequeue(change)) {
-            const auto& cfg = configs_[change.handle.index];
-
-            const auto* existing = current->tryGet(change.handle);
-            if (existing && almostEqual(existing->value01, change.normalized)) {
-                continue;
-            }
-
-            const ParamValue value{
-                .value01 = change.normalized,
-                .userValue = cfg.range.denormalize(change.normalized),
-                .toProcessor = cfg.toProcessor
-            };
-
-            current = std::make_shared<StateRegistry<ParamValue>>(
-                current->set(change.handle, value));
-            uiDirty_[change.handle.index].store(true, std::memory_order_release);
-            audioDirty_[change.handle.index].store(true, std::memory_order_release);
-            // Clear pending value now that it's been applied
-            pendingValues_[change.handle.index].store(std::numeric_limits<float>::quiet_NaN(), std::memory_order_release);
-            changed = true;
+    void snapshotInto(std::vector<ParamValue>& out) {
+        for (size_t i = 0; i < configs_.size(); i++) {
+            auto v01 = values01_[i].load(std::memory_order_acquire);
+            out[i].value01 = v01;
+            out[i].userValue = configs_[i].range.denormalize(v01);
+            out[i].toProcessor = configs_[i].toProcessor;
         }
-
-        if (changed) {
-            std::atomic_store(&registry_, current);
-        }
-
-        return *current;
     }
 
 private:
-    struct ParamChange {
-        Handle handle;
-        float normalized;
-    };
-
     std::shared_ptr<StateRegistry<ParamValue>> registry_;
-    moodycamel::ConcurrentQueue<ParamChange> pendingChanges_{64};
 
     std::deque<ParamConfig> configs_;
     std::deque<std::atomic<bool>> uiDirty_;
     std::deque<std::atomic<bool>> audioDirty_;
-    std::deque<std::atomic<float>> pendingValues_;  // NaN = no pending value
+    std::deque<std::atomic<float>> values01_;
     std::deque<sigslot::signal<float>> uiSignals_;
     std::deque<sigslot::signal<float>> audioSignals_;
 };

@@ -34,6 +34,11 @@ namespace {
     };
 
     JuceTestInit juceInit;
+
+    void snapshotState(ParamController& ctrl, ProcessState& state) {
+        state.params().resize(ctrl.size());
+        ctrl.snapshotInto(state.params());
+    }
 }
 
 // ============================================================================
@@ -82,7 +87,7 @@ TEST_CASE("ProcessState parameter values", "[state]") {
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
         REQUIRE_THAT(state.userValue(h), WithinAbs(-12.0, 0.0001));
     }
@@ -98,7 +103,7 @@ TEST_CASE("ProcessState parameter values", "[state]") {
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
         // Without toProcessor, value() should equal userValue()
         REQUIRE_THAT(state.value(h), WithinAbs(-12.0, 0.0001));
@@ -119,7 +124,7 @@ TEST_CASE("ProcessState parameter values", "[state]") {
 
         ProcessState state;
         state.setSampleRate(48000.0);
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
         // -20dB should convert to 0.1 linear
         REQUIRE_THAT(state.value(h), WithinAbs(0.1, 0.001));
@@ -133,16 +138,14 @@ TEST_CASE("ProcessState parameter values", "[state]") {
             .range = ParamRange::linear(-60.f, 12.f),
             .format = ValueFormatter::decibels(),
             .toProcessor = +[](float db, double, double) {
-                // Convert dB to linear gain: 10^(db/20)
                 return std::pow(10.f, db / 20.f);
             },
-            .defaultValue = -20.f  // -20dB = 0.1 linear
+            .defaultValue = -20.f
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
-        // -20dB should convert to 0.1 linear (10^(-20/20) = 10^-1 = 0.1)
         float result = state.value(h);
         REQUIRE_THAT(result, WithinAbs(0.1, 0.01));
     }
@@ -154,14 +157,12 @@ TEST_CASE("ProcessState parameter values", "[state]") {
             .name = "raw",
             .range = ParamRange::linear(0.f, 100.f),
             .format = ValueFormatter::number(),
-            // No toProcessor set
             .defaultValue = 42.f
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
-        // Without toProcessor, value() should return userValue
         REQUIRE_THAT(state.value(h), WithinAbs(42.0, 0.0001));
         REQUIRE_THAT(state.userValue(h), WithinAbs(42.0, 0.0001));
     }
@@ -184,7 +185,7 @@ TEST_CASE("ProcessState normalized values", "[state]") {
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
         REQUIRE_THAT(state.value01(h), WithinAbs(0.5, 0.0001));
     }
@@ -200,7 +201,7 @@ TEST_CASE("ProcessState normalized values", "[state]") {
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
         REQUIRE_THAT(state.value01(h), WithinAbs(0.5, 0.0001));
     }
@@ -223,7 +224,7 @@ TEST_CASE("ProcessState immutability", "[state]") {
         });
 
         ProcessState state;
-        state.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state);
 
         // Modify controller after capture
         ctrl.setValue(h, 75.f);
@@ -232,9 +233,8 @@ TEST_CASE("ProcessState immutability", "[state]") {
         REQUIRE_THAT(state.userValue(h), WithinAbs(50.0, 0.0001));
 
         // New capture should have new value
-        ctrl.captureAudio();
         ProcessState state2;
-        state2.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state2);
         REQUIRE_THAT(state2.userValue(h), WithinAbs(75.0, 0.0001));
     }
 
@@ -250,15 +250,15 @@ TEST_CASE("ProcessState immutability", "[state]") {
 
         ctrl.setValue(h, 25.f);
         ProcessState state1;
-        state1.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state1);
 
         ctrl.setValue(h, 50.f);
         ProcessState state2;
-        state2.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state2);
 
         ctrl.setValue(h, 75.f);
         ProcessState state3;
-        state3.params() = ctrl.captureAudio();
+        snapshotState(ctrl, state3);
 
         // All three states should retain their values
         REQUIRE_THAT(state1.userValue(h), WithinAbs(25.0, 0.0001));

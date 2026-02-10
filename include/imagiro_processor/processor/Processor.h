@@ -22,6 +22,7 @@ public:
 
     void initParameters() {
         juceAdapter_ = std::make_unique<JuceParamAdapter>(paramController_, *this);
+        audioThreadState_.params().resize(paramController_.size());
 
         if (paramController_.has("bypass")) {
             bypassHandle_ = paramController_.handle("bypass");
@@ -46,7 +47,7 @@ public:
         transport_.update(getPlayHead(), getSampleRate());
         juceAdapter_->pullFromHost();
 
-        const auto state = captureState();
+        const auto& state = captureState();
 
         if (bypassHandle_.isValid()) {
             bypassMixer_.setBypass(state.value(bypassHandle_) > 0.5f);
@@ -104,11 +105,11 @@ protected:
 
     virtual void afterProcess() {}
 
-    virtual ProcessState captureState() {
+    virtual const ProcessState& captureState() {
         audioThreadState_.setBpm(transport_.bpm());
         audioThreadState_.setSampleRate(transport_.sampleRate());
-        audioThreadState_.params() = paramController_.captureAudio();  // Lock-free atomic load + copy
-        paramController_.dispatchAudioChanges();  // Fire audio signals for changed params
+        paramController_.snapshotInto(audioThreadState_.params());
+        paramController_.dispatchAudioChanges();
         return audioThreadState_;
     }
 
