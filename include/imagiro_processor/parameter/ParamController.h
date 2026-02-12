@@ -40,6 +40,7 @@ public:
         configs_.push_back(std::move(config));
         uiDirty_.emplace_back(false);
         audioDirty_.emplace_back(false);
+        locked_.emplace_back(false);
         values01_.emplace_back(default01);
         uiSignals_.emplace_back();
         audioSignals_.emplace_back();
@@ -60,6 +61,9 @@ public:
     }
 
     size_t size() const { return configs_.size(); }
+
+    void setLocked(Handle h, bool locked) { locked_[h.index].store(locked, std::memory_order_release); }
+    bool isLocked(Handle h) const { return locked_[h.index].load(std::memory_order_acquire); }
 
     void setValue(Handle h, float userValue) {
         const auto& cfg = configs_[h.index];
@@ -147,10 +151,22 @@ public:
         return *std::atomic_load(&registry_);
     }
 
-    void setRegistryUI(StateRegistry<ParamValue> reg) {
+    void setRegistryUI(StateRegistry<ParamValue> reg, bool skipLocked = true) {
         for (size_t i = 0; i < configs_.size(); i++) {
             const Handle h{static_cast<uint32_t>(i)};
             const auto& cfg = configs_[i];
+
+            if (skipLocked && locked_[i].load(std::memory_order_acquire)) {
+                // Keep current value in the registry so serialization stays correct
+                auto v01 = values01_[i].load(std::memory_order_acquire);
+                ParamValue current{
+                    .value01 = v01,
+                    .userValue = cfg.range.denormalize(v01),
+                    .toProcessor = cfg.toProcessor
+                };
+                reg = reg.set(h, current);
+                continue;
+            }
 
             if (auto* pv = reg.tryGet(h)) {
                 ParamValue value = *pv;
@@ -199,6 +215,7 @@ private:
     std::deque<ParamConfig> configs_;
     std::deque<std::atomic<bool>> uiDirty_;
     std::deque<std::atomic<bool>> audioDirty_;
+    std::deque<std::atomic<bool>> locked_;
     std::deque<std::atomic<float>> values01_;
     std::deque<sigslot::signal<float>> uiSignals_;
     std::deque<sigslot::signal<float>> audioSignals_;

@@ -13,17 +13,21 @@ public:
         sampleRate = rate;
         quickfadeRate = static_cast<float>(1.0f / (quickfadeSeconds * sampleRate));
         quickfadeRate *= downsampleRate;
-        setParameters(params);
+        if (paramsDirty_) {
+            params = targetParams_;
+            paramsDirty_ = false;
+        }
+        applyParamsToADSR();
     }
 
     void setParameters(const ADSRParameters& p) {
-        params = p;
-        adsr.setAttackRate(params.attack * sampleRate / downsampleRate);
-        adsr.setDecayRate(params.decay * sampleRate / downsampleRate);
-        adsr.setReleaseRate(params.release * sampleRate / downsampleRate);
-        adsr.setSustainLevel(params.sustain);
-        adsr.setTargetRatioA(0.3f * params.attack);
-        adsr.setTargetRatioDR(0.02f);
+        if (!isActive() && !quickfading) {
+            params = p;
+            applyParamsToADSR();
+            return;
+        }
+        targetParams_ = p;
+        paramsDirty_ = true;
     }
 
     void noteOn() { adsr.setNoteOn(true); }
@@ -41,6 +45,11 @@ public:
         targetLevel = 0.f;
         lastTargetLevel = 0.f;
         downsampleCounter = 0.f;
+        if (paramsDirty_) {
+            params = targetParams_;
+            applyParamsToADSR();
+            paramsDirty_ = false;
+        }
     }
 
     void setMaxBlockSize(int samples) {
@@ -53,6 +62,9 @@ public:
         if (downsampleCounter >= 1.f) {
             downsampleCounter = 0.f;
             lastTargetLevel = targetLevel;
+
+            if (paramsDirty_) smoothParamsStep();
+
             targetLevel = quickfading ? (targetLevel - quickfadeRate) : adsr.process();
 
             if (quickfading && targetLevel < 0.f) {
@@ -68,7 +80,8 @@ public:
 
     void applyToBuffer(juce::AudioSampleBuffer& buffer, int numChannels, int numSamples) {
         // Fast path: in sustain phase with settled level, output is constant
-        if (!quickfading && adsr.getState() == ADSR::EnvState::env_sustain
+        if (!quickfading && !paramsDirty_
+            && adsr.getState() == ADSR::EnvState::env_sustain
             && lastTargetLevel == targetLevel) {
             outputLevel = targetLevel;
             for (int c = 0; c < numChannels; c++) {
@@ -108,4 +121,36 @@ private:
     const int downsampleRate = 16;
     const float downsampleInv = 1.f / static_cast<float>(downsampleRate);
     float downsampleCounter = 0;
+
+    ADSRParameters targetParams_;
+    bool paramsDirty_ {false};
+    static constexpr float paramSmoothAlpha_ = 0.1f;
+
+    void applyParamsToADSR() {
+        adsr.setAttackRate(params.attack * sampleRate / downsampleRate);
+        adsr.setDecayRate(params.decay * sampleRate / downsampleRate);
+        adsr.setReleaseRate(params.release * sampleRate / downsampleRate);
+        adsr.setSustainLevel(params.sustain);
+        adsr.setTargetRatioA(0.3f * params.attack);
+        adsr.setTargetRatioDR(0.02f);
+    }
+
+    void smoothParamsStep() {
+        bool converged = true;
+        auto smoothOne = [&](float& current, float target) {
+            float diff = target - current;
+            if (std::abs(diff) < 0.0001f) {
+                current = target;
+            } else {
+                current += diff * paramSmoothAlpha_;
+                converged = false;
+            }
+        };
+        smoothOne(params.attack, targetParams_.attack);
+        smoothOne(params.decay, targetParams_.decay);
+        smoothOne(params.sustain, targetParams_.sustain);
+        smoothOne(params.release, targetParams_.release);
+        applyParamsToADSR();
+        if (converged) paramsDirty_ = false;
+    }
 };
