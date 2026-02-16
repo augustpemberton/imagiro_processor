@@ -4,6 +4,7 @@
 
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <nlohmann/json.hpp>
 
     class ADSRParameters : public juce::ADSR::Parameters {
     public:
@@ -14,22 +15,20 @@
             && sustain == other.sustain
             && release == other.release;
         }
-
-        [[nodiscard]] choc::value::Value getState() const {
-            auto state = choc::value::createObject("ADSRParams");
-            state.addMember("attack", attack);
-            state.addMember("decay", decay);
-            state.addMember("sustain", sustain);
-            state.addMember("release", release);
-            return state;
-        }
-
-        static ADSRParameters fromState(const choc::value::ValueView& state) {
-            ADSRParameters p;
-            p.attack = state["attack"].getWithDefault(0.01f);
-            p.decay = state["decay"].getWithDefault(0.4f);
-            p.sustain = state["sustain"].getWithDefault(1.f);
-            p.release = state["release"].getWithDefault(0.4f);
-            return p;
-        }
     };
+
+    inline void to_json(nlohmann::json& j, const ADSRParameters& p) {
+        j = nlohmann::json{
+            {"attack", p.attack},
+            {"decay", p.decay},
+            {"sustain", p.sustain},
+            {"release", p.release}
+        };
+    }
+
+    inline void from_json(const nlohmann::json& j, ADSRParameters& p) {
+        p.attack = j.value("attack", 0.01f);
+        p.decay = j.value("decay", 0.4f);
+        p.sustain = j.value("sustain", 1.f);
+        p.release = j.value("release", 0.4f);
+    }

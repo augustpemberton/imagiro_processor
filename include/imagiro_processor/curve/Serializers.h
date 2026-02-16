@@ -7,28 +7,28 @@
 #include "CurvePoint.h"
 #include "Point2D.h"
 #include "2d/BezierSegment.h"
-#include "choc/containers/choc_Value.h"
+#include <nlohmann/json.hpp>
 #include "juce_core/system/juce_PlatformDefs.h"
 #include "../valuedata/Serialize.h"
 #include "2d/Path2D.h"
-#include "choc/text/choc_JSON.h"
 
 using namespace imagiro;
+using json = nlohmann::json;
 
 template<>
 struct Serializer<Point2D> {
-    static choc::value::Value serialize(const Point2D& point) {
-        auto val = choc::value::createObject("Point2D");
-        val.addMember("x", choc::value::Value(point.x));
-        val.addMember("y", choc::value::Value(point.y));
+    static json serialize(const Point2D& point) {
+        auto val = json::object();
+        val["x"] = point.x;
+        val["y"] = point.y;
         return val;
     }
 
-    static Point2D load(const choc::value::ValueView& state) {
+    static Point2D load(const json& state) {
         Point2D point;
         try {
-            point.x = state["x"].getWithDefault(0.f);
-            point.y = state["y"].getWithDefault(0.f);
+            point.x = state.value("x", 0.f);
+            point.y = state.value("y", 0.f);
         } catch (...) {
             jassertfalse;
         }
@@ -38,16 +38,16 @@ struct Serializer<Point2D> {
 
 template<>
 struct Serializer<BezierSegment> {
-    static choc::value::Value serialize(const BezierSegment& segment) {
-        auto val = choc::value::createObject("BezierSegment");
-        val.addMember("start", Serializer<Point2D>::serialize(segment.start));
-        val.addMember("control1", Serializer<Point2D>::serialize(segment.control1));
-        val.addMember("control2", Serializer<Point2D>::serialize(segment.control2));
-        val.addMember("end", Serializer<Point2D>::serialize(segment.end));
+    static json serialize(const BezierSegment& segment) {
+        auto val = json::object();
+        val["start"] = Serializer<Point2D>::serialize(segment.start);
+        val["control1"] = Serializer<Point2D>::serialize(segment.control1);
+        val["control2"] = Serializer<Point2D>::serialize(segment.control2);
+        val["end"] = Serializer<Point2D>::serialize(segment.end);
         return val;
     }
 
-    static BezierSegment load(const choc::value::ValueView& state) {
+    static BezierSegment load(const json& state) {
         BezierSegment segment{Point2D(), Point2D(), Point2D(), Point2D()};
         try {
             segment.start = Serializer<Point2D>::load(state["start"]);
@@ -63,25 +63,25 @@ struct Serializer<BezierSegment> {
 
 template<>
 struct Serializer<CurvePoint> {
-    static choc::value::Value serialize(const CurvePoint& point) {
-        auto val = choc::value::createObject("CurvePoint");
-        val.addMember("position", Serializer<Point2D>::serialize(point.position));
-        val.addMember("curve", choc::value::Value(point.curve));
+    static json serialize(const CurvePoint& point) {
+        auto val = json::object();
+        val["position"] = Serializer<Point2D>::serialize(point.position);
+        val["curve"] = point.curve;
         return val;
     }
 
-    static CurvePoint load(const choc::value::ValueView& state) {
+    static CurvePoint load(const json& state) {
         CurvePoint point;
         try {
-            if (state.hasObjectMember("x")) {
+            if (state.contains("x")) {
                 // here for compatibility with old mappings, where x and y are directly in the point
                 point.position = Serializer<Point2D>::load(state);
             } else {
                 point.position = Serializer<Point2D>::load(state["position"]);
             }
-            point.curve = state["curve"].getWithDefault(0.f);
+            point.curve = state.value("curve", 0.f);
         } catch (...) {
-            DBG(choc::json::toString(state));
+            DBG(state.dump());
             jassertfalse;
         }
         return point;
@@ -89,18 +89,19 @@ struct Serializer<CurvePoint> {
 };
 
 
-static Curve loadLegacyCurve(const choc::value::ValueView& state) {
+static Curve loadLegacyCurve(const json& state) {
     Curve c;
-    for (auto i=0; i<state["segments"].size(); i++) {
+    auto& segments = state["segments"];
+    for (size_t i = 0; i < segments.size(); i++) {
         c.addPoint(CurvePoint{
-            state["segments"][i]["start"]["x"].getWithDefault(0.f),
-            state["segments"][i]["start"]["y"].getWithDefault(0.f),
+            segments[i]["start"].value("x", 0.f),
+            segments[i]["start"].value("y", 0.f),
             0
         });
-        if (i == state["segments"].size() - 1) {
+        if (i == segments.size() - 1) {
             c.addPoint(CurvePoint{
-                state["segments"][i]["end"]["x"].getWithDefault(0.f),
-                state["segments"][i]["end"]["y"].getWithDefault(0.f),
+                segments[i]["end"].value("x", 0.f),
+                segments[i]["end"].value("y", 0.f),
                 0
             });
         }
@@ -110,18 +111,18 @@ static Curve loadLegacyCurve(const choc::value::ValueView& state) {
 
 template<>
 struct Serializer<Curve> {
-    static choc::value::Value serialize(const Curve& curve) {
-        auto state = choc::value::createEmptyArray();
+    static json serialize(const Curve& curve) {
+        auto state = json::array();
         for (const auto& [x, point] : curve.getPoints()) {
-            state.addArrayElement(Serializer<CurvePoint>::serialize(point));
+            state.push_back(Serializer<CurvePoint>::serialize(point));
         }
         return state;
     }
 
-    static Curve load(const choc::value::ValueView& state) {
+    static Curve load(const json& state) {
         Curve curve;
         try {
-            if (state.isObject() && state.hasObjectMember("segments")) {
+            if (state.is_object() && state.contains("segments")) {
                 curve = loadLegacyCurve(state);
             } else {
                 for (const auto& pointState : state) {
@@ -138,19 +139,19 @@ struct Serializer<Curve> {
 
 template<>
 struct Serializer<Path2D> {
-    static choc::value::Value serialize(const Path2D& path) {
-        auto state = choc::value::createObject("Path2D");
-        auto segmentsArray = choc::value::createEmptyArray();
+    static json serialize(const Path2D& path) {
+        auto state = json::object();
+        auto segmentsArray = json::array();
 
         for (const auto& segment : path.getSegments()) {
-            segmentsArray.addArrayElement(Serializer<BezierSegment>::serialize(segment));
+            segmentsArray.push_back(Serializer<BezierSegment>::serialize(segment));
         }
 
-        state.addMember("segments", segmentsArray);
+        state["segments"] = segmentsArray;
         return state;
     }
 
-    static Path2D load(const choc::value::ValueView& state) {
+    static Path2D load(const json& state) {
         Path2D path;
         try {
             for (const auto& segmentState : state["segments"]) {
@@ -162,4 +163,3 @@ struct Serializer<Path2D> {
         return path;
     }
 };
-

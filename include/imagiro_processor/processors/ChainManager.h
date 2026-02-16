@@ -6,6 +6,7 @@
 #include "ProcessorChainProcessor.h"
 #include "chorus/ChorusProcessor.h"
 #include "imagiro_processor/src/parameter/ProxyParameter.h"
+#include <nlohmann/json.hpp>
 
 namespace imagiro {
     template<typename ItemType, typename ProcessorType>
@@ -124,43 +125,45 @@ namespace imagiro {
 
         auto& getProxyParameterMap() { return mappedProxyParameters; }
 
-        choc::value::Value getState() {
-            auto states = choc::value::createEmptyArray();
+        json getState() {
+            auto states = json::array();
             for (auto& item : currentChain) {
-                auto state = choc::value::createObject("ChainItem");
-                state.addMember("type", static_cast<int>(item.type));
-                state.addMember("id", item.id);
+                auto state = json::object();
+                state["type"] = static_cast<int>(item.type);
+                state["id"] = item.id;
 
-                auto processorPreset = item.processor->createPreset("", true);
-                state.addMember("ProcessorState", processorPreset.getState());
-                states.addArrayElement(state);
+                auto processorPreset = item.processor->savePreset();
+                state["ProcessorState"] = processorPreset.toJson();
+                states.push_back(state);
             }
             return states;
         }
 
-        void loadState(const choc::value::ValueView& state, bool sync = false) {
+        void loadState(const json& state, bool sync = false) {
             Chain chain;
             for (const auto& itemState : state) {
-                auto itemType = static_cast<ItemType>(itemState["type"].getWithDefault(0));
-                auto id = itemState["id"].getWithDefault(-1);
-                auto processorState = Preset::fromState(itemState["ProcessorState"]);
+                auto itemType = static_cast<ItemType>(itemState.value("type", 0));
+                auto id = itemState.value("id", -1);
 
                 if (id >= numSlots) continue;
 
                 Item item{id, itemType};
                 item.processor = createNewProcessor(item.type, item.id);
                 proxyMapItem(item);
-                item.processor->loadPreset(processorState);
+
+                if (auto processorState = Preset::fromJson(itemState["ProcessorState"])) {
+                    item.processor->loadPreset(*processorState);
+                }
                 chain.push_back(item);
             }
 
             setChain(chain, sync);
         }
 
-        virtual choc::value::Value getItemState(const Item& item) {
-            auto chainValue = choc::value::createObject("item");
-            chainValue.setMember("type", static_cast<int>(item.type));
-            chainValue.setMember("id", item.id);
+        virtual json getItemState(const Item& item) {
+            json chainValue = json::object();
+            chainValue["type"] = static_cast<int>(item.type);
+            chainValue["id"] = item.id;
             return chainValue;
         }
 

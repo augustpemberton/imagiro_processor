@@ -4,29 +4,31 @@
 
 #pragma once
 #include "GrainSettings.h"
-#include <choc/containers/choc_Value.h>
+#include <nlohmann/json.hpp>
 #include "juce_core/juce_core.h"
 #include "../valuedata/Serialize.h"
+
+using json = nlohmann::json;
 
 // LoopSettings serializer
 template<>
 struct Serializer<LoopSettings> {
-    static choc::value::Value serialize(const LoopSettings& settings) {
-        auto val = choc::value::createObject("LoopSettings");
-        val.setMember("loopStart", choc::value::Value{settings.loopStart});
-        val.setMember("loopLength", choc::value::Value{settings.loopLength});
-        val.setMember("loopCrossfade", choc::value::Value{settings.loopCrossfade});
-        val.setMember("loopActive", choc::value::Value{settings.loopActive});
+    static json serialize(const LoopSettings& settings) {
+        json val = json::object();
+        val["loopStart"] = settings.loopStart;
+        val["loopLength"] = settings.loopLength;
+        val["loopCrossfade"] = settings.loopCrossfade;
+        val["loopActive"] = settings.loopActive;
         return val;
     }
 
-    static LoopSettings load(const choc::value::ValueView& state) {
+    static LoopSettings load(const json& state) {
         LoopSettings settings;
         try {
-            settings.loopStart = state["loopStart"].getWithDefault(0.0f);
-            settings.loopLength = state["loopLength"].getWithDefault(0.0f);
-            settings.loopCrossfade = state["loopCrossfade"].getWithDefault(0.0f);
-            settings.loopActive = state["loopActive"].getWithDefault(false);
+            settings.loopStart = state.value("loopStart", 0.0f);
+            settings.loopLength = state.value("loopLength", 0.0f);
+            settings.loopCrossfade = state.value("loopCrossfade", 0.0f);
+            settings.loopActive = state.value("loopActive", false);
         } catch (...) {
             DBG("Unable to parse LoopSettings!");
             jassertfalse;
@@ -38,34 +40,34 @@ struct Serializer<LoopSettings> {
 // GrainSettings serializer
 template<>
 struct Serializer<GrainSettings> {
-    static choc::value::Value serialize(const GrainSettings& settings) {
-        auto val = choc::value::createObject("GrainSettings");
-        val.setMember("duration", choc::value::Value{settings.duration});
-        val.setMember("position", choc::value::Value{settings.position});
-        val.setMember("loopSettings", Serializer<LoopSettings>::serialize(settings.loopSettings));
-        val.setMember("gain", choc::value::Value{settings.gain});
-        val.setMember("pitch", choc::value::Value{settings.pitch});
-        val.setMember("pan", choc::value::Value{settings.pan});
-        val.setMember("spread", choc::value::Value{settings.spread});
-        val.setMember("shape", choc::value::Value{settings.shape});
-        val.setMember("skew", choc::value::Value{settings.skew});
-        val.setMember("reverse", choc::value::Value{settings.reverse});
+    static json serialize(const GrainSettings& settings) {
+        json val = json::object();
+        val["duration"] = settings.duration;
+        val["position"] = settings.position;
+        val["loopSettings"] = Serializer<LoopSettings>::serialize(settings.loopSettings);
+        val["gain"] = settings.gain;
+        val["pitch"] = settings.pitch;
+        val["pan"] = settings.pan;
+        val["spread"] = settings.spread;
+        val["shape"] = settings.shape;
+        val["skew"] = settings.skew;
+        val["reverse"] = settings.reverse;
         return val;
     }
 
-    static GrainSettings load(const choc::value::ValueView& state) {
+    static GrainSettings load(const json& state) {
         GrainSettings settings;
         try {
-            settings.duration = state["duration"].getWithDefault(0.5f);
-            settings.position = state["position"].getWithDefault(0.0f);
+            settings.duration = state.value("duration", 0.5f);
+            settings.position = state.value("position", 0.0f);
             settings.loopSettings = Serializer<LoopSettings>::load(state["loopSettings"]);
-            settings.gain = state["gain"].getWithDefault(1.0f);
-            settings.pitch = state["pitch"].getWithDefault(0.0f);
-            settings.pan = state["pan"].getWithDefault(0.5f);
-            settings.spread = state["spread"].getWithDefault(0.0f);
-            settings.shape = state["shape"].getWithDefault(0.5f);
-            settings.skew = state["skew"].getWithDefault(0.5f);
-            settings.reverse = state["reverse"].getWithDefault(false);
+            settings.gain = state.value("gain", 1.0f);
+            settings.pitch = state.value("pitch", 0.0f);
+            settings.pan = state.value("pan", 0.5f);
+            settings.spread = state.value("spread", 0.0f);
+            settings.shape = state.value("shape", 0.5f);
+            settings.skew = state.value("skew", 0.5f);
+            settings.reverse = state.value("reverse", false);
         } catch (...) {
             DBG("Unable to parse GrainSettings!");
             jassertfalse;

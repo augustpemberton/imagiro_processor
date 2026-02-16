@@ -1,13 +1,16 @@
 #pragma once
 
 #include <utility>
+#include <nlohmann/json.hpp>
 #include "ValueData.h"
 #include <imagiro_util/readerwriterqueue/readerwriterqueue.h>
 
+using json = nlohmann::json;
+
 template<typename T>
 struct Serializer {
-    static choc::value::Value serialize(const T& value);
-    static T load(const choc::value::ValueView& value);
+    static json serialize(const T& value) { return json(value); }
+    static T load(const json& j) { return j.get<T>(); }
 };
 
 
@@ -21,7 +24,7 @@ private:
     ValueData& valueData;
     std::string key;
     bool saveInPreset;
-    
+
     // Prevent infinite recursion during sync
     std::atomic<bool> syncing{false};
 
@@ -34,7 +37,7 @@ public:
     SerializableValue(ValueData& valueData, std::string key,
                      const T& initialValue = T{}, const bool saveInPreset = false)
         : value(initialValue), valueData(valueData), key(std::move(key)), saveInPreset(saveInPreset) {
-        
+
         valueData.addListener(this);
 
         // Load existing value from ValueData if it exists
@@ -47,7 +50,7 @@ public:
             syncToValueData();
         }
     }
-    
+
     ~SerializableValue() override {
         valueData.removeListener(this);
     }
@@ -70,24 +73,24 @@ public:
         value = newValue;
         realtimeUpdateQueue.try_enqueue(newValue);
         syncToValueData();
-        
+
         if (onChanged) {
             onChanged(value);
         }
     }
-    
+
     // Operator overloads for convenience
     SerializableValue& operator=(const T& newValue) {
         set(newValue);
         return *this;
     }
-    
+
     explicit operator const T&() const { return value; }
-    
+
     // Direct access to members (for Point.x, Point.y etc.)
     T* operator->() { return &value; }
     const T* operator->() const { return &value; }
-    
+
     T& operator*() { return value; }
     const T& operator*() const { return value; }
 
@@ -99,16 +102,16 @@ public:
     // Manual sync methods
     void syncToValueData() {
         if (syncing.load()) return;
-        
+
         syncing = true;
         auto serialized = Serializer<T>::serialize(value);
         valueData.set(key, serialized, saveInPreset);
         syncing = false;
     }
-    
+
     void syncFromValueData() {
         if (syncing.load()) return;
-        
+
         const auto value = valueData.get(key);
         if (value.has_value()) {
             syncing = true;
@@ -116,8 +119,8 @@ public:
             syncing = false;
         }
     }
-    
-    void OnValueDataUpdated(ValueData& s, const std::string& key_, const choc::value::ValueView& newValue) override {
+
+    void OnValueDataUpdated(ValueData& s, const std::string& key_, const json& newValue) override {
         if (key_ == key) {
             syncFromValueData();
         }

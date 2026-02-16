@@ -3,26 +3,26 @@
 //
 
 #pragma once
-#include <choc/containers/choc_Value.h>
+#include <nlohmann/json.hpp>
 
 struct Transient {
-    Transient(int sample, float db, bool enabled = true) : transientSample(sample), transientDb(db) {}
+    Transient() = default;
+    Transient(int sample, float db, bool enabled = true) : transientSample(sample), transientDb(db), enabled(enabled) {}
     int transientSample {0};
     float transientDb {0};
     bool enabled {true};
-
-    [[nodiscard]] choc::value::Value getState() const {
-        auto v = choc::value::createObject("Transient");
-        v.addMember("transientSample", transientSample);
-        v.addMember("transientDb", transientDb);
-        v.addMember("enabled", enabled);
-        return v;
-    }
-
-    static Transient fromState(const choc::value::ValueView& state) {
-        return { state["transientSample"].getWithDefault(0),
-                 state["transientDb"].getWithDefault(0.f),
-                 state["enabled"].getWithDefault(true) };
-    }
-
 };
+
+inline void to_json(nlohmann::json& j, const Transient& t) {
+    j = nlohmann::json{
+        {"transientSample", t.transientSample},
+        {"transientDb", t.transientDb},
+        {"enabled", t.enabled}
+    };
+}
+
+inline void from_json(const nlohmann::json& j, Transient& t) {
+    t.transientSample = j.value("transientSample", 0);
+    t.transientDb = j.value("transientDb", 0.f);
+    t.enabled = j.value("enabled", true);
+}

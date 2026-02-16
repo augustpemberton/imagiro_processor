@@ -7,17 +7,17 @@
 
 template<>
 struct Serializer<Grain::Serialized> {
-    static choc::value::Value serialize(const Grain::Serialized& g) {
-        auto state = choc::value::createObject("Grain");
-        state.addMember("position", g.position);
-        state.addMember("loopFadePosition", g.loopFadePosition);
-        state.addMember("loopFadeProgress", g.loopFadeProgress);
-        state.addMember("gain", g.gain);
-        state.addMember("pitchRatio", g.pitchRatio);
+    static json serialize(const Grain::Serialized& g) {
+        json state = json::object();
+        state["position"] = g.position;
+        state["loopFadePosition"] = g.loopFadePosition;
+        state["loopFadeProgress"] = g.loopFadeProgress;
+        state["gain"] = g.gain;
+        state["pitchRatio"] = g.pitchRatio;
         return state;
     }
 
-    static Grain::Serialized load(const choc::value::ValueView& state) {
+    static Grain::Serialized load(const json& state) {
         jassertfalse; // this is meant to be one-way
         return Grain::Serialized();
     }

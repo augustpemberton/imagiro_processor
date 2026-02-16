@@ -37,7 +37,6 @@ target_include_directories(imagiro_processor PUBLIC
 
 target_link_libraries(imagiro_processor PUBLIC
         juce::juce_audio_basics
-        choc
         imagiro_util
         immer
         nlohmann_json::nlohmann_json
