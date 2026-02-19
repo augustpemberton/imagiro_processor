@@ -9,6 +9,8 @@
 
 #include <expected>
 
+namespace imagiro {
+
 template<typename T>
 using Result = std::expected<T, std::string>;
 
@@ -16,7 +18,7 @@ using Result = std::expected<T, std::string>;
 struct CacheKey {
     std::vector<std::unique_ptr<Transform>> transforms;
     size_t nocacheIndex = std::numeric_limits<size_t>::max();
-    
+
     // Get key for partial chain up to (but not including) index
     CacheKey getPartialKey(size_t upToIndex) const {
         CacheKey partial;
@@ -26,12 +28,12 @@ struct CacheKey {
         }
         return partial;
     }
-    
+
     // Get hash for the full chain
     size_t getHash() const {
         return getPartialHash(transforms.size());
     }
-    
+
     // Get hash up to specific transform index
     size_t getPartialHash(size_t upToIndex) const {
         size_t hash = 0;
@@ -40,18 +42,18 @@ struct CacheKey {
         }
         return hash;
     }
-    
+
     // Copy constructor
     CacheKey(const CacheKey& other) : nocacheIndex(other.nocacheIndex) {
         for (const auto& transform : other.transforms) {
             transforms.push_back(transform->clone());
         }
     }
-    
+
     CacheKey() = default;
     CacheKey(CacheKey&&) = default;
     CacheKey& operator=(CacheKey&&) = default;
-    
+
     CacheKey& operator=(const CacheKey& other) {
         if (this != &other) {
             transforms.clear();
@@ -78,9 +80,9 @@ struct CacheEntry {
     std::string errorMessage;
     size_t sizeInBytes = 0;
     std::chrono::steady_clock::time_point lastAccess;
-    
+
     CacheEntry() : lastAccess(std::chrono::steady_clock::now()) {}
-    
+
     void updateAccess() {
         lastAccess = std::chrono::steady_clock::now();
     }
@@ -91,3 +93,5 @@ struct LoadRequest {
     CacheKey key;
     std::shared_ptr<std::promise<Result<std::shared_ptr<InfoBuffer>>>> promise;
 };
+
+} // namespace imagiro

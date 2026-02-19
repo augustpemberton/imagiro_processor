@@ -20,7 +20,7 @@ public:
         applyParamsToADSR();
     }
 
-    void setParameters(const ADSRParameters& p) {
+    void setParameters(const imagiro::ADSRParameters& p) {
         if (!isActive() && !quickfading) {
             params = p;
             applyParamsToADSR();
@@ -35,7 +35,7 @@ public:
     void quickFadeOut() { quickfading = true; }
     bool isQuickfadingOut() const { return quickfading; }
     int getQuickfadeLengthSamples() const { return static_cast<int>(quickfadeSeconds * sampleRate); }
-    bool isActive() const { return adsr.getState() != ADSR::EnvState::env_idle; }
+    bool isActive() const { return adsr.getState() != imagiro::ADSR::EnvState::env_idle; }
     float getCurrentLevel() const { return outputLevel; }
 
     void reset() {
@@ -81,7 +81,7 @@ public:
     void applyToBuffer(juce::AudioSampleBuffer& buffer, int numChannels, int numSamples) {
         // Fast path: in sustain phase with settled level, output is constant
         if (!quickfading && !paramsDirty_
-            && adsr.getState() == ADSR::EnvState::env_sustain
+            && adsr.getState() == imagiro::ADSR::EnvState::env_sustain
             && lastTargetLevel == targetLevel) {
             outputLevel = targetLevel;
             for (int c = 0; c < numChannels; c++) {
@@ -105,8 +105,8 @@ public:
 
 private:
     juce::AudioSampleBuffer envTempBuffer;
-    ADSR adsr;
-    ADSRParameters params;
+    imagiro::ADSR adsr;
+    imagiro::ADSRParameters params;
 
     float lastTargetLevel {0};
     float outputLevel {0};
@@ -122,7 +122,7 @@ private:
     const float downsampleInv = 1.f / static_cast<float>(downsampleRate);
     float downsampleCounter = 0;
 
-    ADSRParameters targetParams_;
+    imagiro::ADSRParameters targetParams_;
     bool paramsDirty_ {false};
     static constexpr float paramSmoothAlpha_ = 0.1f;
 

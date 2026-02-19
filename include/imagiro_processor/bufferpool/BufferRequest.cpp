@@ -1,6 +1,8 @@
 #include "BufferRequest.h"
 #include "FileBufferCache.h"
 
+namespace imagiro {
+
 BufferRequest::BufferRequest(FileBufferCache* c, const std::string& path): cache(c) {
     // Start with a LoadTransform
     key.transforms.push_back(std::make_unique<LoadTransform>(path, cache->afm));
@@ -37,10 +39,12 @@ BufferRequest& BufferRequest::nocache(size_t fromIndex) {
     return *this;
 }
 
-BufferRequestHandle BufferRequest::execute() {
+std::shared_ptr<BufferRequestHandle> BufferRequest::execute() {
     return cache->createHandle(key);
 }
 
 Result<std::shared_ptr<InfoBuffer>> BufferRequest::executeBlocking() {
     return cache->requestBuffer(key);
 }
+
+} // namespace imagiro

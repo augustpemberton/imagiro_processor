@@ -6,6 +6,8 @@
 #include "juce_dsp/juce_dsp.h"
 #include "juce_audio_formats/juce_audio_formats.h"
 
+namespace imagiro {
+
 class LoadTransform : public Transform {
 public:
     LoadTransform(std::string path,
@@ -211,3 +213,5 @@ public:
 
     std::string getLastError() const override { return lastError; }
 };
+
+} // namespace imagiro

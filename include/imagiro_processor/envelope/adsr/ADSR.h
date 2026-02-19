@@ -24,6 +24,8 @@
 #define ADRS_h
 #include "imagiro_util/util.h"
 
+namespace imagiro {
+
 class ADSR {
 public:
     enum class EnvState {
@@ -64,7 +66,7 @@ protected:
     double attackBase;
     double decayBase;
     double releaseBase;
- 
+
     double calcCoef(double rate, double targetRatio);
 };
 
@@ -86,7 +88,7 @@ inline double ADSR::process() {
             if (output <= sustainLevel) {
                 output = sustainLevel;
 
-                state = imagiro::almostEqual(sustainLevel, 0.) ? EnvState::env_idle: EnvState::env_sustain;
+                state = almostEqual(sustainLevel, 0.) ? EnvState::env_idle: EnvState::env_sustain;
             }
             break;
         case EnvState::env_release:
@@ -119,5 +121,7 @@ inline void ADSR::reset() {
 inline double ADSR::getOutput() {
 	return output;
 }
+
+} // namespace imagiro
 
 #endif

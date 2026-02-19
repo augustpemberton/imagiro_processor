@@ -4,6 +4,8 @@
 #include "BufferRequest.h"
 #include <memory>
 
+namespace imagiro {
+
 // Main interface combining cache and loader
 class FileBufferCache {
 public:
@@ -36,7 +38,9 @@ private:
     std::unique_ptr<BufferLoader> loader;
 
     // Internal methods for BufferRequest/Handle
-    BufferRequestHandle createHandle(const CacheKey& key);
+    std::shared_ptr<BufferRequestHandle> createHandle(const CacheKey& key);
     std::optional<std::shared_ptr<InfoBuffer>> getBuffer(const CacheKey& key);
     Result<std::shared_ptr<InfoBuffer>> requestBuffer(const CacheKey& key);
 };
+
+} // namespace imagiro

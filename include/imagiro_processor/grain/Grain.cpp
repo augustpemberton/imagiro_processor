@@ -123,7 +123,7 @@ void Grain::updateLoopSettings(LoopSettings s, bool force) {
 
 void Grain::resetBuffer() { currentBuffer.reset(); }
 
-void Grain::setBuffer(const std::shared_ptr<InfoBuffer>& buf) {
+void Grain::setBuffer(const std::shared_ptr<imagiro::InfoBuffer>& buf) {
     if (buf == currentBuffer) return;
     currentBuffer = buf;
 }

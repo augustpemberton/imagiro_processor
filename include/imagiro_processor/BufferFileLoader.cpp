@@ -34,7 +34,7 @@ void BufferFileLoader::timerCallback() {
 }
 
 void BufferFileLoader::run() {
-    auto buffer = std::make_shared<InfoBuffer>();
+    auto buffer = std::make_shared<imagiro::InfoBuffer>();
 
     DBG("loading file " + fileToLoad.getFullPathName());
     auto reader = std::unique_ptr<juce::AudioFormatReader>(afm.createReaderFor(fileToLoad));
@@ -55,16 +55,6 @@ void BufferFileLoader::run() {
     buffer->buffer.setSize((int)reader->numChannels, nInterpSamples);
     buffer->file = fileToLoad;
     buffer->sampleRate = reader->sampleRate;
-
-    // for (auto c=0; c<buffer->getNumChannels(); c++) {
-    //     for (auto s=0; s<buffer->getNumSamples(); s++) {
-    //         buffer->setSample(c,s, 1);
-    //     }
-    // }
-    //
-    // listeners.call(&Listener::OnFileLoadComplete, buffer, reader->sampleRate, normalizeFile ? 1.f : magnitude);
-    // return;
-
 
     juce::AudioSampleBuffer tempLoadBuffer ( reader->numChannels, reader->lengthInSamples);
     juce::AudioSampleBuffer tempInterpBuffer ( reader->numChannels, nInterpSamples);

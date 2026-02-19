@@ -4,6 +4,8 @@
 #include <memory>
 #include <functional>
 
+namespace imagiro {
+
 class Transform {
 public:
     virtual ~Transform() = default;
@@ -24,3 +26,5 @@ public:
     // For debugging/logging
     virtual std::string getDescription() const = 0;
 };
+
+} // namespace imagiro

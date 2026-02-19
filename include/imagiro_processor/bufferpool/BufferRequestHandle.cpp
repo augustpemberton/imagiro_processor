@@ -2,6 +2,8 @@
 #include "FileBufferCache.h"
 #include "juce_events/juce_events.h"
 
+namespace imagiro {
+
 BufferRequestHandle::BufferRequestHandle(FileBufferCache* c, const CacheKey& k)
     : cache(c), key(k) {
     // Create promise/future pair
@@ -77,3 +79,5 @@ std::optional<std::string> BufferRequestHandle::getError() const {
 
     return std::nullopt;
 }
+
+} // namespace imagiro

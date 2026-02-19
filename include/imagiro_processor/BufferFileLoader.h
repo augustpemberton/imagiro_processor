@@ -25,7 +25,7 @@ public:
         virtual ~Listener() = default;
 
         virtual void OnFileLoadProgress(float progress) {}
-        virtual void OnFileLoadComplete(std::shared_ptr<InfoBuffer> buffer) {}
+        virtual void OnFileLoadComplete(std::shared_ptr<imagiro::InfoBuffer> buffer) {}
         virtual void OnFileLoadError(const std::string& error) {}
     };
 
@@ -41,7 +41,7 @@ private:
 
     const int oversampleRatio = 1;
 
-    std::shared_ptr<InfoBuffer> loadedBuffer {nullptr};
+    std::shared_ptr<imagiro::InfoBuffer> loadedBuffer {nullptr};
     std::atomic<bool> loadCompleteFlag {false};
 
     std::atomic<float> progress;

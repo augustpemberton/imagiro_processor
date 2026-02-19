@@ -4,9 +4,9 @@
 
 #pragma once
 #include <juce_audio_basics/juce_audio_basics.h>
-
-#include "../parameter/modulation/ModMatrix.h"
-#include "../parameter/modulation/MultichannelValue.h"
+#include "../note/ScaledMPENote.h"
+#include <imagiro_util/structures/FixedHashSet.h>
+#include <imagiro_util/structures/beman/inplace_vector.h>
 
 class MPESynth : public juce::MPESynthesiserBase {
 public:
@@ -27,15 +27,8 @@ public:
     }
 
     void renderNextSubBlock(juce::AudioSampleBuffer& out, int startSample, int numSamples) override {
-        // update the MultichannelValues
-        // MPESynthesiserBase::renderNextSubBlock(out, startSample, numSamples);
-
-        // allow mod matrix to update
         listeners.call(&Listener::onSynthSubBlockStarted, *this, startSample, numSamples);
-
-        // start and stop voices
         processVoiceCommands();
-
     }
 
     void setMaxVoices(int maxVoices) {
@@ -87,42 +80,19 @@ public:
     }
 
     void handleMidiEvent(const juce::MidiMessage &m) override {
-        if (m.isController() && m.getControllerNumber() == 1) {
-            const float modValue = static_cast<float>(m.getControllerValue()) / 127.f;
-            modWheelValue.setGlobalValue(modValue);
-        }
-
         MPESynthesiserBase::handleMidiEvent(m);
     }
 
-    void notePressureChanged(const juce::MPENote n) override {
-        for (auto i = 0u; i < MAX_MOD_VOICES; i++) {
-            pressureValue.setVoiceValue(n.pressure.asUnsignedFloat(), i);
-        }
-    }
-
-    void notePitchbendChanged(const juce::MPENote n) override {
-        for (auto i = 0u; i < MAX_MOD_VOICES; i++) {
-            const auto pitchBendRange = getLegacyModePitchbendRange();
-            const auto pitchbendProportion = n.totalPitchbendInSemitones / pitchBendRange;
-            pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion), i);
-        }
-    }
+    void notePressureChanged(const juce::MPENote n) override {}
+    void notePitchbendChanged(const juce::MPENote n) override {}
 
     virtual void startVoice(RetunedMPENote note, size_t voiceIndex) = 0;
     virtual void stopVoice(size_t voiceIndex, bool quickStop) = 0;
-
-    const auto &getPressure() { return pressureValue; }
-    const auto &getPitchbend() { return pitchbendValue; }
-    const auto &getInitialNote() { return initialNoteValue; }
-    const auto &getInitialVelocity() { return initialVelocityValue; }
-    const auto &getModWheel() { return modWheelValue; }
 
     const auto& getActiveVoices() const { return activeVoices; }
 
 protected:
     int maxVoices;
-    ModMatrix* modMatrix {nullptr};
 
     juce::ListenerList<Listener> listeners;
 
@@ -137,12 +107,6 @@ protected:
 
     beman::inplace_vector<StartVoiceCommand, 128> startVoiceCommands;
     beman::inplace_vector<StopVoiceCommand, 128> stopVoiceCommands;
-
-    MultichannelValue<MAX_MOD_VOICES> pressureValue {false};
-    MultichannelValue<MAX_MOD_VOICES> pitchbendValue {true};
-    MultichannelValue<MAX_MOD_VOICES> initialNoteValue {true};
-    MultichannelValue<MAX_MOD_VOICES> initialVelocityValue {false};
-    MultichannelValue<MAX_MOD_VOICES> modWheelValue {false};
 
     FixedHashSet<size_t, MAX_MOD_VOICES> activeVoices = {};
     std::array<std::optional<RetunedMPENote>, MAX_MOD_VOICES> playingNotes;
@@ -185,21 +149,7 @@ protected:
         return voiceIndex;
     }
 
-    void setNoteForVoice(const size_t voiceIndex, RetunedMPENote note,
-                         const juce::NormalisableRange<float> &pitchRange = {-36, 36}) {
-
-        const auto initialNoteOffset = note.getNote() - 60;
-        const auto noteProportion = (initialNoteOffset - pitchRange.getRange().getStart())
-                                    / pitchRange.getRange().getLength();
-        initialNoteValue.setVoiceValue(noteProportion - 0.5f, voiceIndex);
-
-        initialVelocityValue.setVoiceValue(note.noteOnVelocity.asUnsignedFloat(), voiceIndex);
-        pressureValue.setVoiceValue(note.pressure.asUnsignedFloat(), voiceIndex);
-
-        const auto pitchBendRange = getZoneLayout().getLowerZone().perNotePitchbendRange;
-        const auto pitchbendProportion = note.totalPitchbendInSemitones / pitchBendRange;
-        pitchbendValue.setVoiceValue(static_cast<float>(pitchbendProportion) * 0.5, voiceIndex);
-
+    void setNoteForVoice(const size_t voiceIndex, RetunedMPENote note) {
         activeVoices.insert(voiceIndex);
         playingNotes[voiceIndex] = note;
     }
@@ -207,10 +157,5 @@ protected:
     void clearNoteForVoice(const size_t voiceIndex) {
         playingNotes[voiceIndex].reset();
         activeVoices.erase(voiceIndex);
-
-        initialNoteValue.setVoiceValue(0, voiceIndex);
-        initialVelocityValue.setVoiceValue(0, voiceIndex);
-        pressureValue.setVoiceValue(0, voiceIndex);
-        pitchbendValue.setVoiceValue(0, voiceIndex);
     }
 };

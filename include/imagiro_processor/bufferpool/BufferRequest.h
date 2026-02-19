@@ -6,6 +6,8 @@
 
 #include "CommonTransforms.h"
 
+namespace imagiro {
+
 class FileBufferCache;
 
 // Fluent API for building buffer requests
@@ -32,8 +34,10 @@ public:
     BufferRequest& nocache(size_t fromIndex);
 
     // Execute and get handle
-    BufferRequestHandle execute();
+    std::shared_ptr<BufferRequestHandle> execute();
 
     // Execute and get result directly (blocking)
     Result<std::shared_ptr<InfoBuffer>> executeBlocking();
 };
+
+} // namespace imagiro

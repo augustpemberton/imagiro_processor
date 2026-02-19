@@ -23,6 +23,7 @@
 #include "ADSR.h"
 #include <math.h>
 
+namespace imagiro {
 
 ADSR::ADSR() {
     reset();
@@ -130,3 +131,5 @@ void ADSR::setTargetRatioDR(double targetRatio) {
         releaseBase = -targetRatioDR * (1.0 - releaseCoef);
     }
 }
+
+} // namespace imagiro

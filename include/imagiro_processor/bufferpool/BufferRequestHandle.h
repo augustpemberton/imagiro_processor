@@ -4,6 +4,8 @@
 #include <optional>
 #include <future>
 
+namespace imagiro {
+
 class FileBufferCache;
 
 class BufferRequestHandle : std::enable_shared_from_this<BufferRequestHandle> {
@@ -20,6 +22,27 @@ private:
     BufferRequestHandle(FileBufferCache* c, const CacheKey& k);
 
 public:
+    // Move support (atomic is non-movable, so we handle it manually)
+    BufferRequestHandle(BufferRequestHandle&& other) noexcept
+        : cache(other.cache), key(std::move(other.key)),
+          promise(std::move(other.promise)), future(std::move(other.future)),
+          requestStarted(other.requestStarted.load()) {
+        other.cache = nullptr;
+    }
+    BufferRequestHandle& operator=(BufferRequestHandle&& other) noexcept {
+        if (this != &other) {
+            cache = other.cache;
+            key = std::move(other.key);
+            promise = std::move(other.promise);
+            future = std::move(other.future);
+            requestStarted.store(other.requestStarted.load());
+            other.cache = nullptr;
+        }
+        return *this;
+    }
+    BufferRequestHandle(const BufferRequestHandle&) = delete;
+    BufferRequestHandle& operator=(const BufferRequestHandle&) = delete;
+
     // Check if buffer is ready (audio thread safe, non-blocking)
     bool exists() const;
 
@@ -41,3 +64,5 @@ public:
     // Get error message if in error state
     std::optional<std::string> getError() const;
 };
+
+} // namespace imagiro

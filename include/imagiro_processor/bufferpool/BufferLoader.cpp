@@ -2,7 +2,9 @@
 
 #include "CommonTransforms.h"
 
-BufferLoader::BufferLoader(BufferCache& cache) 
+namespace imagiro {
+
+BufferLoader::BufferLoader(BufferCache& cache)
     : juce::Thread("BufferLoader"), cache(cache) {
     startThread();
 }
@@ -69,15 +71,15 @@ void BufferLoader::run() {
 
 void BufferLoader::processRequest(LoadRequest&& request) {
     const size_t keyHash = request.key.getHash();
-    
+
     // Find longest cached prefix
     auto [startBuffer, startIndex] = findCachedPrefix(request.key);
-    
+
     Result<std::shared_ptr<InfoBuffer>> result;
-    
+
     if (!startBuffer && startIndex == 0) {
         // Need to load from file - check if first transform is LoadTransform
-        if (request.key.transforms.empty() || 
+        if (request.key.transforms.empty() ||
             !dynamic_cast<LoadTransform*>(request.key.transforms[0].get())) {
             result = Result<std::shared_ptr<InfoBuffer>>::unexpected_type("No LoadTransform found at start of chain");
         } else {
@@ -85,22 +87,22 @@ void BufferLoader::processRequest(LoadRequest&& request) {
             auto buffer = std::make_shared<InfoBuffer>();
             buffer->buffer = juce::AudioSampleBuffer();
             double sampleRate = 0;
-            
+
             if (request.key.transforms[0]->process(buffer->buffer, sampleRate)) {
                 buffer->sampleRate = sampleRate;
                 updateBufferMetadata(buffer);
-                
+
                 // Cache the loaded buffer
                 if (request.key.nocacheIndex > 0) {
                     CacheEntry entry;
                     entry.state = CacheEntryState::Ready;
                     entry.buffer = buffer;
-                    entry.sizeInBytes = buffer->buffer.getNumSamples() * 
-                                       buffer->buffer.getNumChannels() * 
+                    entry.sizeInBytes = buffer->buffer.getNumSamples() *
+                                       buffer->buffer.getNumChannels() *
                                        sizeof(float);
                     cache.put(request.key.getPartialHash(1), entry);
                 }
-                
+
                 // Apply remaining transforms
                 result = applyTransforms(buffer, request.key, 1);
             } else {
@@ -113,24 +115,24 @@ void BufferLoader::processRequest(LoadRequest&& request) {
     } else {
         result = Result<std::shared_ptr<InfoBuffer>>::unexpected_type("Failed to find valid starting point");
     }
-    
+
     // Update cache with final result
     if (result.has_value()) {
         CacheEntry entry;
         entry.state = CacheEntryState::Ready;
         entry.buffer = result.value();
-        entry.sizeInBytes = entry.buffer->buffer.getNumSamples() * 
-                           entry.buffer->buffer.getNumChannels() * 
+        entry.sizeInBytes = entry.buffer->buffer.getNumSamples() *
+                           entry.buffer->buffer.getNumChannels() *
                            sizeof(float);
         cache.put(keyHash, entry);
-        
+
         // Notify listeners
         listeners.call(&Listener::onBufferLoaded, request.key, entry.buffer);
     } else {
         cache.markError(keyHash, result.error());
         listeners.call(&Listener::onBufferLoadError, request.key, result.error());
     }
-    
+
     // Notify all waiters
     notifyWaiters(keyHash, result);
 }
@@ -149,36 +151,36 @@ Result<std::shared_ptr<InfoBuffer>> BufferLoader::applyTransforms(
     std::shared_ptr<InfoBuffer> startBuffer,
     const CacheKey& key,
     size_t startIndex) {
-    
+
     // Make a copy to work with
     auto workingBuffer = std::make_shared<InfoBuffer>(*startBuffer);
-    
+
     // Apply each transform
     for (size_t i = startIndex; i < key.transforms.size(); ++i) {
         double sampleRate = workingBuffer->sampleRate;
-        
+
         if (!key.transforms[i]->process(workingBuffer->buffer, sampleRate)) {
             return  Result<std::shared_ptr<InfoBuffer>>::unexpected_type(key.transforms[i]->getLastError());
         }
-        
+
         workingBuffer->sampleRate = sampleRate;
         updateBufferMetadata(workingBuffer);
-        
+
         // Cache intermediate result if before nocache index
         if (i + 1 <= key.nocacheIndex && i + 1 < key.transforms.size()) {
             auto bufferCopy = std::make_shared<InfoBuffer>(*workingBuffer);
-            
+
             CacheEntry entry;
             entry.state = CacheEntryState::Ready;
             entry.buffer = bufferCopy;
-            entry.sizeInBytes = bufferCopy->buffer.getNumSamples() * 
-                               bufferCopy->buffer.getNumChannels() * 
+            entry.sizeInBytes = bufferCopy->buffer.getNumSamples() *
+                               bufferCopy->buffer.getNumChannels() *
                                sizeof(float);
-            
+
             cache.put(key.getPartialHash(i + 1), entry);
         }
     }
-    
+
     return workingBuffer;
 }
 
@@ -188,7 +190,7 @@ void BufferLoader::updateBufferMetadata(std::shared_ptr<InfoBuffer>& buffer) {
 
 void BufferLoader::notifyWaiters(size_t keyHash, const Result<std::shared_ptr<InfoBuffer>>& result) {
     std::vector<std::shared_ptr<std::promise<Result<std::shared_ptr<InfoBuffer>>>>> promises;
-    
+
     {
         std::lock_guard<std::mutex> lock(activeRequestsMutex);
         auto it = activeRequests.find(keyHash);
@@ -203,3 +205,5 @@ void BufferLoader::notifyWaiters(size_t keyHash, const Result<std::shared_ptr<In
         promise->set_value(result);
     }
 }
+
+} // namespace imagiro

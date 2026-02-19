@@ -74,8 +74,8 @@ public:
 
     void resetBuffer();
 
-    void setBuffer(const std::shared_ptr<InfoBuffer>& buf);
-    const std::shared_ptr<InfoBuffer>& getBuffer() { return currentBuffer; }
+    void setBuffer(const std::shared_ptr<imagiro::InfoBuffer>& buf);
+    const std::shared_ptr<imagiro::InfoBuffer>& getBuffer() { return currentBuffer; }
 
 private:
     const size_t indexInStream;
@@ -111,7 +111,7 @@ private:
     float cachedPan {0};
     float spreadVal {0};
 
-    std::shared_ptr<InfoBuffer> currentBuffer;
+    std::shared_ptr<imagiro::InfoBuffer> currentBuffer;
 
     GrainSettings settings;
 
