@@ -11,6 +11,14 @@ namespace imagiro {
         JuceParamAdapter(ParamController &controller, juce::AudioProcessor &processor)
             : controller_(controller) {
             controller_.forEach([&](Handle h, const ParamConfig &config) {
+                if (config.isInternal) {
+                    // Internal params: not exposed to the DAW host.
+                    // Store nullptr so handle-indexed lookups still work.
+                    juceParams_.push_back(nullptr);
+                    paramConnections_.emplace_back();
+                    return;
+                }
+
                 auto param = std::make_unique<juce::AudioParameterFloat>(
                     juce::ParameterID{config.uid, 1},
                     config.name,
@@ -32,6 +40,9 @@ namespace imagiro {
                 auto *rawPtr = param.get();
                 juceParams_.push_back(rawPtr);
 
+                // Map JUCE parameter index back to our Handle
+                juceIndexToHandle_.push_back(h);
+
                 paramConnections_.push_back(controller.uiSignal(h).connect_scoped([this, h](float) {
                     pushToHost(h);
                 }));
@@ -41,7 +52,9 @@ namespace imagiro {
         }
 
         void parameterValueChanged(int parameterIndex, float /*newValue*/) override {
-            paramsToPullFromHost_.enqueue(static_cast<size_t>(parameterIndex));
+            if (parameterIndex >= 0 && parameterIndex < static_cast<int>(juceIndexToHandle_.size())) {
+                paramsToPullFromHost_.enqueue(juceIndexToHandle_[parameterIndex].index);
+            }
         }
 
         void parameterGestureChanged(int, bool) override {
@@ -51,22 +64,25 @@ namespace imagiro {
             size_t index;
             while (paramsToPullFromHost_.try_dequeue(index)) {
                 const auto handle = Handle{static_cast<uint32_t>(index)};
-                const float normalized = juceParams_[index]->get();
-                controller_.setValue01(handle, normalized);
+                if (juceParams_[index])
+                    controller_.setValue01(handle, juceParams_[index]->get());
             }
         }
 
         void pushToHost(Handle h) const {
+            if (!juceParams_[h.index]) return;  // internal param
             const float normalized = controller_.getValue01UI(h);
             if (std::abs(juceParams_[h.index]->get() - normalized) < 1e-6f) return;
             juceParams_[h.index]->setValueNotifyingHost(normalized);
         }
 
         void beginGesture(Handle h) const {
+            if (!juceParams_[h.index]) return;  // internal param
             juceParams_[h.index]->beginChangeGesture();
         }
 
         void endGesture(Handle h) const {
+            if (!juceParams_[h.index]) return;  // internal param
             juceParams_[h.index]->endChangeGesture();
         }
 
@@ -86,7 +102,8 @@ namespace imagiro {
 
     private:
         ParamController &controller_;
-        std::vector<juce::AudioParameterFloat *> juceParams_;
+        std::vector<juce::AudioParameterFloat *> juceParams_;   // indexed by Handle, nullptr for internal
+        std::vector<Handle> juceIndexToHandle_;                  // maps JUCE param index → Handle
         std::vector<sigslot::scoped_connection> paramConnections_;
         moodycamel::ConcurrentQueue<size_t> paramsToPullFromHost_{10};
     };

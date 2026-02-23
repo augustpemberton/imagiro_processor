@@ -21,6 +21,7 @@ namespace imagiro {
         float (*toProcessor)(float userValue, double bpm, double sampleRate){nullptr};
 
         float defaultValue{0.f};
+        bool isInternal{false};   // internal params are not exposed to the DAW host
     };
 
     // --- Factory helpers ---
