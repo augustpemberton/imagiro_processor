@@ -114,7 +114,7 @@ TEST_CASE("ParamController default values", "[param][controller]") {
         ParamController ctrl;
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, -6.f));
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-6.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(-6.0, 0.0001));
     }
 
     SECTION("Default value is clamped to range") {
@@ -122,7 +122,7 @@ TEST_CASE("ParamController default values", "[param][controller]") {
         // Default of 100 should be clamped to max of 12
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, 100.f));
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(12.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(12.0, 0.0001));
     }
 
     SECTION("resetToDefault restores default value") {
@@ -132,7 +132,7 @@ TEST_CASE("ParamController default values", "[param][controller]") {
         ctrl.setValue(h, -12.f);
         ctrl.resetToDefault(h);
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(0.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(0.0, 0.0001));
     }
 }
 
@@ -148,7 +148,7 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
 
         ctrl.setValue(h, -12.f);
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-12.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(-12.0, 0.0001));
     }
 
     SECTION("setValue clamps to range") {
@@ -156,10 +156,10 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, 0.f));
 
         ctrl.setValue(h, 100.f);
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(12.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(12.0, 0.0001));
 
         ctrl.setValue(h, -100.f);
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-60.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(-60.0, 0.0001));
     }
 
     SECTION("setValue01 sets normalized value") {
@@ -168,8 +168,8 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
 
         ctrl.setValue01(h, 0.5f);
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(50.0, 0.0001));
-        REQUIRE_THAT(ctrl.getValue01UI(h), WithinAbs(0.5, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(50.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue01(h), WithinAbs(0.5, 0.0001));
     }
 
     SECTION("setValue01 clamps to 0-1") {
@@ -178,7 +178,7 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
 
         ctrl.setValue01(h, 1.5f);
 
-        REQUIRE_THAT(ctrl.getValue01UI(h), WithinAbs(1.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue01(h), WithinAbs(1.0, 0.0001));
     }
 
     SECTION("Pending value is visible before captureAudio") {
@@ -188,7 +188,7 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         ctrl.setValue(h, 50.f);
 
         // Value should be visible immediately on UI thread
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(50.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(50.0, 0.0001));
     }
 }
 
@@ -198,7 +198,7 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
 
 TEST_CASE("ParamController text formatting", "[param][controller]") {
 
-    SECTION("getValueTextUI returns formatted string") {
+    SECTION("getValueText returns formatted string") {
         ParamController ctrl;
         auto h = ctrl.addParam({
             .uid = "gain",
@@ -208,12 +208,12 @@ TEST_CASE("ParamController text formatting", "[param][controller]") {
             .defaultValue = -12.f
         });
 
-        auto text = ctrl.getValueTextUI(h);
+        auto text = ctrl.getValueText(h);
         REQUIRE(text.find("dB") != std::string::npos);
         REQUIRE(text.find("-12") != std::string::npos);
     }
 
-    SECTION("setValueFromTextUI parses and sets value") {
+    SECTION("setValueFromText parses and sets value") {
         ParamController ctrl;
         auto h = ctrl.addParam({
             .uid = "gain",
@@ -223,17 +223,17 @@ TEST_CASE("ParamController text formatting", "[param][controller]") {
             .defaultValue = 0.f
         });
 
-        bool success = ctrl.setValueFromTextUI(h, "-6dB");
+        bool success = ctrl.setValueFromText(h, "-6dB");
 
         REQUIRE(success);
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(-6.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(-6.0, 0.0001));
     }
 
-    SECTION("setValueFromTextUI returns false for invalid input") {
+    SECTION("setValueFromText returns false for invalid input") {
         ParamController ctrl;
         auto h = ctrl.addParam(makeLinearParam("gain", -60.f, 12.f, 0.f));
 
-        bool success = ctrl.setValueFromTextUI(h, "invalid");
+        bool success = ctrl.setValueFromText(h, "invalid");
 
         REQUIRE_FALSE(success);
     }
@@ -291,7 +291,7 @@ TEST_CASE("ParamController state registry", "[param][controller]") {
 
         ctrl.setRegistryUI(reg);
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(75.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(75.0, 0.0001));
     }
 
     SECTION("setRegistryUI clamps values to current range") {
@@ -305,7 +305,7 @@ TEST_CASE("ParamController state registry", "[param][controller]") {
 
         ctrl.setRegistryUI(reg);
 
-        REQUIRE_THAT(ctrl.getValueUI(h), WithinAbs(100.0, 0.0001));
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(100.0, 0.0001));
     }
 }
 

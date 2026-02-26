@@ -100,24 +100,20 @@ public:
         }
     }
 
-    // =====================================================================
-    // UI thread
-    // =====================================================================
-
-    float getValueUI(Handle h) const {
+    float getValue(Handle h) const {
         auto v01 = values01_[h.index].load(std::memory_order_acquire);
         return configs_[h.index].range.denormalize(v01);
     }
 
-    float getValue01UI(Handle h) const {
+    float getValue01(Handle h) const {
         return values01_[h.index].load(std::memory_order_acquire);
     }
 
-    std::string getValueTextUI(Handle h) const {
-        return configs_[h.index].format.toString(getValueUI(h));
+    std::string getValueText(Handle h) const {
+        return configs_[h.index].format.toString(getValue(h));
     }
 
-    bool setValueFromTextUI(Handle h, const std::string& text) {
+    bool setValueFromText(Handle h, const std::string& text) {
         if (const auto parsed = configs_[h.index].format.fromString(text)) {
             setValue(h, *parsed);
             return true;
