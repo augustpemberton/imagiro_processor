@@ -5,6 +5,7 @@
 #pragma once
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "ParamRange.h"
 #include "ParamRange.h"
@@ -19,6 +20,7 @@ namespace imagiro {
         ParamRange range {ParamRange::linear(0, 1)};
         ValueFormatter format{ValueFormatter::number()};
         float (*toProcessor)(float userValue, double bpm, double sampleRate){nullptr};
+        std::vector<std::string> choices{};
 
         float defaultValue{0.f};
         bool isInternal{false};   // internal params are not exposed to the DAW host
@@ -84,11 +86,13 @@ namespace imagiro {
 
     inline ParamConfig makeChoiceParam(std::string uid, std::string name,
                                        std::vector<std::string> choices, int defaultIndex = 0) {
+        auto choicesCopy = choices;
         return {
             .uid = std::move(uid),
             .name = std::move(name),
-            .range = ParamRange::choice(static_cast<int>(choices.size())),
-            .format = ValueFormatter::choice(choices),
+            .range = ParamRange::choice(static_cast<int>(choicesCopy.size())),
+            .format = ValueFormatter::choice(choicesCopy),
+            .choices = std::move(choices),
             .defaultValue = static_cast<float>(defaultIndex)
         };
     }
