@@ -1,6 +1,7 @@
 // BypassMixer.h
 #pragma once
 
+#include <cmath>
 #include <vector>
 #include <imagiro_util/dsp/delay.h>
 
@@ -68,6 +69,8 @@ public:
     }
 
     void applyMix(float** wet, int numSamples) {
+        constexpr float activeGainThreshold = 1.0e-6f;
+
         for (int s = 0; s < numSamples; s++) {
             // Smooth gains
             currentBypassGain_ += smoothingCoeff_ * (targetBypassGain_ - currentBypassGain_);
@@ -75,10 +78,23 @@ public:
 
             const auto wetGain = currentBypassGain_ * currentMixGain_;
             const auto dryGain = 1.f - wetGain;
+            const bool useWet = std::abs(wetGain) > activeGainThreshold;
+            const bool useDry = std::abs(dryGain) > activeGainThreshold;
 
             for (auto c = 0u; c < numChannels_; c++) {
-                const auto drySample = delayLines_[c].read(static_cast<float>(latencySamples_));
-                wet[c][s] = wet[c][s] * wetGain + drySample * dryGain;
+                float out = 0.f;
+
+                if (useWet) {
+                    const auto wetSample = wet[c][s];
+                    out += (std::isfinite(wetSample) ? wetSample : 0.f) * wetGain;
+                }
+
+                if (useDry) {
+                    const auto drySample = delayLines_[c].read(static_cast<float>(latencySamples_));
+                    out += (std::isfinite(drySample) ? drySample : 0.f) * dryGain;
+                }
+
+                wet[c][s] = std::isfinite(out) ? out : 0.f;
             }
         }
     }

@@ -66,11 +66,15 @@ public:
     bool isLocked(Handle h) const { return locked_[h.index].load(std::memory_order_acquire); }
 
     void setValue(Handle h, float userValue) {
+        if (!std::isfinite(userValue)) return;
+
         const auto& cfg = configs_[h.index];
         setValue01(h, cfg.range.normalize(cfg.range.clamp(userValue)));
     }
 
     void setValue01(Handle h, float normalized) {
+        if (!std::isfinite(normalized)) return;
+
         auto clamped = std::clamp(normalized, 0.f, 1.f);
         values01_[h.index].store(clamped, std::memory_order_release);
         uiDirty_[h.index].store(true, std::memory_order_release);
@@ -166,6 +170,7 @@ public:
 
             if (auto* pv = reg.tryGet(h)) {
                 ParamValue value = *pv;
+                if (!std::isfinite(value.userValue)) value.userValue = cfg.defaultValue;
                 value.userValue = cfg.range.clamp(value.userValue);
                 value.value01 = cfg.range.normalize(value.userValue);
                 value.toProcessor = cfg.toProcessor;

@@ -11,6 +11,9 @@
 #include <imagiro_processor/parameter/ParamController.h>
 #include <imagiro_processor/parameter/ParamConfig.h>
 
+#include <cmath>
+#include <limits>
+
 using namespace imagiro;
 using Catch::Matchers::WithinAbs;
 
@@ -190,6 +193,18 @@ TEST_CASE("ParamController setValue/getValue", "[param][controller]") {
         // Value should be visible immediately on UI thread
         REQUIRE_THAT(ctrl.getValue(h), WithinAbs(50.0, 0.0001));
     }
+
+    SECTION("Non-finite values are ignored") {
+        ParamController ctrl;
+        auto h = ctrl.addParam(makeLinearParam("gain", 0.f, 100.f, 25.f));
+
+        ctrl.setValue(h, std::numeric_limits<float>::quiet_NaN());
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(25.0, 0.0001));
+
+        ctrl.setValue01(h, std::numeric_limits<float>::infinity());
+        REQUIRE_THAT(ctrl.getValue01(h), WithinAbs(0.25, 0.0001));
+        REQUIRE(std::isfinite(ctrl.getValue(h)));
+    }
 }
 
 // ============================================================================
@@ -306,6 +321,21 @@ TEST_CASE("ParamController state registry", "[param][controller]") {
         ctrl.setRegistryUI(reg);
 
         REQUIRE_THAT(ctrl.getValue(h), WithinAbs(100.0, 0.0001));
+    }
+
+    SECTION("setRegistryUI falls back to default for non-finite values") {
+        ParamController ctrl;
+        auto h = ctrl.addParam(makeLinearParam("gain", 0.f, 100.f, 25.f));
+
+        auto reg = ctrl.registryUI();
+        auto val = reg.get(h);
+        val.userValue = std::numeric_limits<float>::quiet_NaN();
+        reg = reg.set(h, val);
+
+        ctrl.setRegistryUI(reg);
+
+        REQUIRE_THAT(ctrl.getValue(h), WithinAbs(25.0, 0.0001));
+        REQUIRE(std::isfinite(ctrl.getValue01(h)));
     }
 }
 

@@ -42,6 +42,8 @@ namespace imagiro {
         }
 
         float normalize(float value) const {
+            if (!std::isfinite(value) || !(max_ > min_)) return 0.f;
+
             const float clamped = std::clamp(value, min_, max_);
 
             return std::visit([&]<typename T0>(const T0 &m) -> float {
@@ -61,6 +63,8 @@ namespace imagiro {
         }
 
         float denormalize(float normalized) const {
+            if (!std::isfinite(normalized)) normalized = 0.f;
+
             const float clamped = std::clamp(normalized, 0.f, 1.f);
 
             const float value = std::visit([&]<typename T0>(const T0 &m) -> float {
@@ -85,6 +89,8 @@ namespace imagiro {
         }
 
         float snap(float value) const {
+            if (!std::isfinite(value)) return min_;
+
             if (step_ > 0.f) {
                 value = std::round((value - min_) / step_) * step_ + min_;
             }
@@ -92,6 +98,7 @@ namespace imagiro {
         }
 
         float clamp(float value) const {
+            if (!std::isfinite(value)) return min_;
             return std::clamp(value, min_, max_);
         }
 

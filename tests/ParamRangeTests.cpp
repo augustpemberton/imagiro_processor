@@ -7,6 +7,9 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <imagiro_processor/parameter/ParamRange.h>
 
+#include <cmath>
+#include <limits>
+
 using namespace imagiro;
 using Catch::Matchers::WithinAbs;
 using Catch::Matchers::WithinRel;
@@ -186,6 +189,17 @@ TEST_CASE("ParamRange clamp", "[param][range]") {
 
         REQUIRE_THAT(range.denormalize(-0.5f), WithinAbs(0.0, 0.0001));
         REQUIRE_THAT(range.denormalize(1.5f), WithinAbs(100.0, 0.0001));
+    }
+
+    SECTION("Non-finite values do not escape range conversion") {
+        auto range = ParamRange::linear(0.f, 100.f);
+
+        REQUIRE(std::isfinite(range.normalize(std::numeric_limits<float>::quiet_NaN())));
+        REQUIRE(std::isfinite(range.denormalize(std::numeric_limits<float>::quiet_NaN())));
+        REQUIRE(std::isfinite(range.clamp(std::numeric_limits<float>::infinity())));
+        REQUIRE_THAT(range.normalize(std::numeric_limits<float>::quiet_NaN()), WithinAbs(0.0, 0.0001));
+        REQUIRE_THAT(range.denormalize(std::numeric_limits<float>::quiet_NaN()), WithinAbs(0.0, 0.0001));
+        REQUIRE_THAT(range.clamp(std::numeric_limits<float>::infinity()), WithinAbs(0.0, 0.0001));
     }
 }
 
