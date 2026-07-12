@@ -2,11 +2,12 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "HostParamBridge.h"
 #include "ParamController.h"
 #include <imagiro_util/readerwriterqueue/concurrentqueue.h>
 
 namespace imagiro {
-    class JuceParamAdapter : juce::AudioParameterFloat::Listener {
+    class JuceParamAdapter : public HostParamBridge, juce::AudioParameterFloat::Listener {
     public:
         JuceParamAdapter(ParamController &controller, juce::AudioProcessor &processor)
             : controller_(controller) {
@@ -69,31 +70,34 @@ namespace imagiro {
             }
         }
 
-        void pushToHost(Handle h) const {
-            if (!juceParams_[h.index]) return;  // internal param
-            const float normalized = controller_.getValue01(h);
-            if (std::abs(juceParams_[h.index]->get() - normalized) < 1e-6f) return;
-            juceParams_[h.index]->setValueNotifyingHost(normalized);
+        void pushToHost(Handle h) {
+            pushValueToHost(h, controller_.getValue01(h));
         }
 
-        void beginGesture(Handle h) const {
+        void pushValueToHost(Handle h, float value01) override {
+            if (!juceParams_[h.index]) return;  // internal param
+            if (std::abs(juceParams_[h.index]->get() - value01) < 1e-6f) return;
+            juceParams_[h.index]->setValueNotifyingHost(value01);
+        }
+
+        void beginGesture(Handle h) override {
             if (!juceParams_[h.index]) return;  // internal param
             juceParams_[h.index]->beginChangeGesture();
         }
 
-        void endGesture(Handle h) const {
+        void endGesture(Handle h) override {
             if (!juceParams_[h.index]) return;  // internal param
             juceParams_[h.index]->endChangeGesture();
         }
 
-        void setValueAsUserAction(Handle h, float userValue) const {
+        void setValueAsUserAction(Handle h, float userValue) {
             beginGesture(h);
             controller_.setValue(h, userValue);
             pushToHost(h);
             endGesture(h);
         }
 
-        void setValue01AsUserAction(Handle h, float normalized) const {
+        void setValue01AsUserAction(Handle h, float normalized) {
             beginGesture(h);
             controller_.setValue01(h, normalized);
             pushToHost(h);

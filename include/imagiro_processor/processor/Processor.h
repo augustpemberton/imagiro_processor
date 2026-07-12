@@ -97,6 +97,7 @@ public:
     const ParamController& params() const { return core_.params(); }
 
     JuceParamAdapter* juceAdapter() const { return juceAdapter_.get(); }
+    HostParamBridge& hostParamBridge() const { return *juceAdapter_; }
     TransportState& transport() { return core_.transport(); }
 
     ProcessorCore& core() { return core_; }
