@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <juce_audio_basics/juce_audio_basics.h>
 #include <imagiro_processor/processor/BypassMixer.h>
+#include <imagiro_processor/bufferpool/AudioBuffer.h>
 
 #include <cmath>
 #include <limits>
@@ -16,24 +16,23 @@ TEST_CASE("BypassMixer ignores non-finite dry samples when fully wet", "[process
     mixer.setMix(1.f);
     mixer.skipSmoothing();
 
-    juce::AudioSampleBuffer buffer(2, 16);
-    buffer.clear();
+    AudioBuffer buffer(2, 16);
     for (int c = 0; c < buffer.getNumChannels(); c++)
         for (int s = 0; s < buffer.getNumSamples(); s++)
-            buffer.setSample(c, s, std::numeric_limits<float>::quiet_NaN());
+            buffer.getWritePointer(c)[s] = std::numeric_limits<float>::quiet_NaN();
 
     mixer.pushDry(buffer);
 
     for (int c = 0; c < buffer.getNumChannels(); c++)
         for (int s = 0; s < buffer.getNumSamples(); s++)
-            buffer.setSample(c, s, c == 0 ? 0.25f : -0.125f);
+            buffer.getWritePointer(c)[s] = c == 0 ? 0.25f : -0.125f;
 
     mixer.applyMix(buffer);
 
     for (int c = 0; c < buffer.getNumChannels(); c++) {
         const float expected = c == 0 ? 0.25f : -0.125f;
         for (int s = 0; s < buffer.getNumSamples(); s++) {
-            const auto sample = buffer.getSample(c, s);
+            const auto sample = buffer.getReadPointer(c)[s];
             REQUIRE(std::isfinite(sample));
             REQUIRE_THAT(sample, WithinAbs(expected, 0.000001f));
         }
@@ -47,19 +46,18 @@ TEST_CASE("BypassMixer does not emit non-finite wet samples", "[processor][bypas
     mixer.setMix(1.f);
     mixer.skipSmoothing();
 
-    juce::AudioSampleBuffer buffer(2, 16);
-    buffer.clear();
+    AudioBuffer buffer(2, 16);
     mixer.pushDry(buffer);
 
     for (int c = 0; c < buffer.getNumChannels(); c++)
         for (int s = 0; s < buffer.getNumSamples(); s++)
-            buffer.setSample(c, s, std::numeric_limits<float>::infinity());
+            buffer.getWritePointer(c)[s] = std::numeric_limits<float>::infinity();
 
     mixer.applyMix(buffer);
 
     for (int c = 0; c < buffer.getNumChannels(); c++) {
         for (int s = 0; s < buffer.getNumSamples(); s++) {
-            const auto sample = buffer.getSample(c, s);
+            const auto sample = buffer.getReadPointer(c)[s];
             REQUIRE(std::isfinite(sample));
             REQUIRE_THAT(sample, WithinAbs(0.f, 0.000001f));
         }

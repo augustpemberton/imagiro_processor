@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <imagiro_util/dsp/delay.h>
+#include "../bufferpool/AudioBuffer.h"
 
 namespace imagiro {
 
@@ -42,10 +43,10 @@ public:
         currentMixGain_ = targetMixGain_;
     }
 
-    void pushDry(const juce::AudioSampleBuffer& buffer) {
-        std::vector<const float*> inputPtrs(buffer.getNumChannels());
+    void pushDry(const AudioBuffer& buffer) {
+        std::vector<const float*> inputPtrs(static_cast<size_t>(buffer.getNumChannels()));
         for (int c = 0; c < buffer.getNumChannels(); c++) {
-            inputPtrs[c] = buffer.getReadPointer(c);
+            inputPtrs[static_cast<size_t>(c)] = buffer.getReadPointer(c);
         }
 
         pushDry(inputPtrs.data(), buffer.getNumSamples());
@@ -59,16 +60,16 @@ public:
         }
     }
 
-    void applyMix(juce::AudioSampleBuffer& buffer) {
-        std::vector<float*> outputPtrs(buffer.getNumChannels());
+    void applyMix(AudioBuffer& buffer) {
+        std::vector<float*> outputPtrs(static_cast<size_t>(buffer.getNumChannels()));
         for (int c = 0; c < buffer.getNumChannels(); c++) {
-            outputPtrs[c] = buffer.getWritePointer(c);
+            outputPtrs[static_cast<size_t>(c)] = buffer.getWritePointer(c);
         }
 
         applyMix(outputPtrs.data(), buffer.getNumSamples());
     }
 
-    void applyMix(float** wet, int numSamples) {
+    void applyMix(float* const* wet, int numSamples) {
         constexpr float activeGainThreshold = 1.0e-6f;
 
         for (int s = 0; s < numSamples; s++) {

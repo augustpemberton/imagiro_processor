@@ -2,6 +2,7 @@
 #pragma once
 
 #include "ProcessorBase.h"
+#include "ProcessorCore.h"
 #include "TransportState.h"
 #include "BypassMixer.h"
 
@@ -21,26 +22,14 @@ public:
     }
 
     void initParameters() {
-        juceAdapter_ = std::make_unique<JuceParamAdapter>(paramController_, *this);
-        audioThreadState_.params().resize(paramController_.size());
-
-        if (paramController_.has("bypass")) {
-            bypassHandle_ = paramController_.handle("bypass");
-        }
-
-        if (paramController_.has("mix")) {
-            mixHandle_ = paramController_.handle("mix");
-        }
+        juceAdapter_ = std::make_unique<JuceParamAdapter>(core_.params(), *this);
+        core_.initParameters();
     }
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override {
-        bypassMixer_.prepare(sampleRate, getTotalNumOutputChannels());
-        bypassMixer_.setLatency(getLatencySamples());
-
-        if (firstPrepare_) {
-            bypassMixer_.skipSmoothing();
-            firstPrepare_ = false;
-        }
+        core_.prepare(sampleRate,
+                      static_cast<unsigned int>(getTotalNumOutputChannels()),
+                      getLatencySamples());
     }
 
     static TransportInfo makeTransportInfo(const juce::AudioPlayHead* playhead) {
@@ -66,22 +55,16 @@ public:
         juceAdapter_->pullFromHost();
 
         const auto& state = captureState();
+        core_.updateBypassFromState(state);
 
-        if (bypassHandle_.isValid()) {
-            bypassMixer_.setBypass(state.value(bypassHandle_) > 0.5f);
-        }
-        if (mixHandle_.isValid()) {
-            bypassMixer_.setMix(state.value(mixHandle_));
-        }
-
-        bypassMixer_.pushDry(buffer);
+        bypassMixer_.pushDry(buffer.getArrayOfReadPointers(), buffer.getNumSamples());
 
         if (bypassMixer_.isProcessingNeeded()) {
             process(buffer, midi, state);
             afterProcess();
         }
 
-        bypassMixer_.applyMix(buffer);
+        bypassMixer_.applyMix(buffer.getArrayOfWritePointers(), buffer.getNumSamples());
     }
 
     void timerCallback() override {
@@ -110,11 +93,14 @@ public:
         }
     }
 
-    ParamController& params() { return paramController_; }
-    const ParamController& params() const { return paramController_; }
+    ParamController& params() { return core_.params(); }
+    const ParamController& params() const { return core_.params(); }
 
     JuceParamAdapter* juceAdapter() const { return juceAdapter_.get(); }
-    TransportState& transport() { return transport_; }
+    TransportState& transport() { return core_.transport(); }
+
+    ProcessorCore& core() { return core_; }
+    const ProcessorCore& core() const { return core_; }
 
 protected:
     virtual void process(juce::AudioBuffer<float>& buffer,
@@ -124,37 +110,27 @@ protected:
     virtual void afterProcess() {}
 
     virtual const ProcessState& captureState() {
-        audioThreadState_.setBpm(transport_.bpm());
-        audioThreadState_.setSampleRate(transport_.sampleRate());
-        paramController_.snapshotInto(audioThreadState_.params());
-        paramController_.dispatchAudioChanges();
-        return audioThreadState_;
+        return core_.captureState();
     }
 
     virtual json stateToJson() const {
-        json j = json::object();
-        j["params"] = paramController_.registryUI();  // Uses to_json for StateRegistry
-        return j;
+        return core_.stateToJson();
     }
 
     virtual void loadStateFromJson(const json& j) {
-        if (j.contains("params")) {
-            auto reg = paramController_.registryUI().fromJson(j["params"]);
-            paramController_.setRegistryUI(std::move(reg));
-        }
+        core_.loadStateFromJson(j);
     }
 
-    ProcessState audioThreadState_;
-    ParamController paramController_;
+    ProcessorCore core_;
 
     std::unique_ptr<JuceParamAdapter> juceAdapter_;
-    TransportState transport_;
 
-    BypassMixer bypassMixer_;
-    Handle bypassHandle_;
-    Handle mixHandle_;
-    
-    bool firstPrepare_{true};
+    ProcessState& audioThreadState_ = core_.audioThreadState();
+    ParamController& paramController_ = core_.params();
+    TransportState& transport_ = core_.transport();
+    BypassMixer& bypassMixer_ = core_.bypassMixer();
+    Handle& bypassHandle_ = core_.bypassHandle();
+    Handle& mixHandle_ = core_.mixHandle();
 };
 
 } // namespace imagiro
