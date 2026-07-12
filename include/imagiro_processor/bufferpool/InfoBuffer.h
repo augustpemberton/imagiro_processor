@@ -3,15 +3,16 @@
 //
 
 #pragma once
-#include "juce_audio_basics/juce_audio_basics.h"
+#include "AudioBuffer.h"
+#include <filesystem>
 
 namespace imagiro {
 
 struct InfoBuffer {
-    juce::AudioSampleBuffer buffer;
+    AudioBuffer buffer;
     double sampleRate;
     float maxMagnitude;
-    juce::File file;
+    std::filesystem::path file;
 };
 
 } // namespace imagiro

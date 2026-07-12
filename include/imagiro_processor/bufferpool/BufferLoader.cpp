@@ -1,6 +1,7 @@
 #include "BufferLoader.h"
 
 #include "CommonTransforms.h"
+#include "JuceBufferAdapter.h"
 
 namespace imagiro {
 
@@ -85,10 +86,11 @@ void BufferLoader::processRequest(LoadRequest&& request) {
         } else {
             // Create empty buffer for LoadTransform to fill
             auto buffer = std::make_shared<InfoBuffer>();
-            buffer->buffer = juce::AudioSampleBuffer();
             double sampleRate = 0;
 
-            if (request.key.transforms[0]->process(buffer->buffer, sampleRate)) {
+            juce::AudioSampleBuffer decodeBuffer;
+            if (request.key.transforms[0]->process(decodeBuffer, sampleRate)) {
+                copyFromJuce(decodeBuffer, buffer->buffer);
                 buffer->sampleRate = sampleRate;
                 updateBufferMetadata(buffer);
 
@@ -159,7 +161,8 @@ Result<std::shared_ptr<InfoBuffer>> BufferLoader::applyTransforms(
     for (size_t i = startIndex; i < key.transforms.size(); ++i) {
         double sampleRate = workingBuffer->sampleRate;
 
-        if (!key.transforms[i]->process(workingBuffer->buffer, sampleRate)) {
+        auto juceView = toJuceView(workingBuffer->buffer);
+        if (!key.transforms[i]->process(juceView, sampleRate)) {
             return  Result<std::shared_ptr<InfoBuffer>>::unexpected_type(key.transforms[i]->getLastError());
         }
 
