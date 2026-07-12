@@ -23,6 +23,8 @@ target_link_libraries(imagiro_processor_core INTERFACE
         nlohmann_json::nlohmann_json
 )
 
+if(TARGET juce::juce_core)
+
 add_library(imagiro_processor STATIC)
 
 # important: copy compile definitions from the main project
@@ -54,6 +56,8 @@ target_link_libraries(imagiro_processor PUBLIC
         immer
         nlohmann_json::nlohmann_json
 )
+
+endif() # TARGET juce::juce_core
 
 # Tests
 option(IMAGIRO_PROCESSOR_BUILD_TESTS "Build imagiro_processor tests" ON)
