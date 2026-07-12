@@ -11,6 +11,18 @@ CPMAddPackage(
 
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 
+add_library(imagiro_processor_core INTERFACE)
+
+target_include_directories(imagiro_processor_core INTERFACE
+        include
+)
+
+target_link_libraries(imagiro_processor_core INTERFACE
+        imagiro_util_core
+        immer
+        nlohmann_json::nlohmann_json
+)
+
 add_library(imagiro_processor STATIC)
 
 # important: copy compile definitions from the main project
@@ -36,6 +48,7 @@ target_include_directories(imagiro_processor PUBLIC
 )
 
 target_link_libraries(imagiro_processor PUBLIC
+        imagiro_processor_core
         juce::juce_audio_basics
         imagiro_util
         immer

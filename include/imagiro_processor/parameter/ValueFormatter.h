@@ -6,7 +6,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
-#include <imagiro_util/util.h>
+#include <imagiro_util/util-core.h>
 
 namespace imagiro {
     struct ValueFormatter {

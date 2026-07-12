@@ -3,14 +3,12 @@
 //
 
 #pragma once
+#include <cmath>
 #include <functional>
 #include <string>
 
 #include "ParamRange.h"
-#include "ParamRange.h"
 #include "ValueFormatter.h"
-#include "ParamRange.h"
-#include "perfetto.h"
 
 namespace imagiro {
     struct ParamConfig {
@@ -34,7 +32,7 @@ namespace imagiro {
             .range = ParamRange::linear(minDb, maxDb),
             .format = ValueFormatter::decibels(),
             .toProcessor = +[](float db, double, double) -> float {
-                return juce::Decibels::decibelsToGain(db);
+                return db > -100.f ? std::pow(10.f, db * 0.05f) : 0.f;
             },
             .defaultValue = defaultDb
         };

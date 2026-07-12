@@ -5,45 +5,51 @@
 #pragma once
 
 #include <atomic>
+#include <optional>
 #include <sigslot/sigslot.h>
-#include <juce_audio_processors/juce_audio_processors.h>
 
-#include "imagiro_util/util.h"
+#include "imagiro_util/util-core.h"
 
 namespace imagiro {
 
+struct TransportInfo {
+    std::optional<double> bpm;
+    std::optional<bool> isPlaying;
+    std::optional<int> timeSigNumerator;
+    std::optional<int> timeSigDenominator;
+    std::optional<double> ppqPosition;
+};
+
 class TransportState {
 public:
-    void update(const juce::AudioPlayHead* playhead, double sampleRate) {
+    void update(const TransportInfo& info, double sampleRate) {
         lastSampleRate_.store(sampleRate, std::memory_order_relaxed);
 
-        if (!playhead) return;
-
-        auto pos = playhead->getPosition();
-        if (!pos) return;
-
-        if (auto bpm = pos->getBpm()) {
-            const auto newBpm = *bpm > 0.01 ? *bpm : defaultBpm_;
+        if (info.bpm) {
+            const auto newBpm = *info.bpm > 0.01 ? *info.bpm : defaultBpm_;
             const auto oldBpm = lastBpm_.exchange(newBpm, std::memory_order_relaxed);
             if (!almostEqual(newBpm, oldBpm)) {
                 bpmChanged(newBpm);
             }
         }
 
-        if (auto playing = pos->getIsPlaying()) {
+        if (info.isPlaying) {
+            const bool playing = *info.isPlaying;
             const bool oldPlaying = lastPlaying_.exchange(playing, std::memory_order_relaxed);
             if (playing != oldPlaying) {
                 playStateChanged(playing);
             }
         }
 
-        if (auto timeSig = pos->getTimeSignature()) {
-            timeSigNumerator_.store(timeSig->numerator, std::memory_order_relaxed);
-            timeSigDenominator_.store(timeSig->denominator, std::memory_order_relaxed);
+        if (info.timeSigNumerator) {
+            timeSigNumerator_.store(*info.timeSigNumerator, std::memory_order_relaxed);
+        }
+        if (info.timeSigDenominator) {
+            timeSigDenominator_.store(*info.timeSigDenominator, std::memory_order_relaxed);
         }
 
-        if (auto ppq = pos->getPpqPosition()) {
-            positionPpq_.store(*ppq, std::memory_order_relaxed);
+        if (info.ppqPosition) {
+            positionPpq_.store(*info.ppqPosition, std::memory_order_relaxed);
         }
     }
 

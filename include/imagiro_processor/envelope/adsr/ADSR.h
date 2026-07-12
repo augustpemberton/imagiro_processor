@@ -22,7 +22,7 @@
 
 #ifndef ADRS_h
 #define ADRS_h
-#include "imagiro_util/util.h"
+#include "imagiro_util/util-core.h"
 
 namespace imagiro {
 

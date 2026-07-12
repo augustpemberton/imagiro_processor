@@ -17,9 +17,11 @@ target_link_libraries(imagiro_processor_tests PRIVATE
     imagiro_processor
     imagiro_util
     juce::juce_audio_utils
-    Melatonin::Perfetto
     Catch2::Catch2WithMain
 )
+if(TARGET Melatonin::Perfetto)
+    target_link_libraries(imagiro_processor_tests PRIVATE Melatonin::Perfetto)
+endif()
 
 target_include_directories(imagiro_processor_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..

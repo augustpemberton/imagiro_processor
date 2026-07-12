@@ -8,7 +8,6 @@
 #include <atomic>
 #include <memory>
 #include <cmath>
-#include <imagiro_util/util.h>
 
 #include "imagiro_processor/processor/state/StateRegistry.h"
 

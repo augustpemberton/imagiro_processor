@@ -43,8 +43,26 @@ public:
         }
     }
 
+    static TransportInfo makeTransportInfo(const juce::AudioPlayHead* playhead) {
+        TransportInfo info;
+        if (!playhead) return info;
+
+        auto pos = playhead->getPosition();
+        if (!pos) return info;
+
+        if (auto bpm = pos->getBpm()) info.bpm = *bpm;
+        if (pos->getIsPlaying()) info.isPlaying = true;
+        if (auto timeSig = pos->getTimeSignature()) {
+            info.timeSigNumerator = timeSig->numerator;
+            info.timeSigDenominator = timeSig->denominator;
+        }
+        if (auto ppq = pos->getPpqPosition()) info.ppqPosition = *ppq;
+
+        return info;
+    }
+
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) final {
-        transport_.update(getPlayHead(), getSampleRate());
+        transport_.update(makeTransportInfo(getPlayHead()), getSampleRate());
         juceAdapter_->pullFromHost();
 
         const auto& state = captureState();
