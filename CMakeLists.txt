@@ -31,6 +31,23 @@ if(APPLE)
     target_link_libraries(imagiro_processor_core INTERFACE "-framework Accelerate")
 endif()
 
+# JUCE-free audio-file decoder (miniaudio). A small STATIC lib because it needs
+# exactly one MA_IMPLEMENTATION TU; the rest (loader) is a thin wrapper over it.
+# Standalone-linkable so any plugin/test can pull real file decoding without JUCE.
+add_library(imagiro_audio_decode STATIC
+        include/imagiro_processor/miniaudio/miniaudio_impl.cpp
+        include/imagiro_processor/bufferpool/MiniaudioSourceLoader.cpp
+)
+target_include_directories(imagiro_audio_decode PUBLIC include)
+target_link_libraries(imagiro_audio_decode PUBLIC imagiro_processor_core)
+find_package(Threads QUIET)
+if(TARGET Threads::Threads)
+    target_link_libraries(imagiro_audio_decode PUBLIC Threads::Threads)
+endif()
+if(UNIX AND NOT APPLE)
+    target_link_libraries(imagiro_audio_decode PUBLIC ${CMAKE_DL_LIBS} m)
+endif()
+
 # Reusable JUCE-free headless CLAP shell (imagiro::ClapProcessor). Guarded so
 # sibling plugins can opt out, but on by default. Fetches the header-only clap +
 # clap-helpers here so any plugin inherits them by linking imagiro_processor_clap.
@@ -48,6 +65,7 @@ if(IMAGIRO_PROCESSOR_CLAP)
     add_library(imagiro_processor_clap INTERFACE)
     target_link_libraries(imagiro_processor_clap INTERFACE
             imagiro_processor_core
+            imagiro_audio_decode
             clap
             clap-helpers)
 endif()
