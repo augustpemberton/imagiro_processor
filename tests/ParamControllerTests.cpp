@@ -5,8 +5,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <juce_gui_basics/juce_gui_basics.h>
-#include <juce_audio_basics/juce_audio_basics.h>
 #include <imagiro_util/util.h>
 #include <imagiro_processor/parameter/ParamController.h>
 #include <imagiro_processor/parameter/ParamConfig.h>
@@ -16,26 +14,6 @@
 
 using namespace imagiro;
 using Catch::Matchers::WithinAbs;
-
-// ============================================================================
-// MARK: - JUCE Initialization
-// ============================================================================
-
-namespace {
-    void initJuceForTests() {
-        static bool initialized = false;
-        if (!initialized) {
-            juce::MessageManager::getInstance();
-            initialized = true;
-        }
-    }
-
-    struct JuceTestInit {
-        JuceTestInit() { initJuceForTests(); }
-    };
-
-    JuceTestInit juceInit;
-}
 
 // ============================================================================
 // MARK: - Test Helpers

@@ -6,9 +6,8 @@
 
 namespace imagiro {
 
-// Owning multichannel float buffer. Mirrors the subset of the
-// juce::AudioSampleBuffer API used across imagiro plugins so call sites
-// migrate mechanically, but has no framework dependency.
+// Owning multichannel float buffer. Provides a small framework-independent
+// sample-buffer API used across imagiro plugins.
 class AudioBuffer {
 public:
     AudioBuffer() = default;

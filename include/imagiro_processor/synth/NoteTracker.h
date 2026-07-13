@@ -7,9 +7,9 @@
 
 namespace imagiro {
 
-// Raw-MIDI note tracker for hosts without structured note events. Mirrors the
-// JUCE path (juce::MPEInstrument with MPESynthesiserBase's default full lower
-// zone): notes are tracked per (channel, note) with noteId = (channel << 7) +
+// Raw-MIDI note tracker for hosts without structured note events. Uses the
+// MPE full-lower-zone convention: notes are tracked per (channel, note) with
+// noteId = (channel << 7) +
 // note, note-on velocity 0 is a note-off, a note-on for an already-tracked
 // note releases the old voice before starting the new one, and sustain (CC64)
 // is honored on the zone master channel 1 only, holding notes on all channels.
@@ -70,7 +70,7 @@ private:
         };
     }
 
-    // Matches juce::MPEValue::from7BitInt(v).asUnsignedFloat().
+    // 7-bit MIDI value expanded to 14-bit, then normalized to [0,1].
     static float velocity01From7Bit(int v) {
         int value14Bit = v <= 64
             ? v << 7

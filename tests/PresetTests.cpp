@@ -4,30 +4,11 @@
 //
 
 #include <catch2/catch_test_macros.hpp>
-#include <juce_gui_basics/juce_gui_basics.h>
 #include <imagiro_processor/preset/Preset.h>
 
+#include <filesystem>
+
 using namespace imagiro;
-
-// ============================================================================
-// MARK: - JUCE Initialization
-// ============================================================================
-
-namespace {
-    void initJuceForTests() {
-        static bool initialized = false;
-        if (!initialized) {
-            juce::MessageManager::getInstance();
-            initialized = true;
-        }
-    }
-
-    struct JuceTestInit {
-        JuceTestInit() { initJuceForTests(); }
-    };
-
-    JuceTestInit juceInit;
-}
 
 // ============================================================================
 // MARK: - Test Helpers
@@ -50,22 +31,22 @@ namespace {
     }
 
     // Create a temporary preset file
-    juce::File createTempPresetFile(const Preset& preset, const juce::String& filename) {
-        auto tempDir = juce::File::getSpecialLocation(juce::File::tempDirectory);
-        auto presetFile = tempDir.getChildFile(filename);
-        preset.saveToFile(presetFile.getFullPathName().toStdString());
+    std::filesystem::path createTempPresetFile(const Preset& preset, const std::string& filename) {
+        auto presetFile = std::filesystem::temp_directory_path() / filename;
+        preset.saveToFile(presetFile.string());
         return presetFile;
     }
 
     // Clean up temp files
     struct TempFileCleanup {
-        std::vector<juce::File> files;
+        std::vector<std::filesystem::path> files;
         ~TempFileCleanup() {
             for (auto& f : files) {
-                f.deleteFile();
+                std::error_code ec;
+                std::filesystem::remove(f, ec);
             }
         }
-        void add(const juce::File& f) { files.push_back(f); }
+        void add(const std::filesystem::path& f) { files.push_back(f); }
     };
 }
 
@@ -100,7 +81,7 @@ TEST_CASE("Preset serialization", "[preset][format]") {
         auto file = createTempPresetFile(original, "test_preset.json");
         cleanup.add(file);
 
-        auto loaded = Preset::loadFromFile(file.getFullPathName().toStdString());
+        auto loaded = Preset::loadFromFile(file.string());
 
         REQUIRE(loaded.has_value());
         REQUIRE(loaded->metadata().name == "filetest");

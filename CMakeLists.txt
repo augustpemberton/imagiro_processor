@@ -201,26 +201,10 @@ function(imagiro_add_clap_wrapper)
     endif()
 endfunction()
 
-if(TARGET juce::juce_core)
-
-add_library(imagiro_processor STATIC)
-
-# important: copy compile definitions from the main project
-target_compile_definitions(imagiro_processor PUBLIC
-        $<TARGET_PROPERTY:${ProjectName},COMPILE_DEFINITIONS>
-)
-
-target_sources(imagiro_processor PRIVATE
-        "include/imagiro_processor/config/AuthorizationManager.cpp"
-        "include/imagiro_processor/dsp/filter/StateVariableTPTFilter.cpp"
+# JUCE-free static lib exposing the parameter/preset/processor/synth headers plus
+# the small set of out-of-line sources (ADSR). Header-only for the rest.
+add_library(imagiro_processor STATIC
         "include/imagiro_processor/envelope/adsr/ADSR.cpp"
-        "include/imagiro_processor/grain/Grain.cpp"
-        "include/imagiro_processor/BufferFileLoader.cpp"
-        "include/imagiro_processor/dsp/transient/TransientDetector.cpp"
-        "include/imagiro_processor/bufferpool/BufferLoader.cpp"
-        "include/imagiro_processor/bufferpool/BufferRequest.cpp"
-        "include/imagiro_processor/bufferpool/BufferRequestHandle.cpp"
-        "include/imagiro_processor/bufferpool/FileBufferCache.cpp"
 )
 
 target_include_directories(imagiro_processor PUBLIC
@@ -229,13 +213,10 @@ target_include_directories(imagiro_processor PUBLIC
 
 target_link_libraries(imagiro_processor PUBLIC
         imagiro_processor_core
-        juce::juce_audio_basics
         imagiro_util
         immer
         nlohmann_json::nlohmann_json
 )
-
-endif() # TARGET juce::juce_core
 
 # Tests
 option(IMAGIRO_PROCESSOR_BUILD_TESTS "Build imagiro_processor tests" ON)

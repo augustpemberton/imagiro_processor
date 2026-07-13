@@ -16,7 +16,6 @@ add_executable(imagiro_processor_tests ${PROCESSOR_TEST_SOURCES})
 target_link_libraries(imagiro_processor_tests PRIVATE
     imagiro_processor
     imagiro_util
-    juce::juce_audio_utils
     Catch2::Catch2WithMain
 )
 if(TARGET Melatonin::Perfetto)
