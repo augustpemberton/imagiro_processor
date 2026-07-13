@@ -23,6 +23,35 @@ target_link_libraries(imagiro_processor_core INTERFACE
         nlohmann_json::nlohmann_json
 )
 
+# AudioFFT + downstream DSP use vDSP under AUDIOFFT_APPLE_ACCELERATE. Attaching
+# both the macro and the framework to the core INTERFACE means every plugin that
+# links imagiro_processor_core inherits them (previously set per-plugin).
+if(APPLE)
+    target_compile_definitions(imagiro_processor_core INTERFACE AUDIOFFT_APPLE_ACCELERATE)
+    target_link_libraries(imagiro_processor_core INTERFACE "-framework Accelerate")
+endif()
+
+# Reusable JUCE-free headless CLAP shell (imagiro::ClapProcessor). Guarded so
+# sibling plugins can opt out, but on by default. Fetches the header-only clap +
+# clap-helpers here so any plugin inherits them by linking imagiro_processor_clap.
+option(IMAGIRO_PROCESSOR_CLAP "Provide the reusable CLAP processor shell" ON)
+if(IMAGIRO_PROCESSOR_CLAP)
+    if(NOT TARGET clap)
+        CPMAddPackage("gh:free-audio/clap#1.2.6")
+    endif()
+    if(NOT TARGET clap-helpers)
+        # clap-helpers 'main' tracks clap's unreleased 'next' branch; pin to the
+        # "CLAP 1.2.6" commit so the helpers match the clap headers above.
+        CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
+    endif()
+
+    add_library(imagiro_processor_clap INTERFACE)
+    target_link_libraries(imagiro_processor_clap INTERFACE
+            imagiro_processor_core
+            clap
+            clap-helpers)
+endif()
+
 if(TARGET juce::juce_core)
 
 add_library(imagiro_processor STATIC)
