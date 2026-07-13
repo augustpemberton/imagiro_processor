@@ -62,8 +62,12 @@ if(IMAGIRO_PROCESSOR_CLAP)
         CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
     endif()
 
-    add_library(imagiro_processor_clap INTERFACE)
-    target_link_libraries(imagiro_processor_clap INTERFACE
+    # STATIC (not INTERFACE) so it compiles the one TU that instantiates
+    # clap-helpers' Plugin/HostProxy out-of-line methods — plugins no longer
+    # include plugin.hxx/host-proxy.hxx themselves.
+    add_library(imagiro_processor_clap STATIC
+            include/imagiro_processor/clap/ClapProcessor.cpp)
+    target_link_libraries(imagiro_processor_clap PUBLIC
             imagiro_processor_core
             imagiro_audio_decode
             clap
@@ -217,6 +221,9 @@ target_link_libraries(imagiro_processor PUBLIC
         immer
         nlohmann_json::nlohmann_json
 )
+if(TARGET imagiro_fastmath)
+    target_link_libraries(imagiro_processor PRIVATE imagiro_fastmath)
+endif()
 
 # Tests
 option(IMAGIRO_PROCESSOR_BUILD_TESTS "Build imagiro_processor tests" ON)
