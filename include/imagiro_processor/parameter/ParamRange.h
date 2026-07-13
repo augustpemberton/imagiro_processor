@@ -46,20 +46,16 @@ namespace imagiro {
 
             const float clamped = std::clamp(value, min_, max_);
 
-            return std::visit([&]<typename T0>(const T0 &m) -> float {
-                using T = std::decay_t<T0>;
-
-                if constexpr (std::is_same_v<T, Logarithmic>) {
-                    return std::log(clamped / min_) / std::log(max_ / min_);
+            if (std::holds_alternative<Logarithmic>(mapping_)) {
+                return std::log(clamped / min_) / std::log(max_ / min_);
+            }
+            float normalized = (clamped - min_) / (max_ - min_);
+            if (const auto* linear = std::get_if<Linear>(&mapping_)) {
+                if (linear->skew != 1.f) {
+                    normalized = std::pow(normalized, linear->skew);
                 }
-                float normalized = (clamped - min_) / (max_ - min_);
-                if constexpr (std::is_same_v<T, Linear>) {
-                    if (m.skew != 1.f) {
-                        normalized = std::pow(normalized, m.skew);
-                    }
-                }
-                return normalized;
-            }, mapping_);
+            }
+            return normalized;
         }
 
         float denormalize(float normalized) const {
@@ -67,23 +63,18 @@ namespace imagiro {
 
             const float clamped = std::clamp(normalized, 0.f, 1.f);
 
-            const float value = std::visit([&]<typename T0>(const T0 &m) -> float {
-                using T = std::decay_t<T0>;
-
-                if constexpr (std::is_same_v<T, Logarithmic>) {
-                    return min_ * std::pow(max_ / min_, clamped);
-                }
-
+            float value;
+            if (std::holds_alternative<Logarithmic>(mapping_)) {
+                value = min_ * std::pow(max_ / min_, clamped);
+            } else {
                 float shaped = clamped;
-
-                if constexpr (std::is_same_v<T, Linear>) {
-                    if (m.skew != 1.f) {
-                        shaped = std::pow(clamped, 1 / m.skew);
+                if (const auto* linear = std::get_if<Linear>(&mapping_)) {
+                    if (linear->skew != 1.f) {
+                        shaped = std::pow(clamped, 1 / linear->skew);
                     }
                 }
-
-                return min_ + shaped * (max_ - min_);
-            }, mapping_);
+                value = min_ + shaped * (max_ - min_);
+            }
 
             return snap(value);
         }

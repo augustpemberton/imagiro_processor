@@ -53,7 +53,7 @@ void BufferFileLoader::run() {
 
     buffer->buffer.clear();
     buffer->buffer.setSize((int)reader->numChannels, nInterpSamples);
-    buffer->file = std::filesystem::path(fileToLoad.getFullPathName().toStdString());
+    buffer->file = imagiro::fs::path(fileToLoad.getFullPathName().toStdString());
     buffer->sampleRate = reader->sampleRate;
 
     juce::AudioSampleBuffer tempLoadBuffer ( reader->numChannels, reader->lengthInSamples);

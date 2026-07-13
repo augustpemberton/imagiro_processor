@@ -43,7 +43,7 @@ public:
         // Load existing value from ValueData if it exists
         auto existing = valueData.get(key);
         if (existing.has_value()) {
-            value = Serializer<T>::load(existing.value());
+            value = Serializer<T>::load(*existing);
             realtimeValue = value;
         } else {
             // Store initial value
@@ -115,7 +115,7 @@ public:
         const auto value = valueData.get(key);
         if (value.has_value()) {
             syncing = true;
-            set(Serializer<T>::load(value.value()));
+            set(Serializer<T>::load(*value));
             syncing = false;
         }
     }

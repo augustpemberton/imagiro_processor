@@ -4,7 +4,7 @@
 
 #pragma once
 #include "AudioBuffer.h"
-#include <filesystem>
+#include <imagiro_util/fs.h>
 
 namespace imagiro {
 
@@ -12,7 +12,7 @@ struct InfoBuffer {
     AudioBuffer buffer;
     double sampleRate;
     float maxMagnitude;
-    std::filesystem::path file;
+    imagiro::fs::path file;
 };
 
 } // namespace imagiro

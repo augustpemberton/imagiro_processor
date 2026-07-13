@@ -4,7 +4,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <optional>
-#include <filesystem>
+#include <imagiro_util/fs.h>
 #include <fstream>
 
 #include "PresetMetadata.h"
@@ -87,14 +87,14 @@ public:
         }
     }
 
-    bool saveToFile(const std::filesystem::path& path) const {
+    bool saveToFile(const imagiro::fs::path& path) const {
         std::ofstream file(path);
         if (!file) return false;
         file << toJson().dump(2);
         return file.good();
     }
 
-    static std::optional<Preset> loadFromFile(const std::filesystem::path& path) {
+    static std::optional<Preset> loadFromFile(const imagiro::fs::path& path) {
         std::ifstream file(path);
         if (!file) return std::nullopt;
         try {

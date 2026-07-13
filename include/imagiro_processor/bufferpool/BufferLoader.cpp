@@ -122,7 +122,7 @@ void BufferLoader::processRequest(LoadRequest&& request) {
     if (result.has_value()) {
         CacheEntry entry;
         entry.state = CacheEntryState::Ready;
-        entry.buffer = result.value();
+        entry.buffer = *result;
         entry.sizeInBytes = entry.buffer->buffer.getNumSamples() *
                            entry.buffer->buffer.getNumChannels() *
                            sizeof(float);
