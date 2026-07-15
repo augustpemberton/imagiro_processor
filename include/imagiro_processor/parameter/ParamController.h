@@ -3,6 +3,7 @@
 
 #include "ParamValue.h"
 #include "ParamConfig.h"
+#include "AtomicSharedPtr.h"
 #include <sigslot/sigslot.h>
 #include <deque>
 #include <atomic>
@@ -201,7 +202,7 @@ public:
     }
 
 private:
-    std::atomic<std::shared_ptr<StateRegistry<ParamValue>>> registry_;
+    AtomicSharedPtr<StateRegistry<ParamValue>> registry_;
 
     std::deque<ParamConfig> configs_;
     std::deque<std::atomic<bool>> uiDirty_;
