@@ -10,7 +10,9 @@
 #include "ClapParamBridge.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -67,6 +69,10 @@ public:
     // JUCE-free host bridge for UI param editing (gestures + value events).
     // Valid after buildParamIndex(); handed to ivl param bindings by the view.
     HostParamBridge& hostBridge() { return *bridge_; }
+
+    // Smoothed DSP load in [0,1]: process() wall time / block duration. Written
+    // on the audio thread, read (relaxed) by the UI for a load readout.
+    float cpuLoad() const { return cpuLoad_.load(std::memory_order_relaxed); }
 
 protected:
     // Native embedding window API for this platform. CLAP requires the plugin
@@ -156,6 +162,8 @@ protected:
     void reset() noexcept override { onReset(); }
 
     clap_process_status process(const clap_process* p) noexcept override {
+        const auto processStart = std::chrono::steady_clock::now();
+
         if (p->transport) core().transport().update(toTransportInfo(*p->transport), sampleRate_);
         else core().transport().update({}, sampleRate_);
 
@@ -206,6 +214,15 @@ protected:
         }
 
         if (bridge_) bridge_->flush(p->out_events);
+
+        if (sampleRate_ > 0.0 && nframes > 0) {
+            const double procSec = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - processStart).count();
+            const double blockSec = nframes / sampleRate_;
+            const float inst = static_cast<float>(procSec / blockSec);
+            const float prev = cpuLoad_.load(std::memory_order_relaxed);
+            cpuLoad_.store(prev + 0.1f * (inst - prev), std::memory_order_relaxed);
+        }
 
         return wantsSleep() ? CLAP_PROCESS_SLEEP : CLAP_PROCESS_CONTINUE;
     }
@@ -527,6 +544,7 @@ private:
 
     NoteTracker noteTracker_;
     double sampleRate_ = 44100.0;
+    std::atomic<float> cpuLoad_{0.f};
 
     std::vector<Handle> paramOrder_;
     std::vector<clap_id> paramIds_;

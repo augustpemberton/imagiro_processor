@@ -218,6 +218,133 @@ function(imagiro_add_clap_wrapper)
     endif()
 endfunction()
 
+# imagiro_add_clap_plugin(NAME <name>
+#     CORE_SOURCES <dsp .cpp...>  [CORE_LIBS <extra libs...>] [CORE_PCH <pch.hpp>]
+#     [INCLUDE_DIRS <dir...>]     [UI_SOURCES <editor .cpp...>] [GUI_SOURCES <gui-only .cpp...>]
+#     CLAP_SOURCE <ClapProcessor-subclass .cpp>  ENTRY_SOURCE <clap_entry .cpp>
+#     [BUILD_CLAP <bool>] [BUILD_WRAPPERS <bool>]
+#     OUTPUT_NAME <name> CLAP_ID <id> BUNDLE_IDENTIFIER <id> BUNDLE_VERSION <v>
+#     [VERSION_SCRIPT <file>] [FORMATS VST3 AUV2 AUV3 AAX STANDALONE]
+#     [AUV2_MANUFACTURER_NAME/CODE AUV2_SUBTYPE_CODE AUV2_INSTRUMENT_TYPE]
+#     [ASSET_OUTPUT_DIRECTORY <dir>])
+#
+# Hoists the whole clap-first plugin skeleton so a plugin's CMakeLists is one
+# call plus its own source lists. Builds:
+#   ${NAME}_core        STATIC — framework-free DSP core (+imagiro_fastmath, PCH)
+#   ${NAME}_ui          STATIC — ivl editor tree (only when UI_SOURCES + TARGET ivl)
+#   ${NAME}_clap_core   STATIC — ClapProcessor subclass + factory; +GUI when UI present
+#   ${NAME}_clap        MODULE — .clap exporting clap_entry (default version script
+#                                 generated if VERSION_SCRIPT is omitted)
+#   ${NAME}_wrapped_*          — clap-wrapper formats via imagiro_add_clap_wrapper
+# The core/ui are always built (so headless/wasm/test configs still get them);
+# BUILD_CLAP / BUILD_WRAPPERS (default ON) gate the shell and the wrapper formats.
+function(imagiro_add_clap_plugin)
+    set(oneValueArgs
+            NAME CORE_PCH CLAP_SOURCE ENTRY_SOURCE BUILD_CLAP BUILD_WRAPPERS
+            OUTPUT_NAME CLAP_ID BUNDLE_IDENTIFIER BUNDLE_VERSION VERSION_SCRIPT
+            ASSET_OUTPUT_DIRECTORY AUV2_MANUFACTURER_NAME AUV2_MANUFACTURER_CODE
+            AUV2_SUBTYPE_CODE AUV2_INSTRUMENT_TYPE)
+    set(multiValueArgs CORE_SOURCES CORE_LIBS INCLUDE_DIRS UI_SOURCES GUI_SOURCES FORMATS)
+    cmake_parse_arguments(ICP "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(NOT DEFINED ICP_BUILD_CLAP)
+        set(ICP_BUILD_CLAP ON)
+    endif()
+    if(NOT DEFINED ICP_BUILD_WRAPPERS)
+        set(ICP_BUILD_WRAPPERS ON)
+    endif()
+    if(NOT DEFINED ICP_OUTPUT_NAME)
+        set(ICP_OUTPUT_NAME "${ICP_NAME}")
+    endif()
+
+    set(_core ${ICP_NAME}_core)
+    set(_ui ${ICP_NAME}_ui)
+    set(_clap_core ${ICP_NAME}_clap_core)
+    set(_clap ${ICP_NAME}_clap)
+
+    # DSP core: links no external audio-framework target, so a stray framework
+    # include in a core TU fails to compile.
+    add_library(${_core} STATIC ${ICP_CORE_SOURCES})
+    if(ICP_INCLUDE_DIRS)
+        target_include_directories(${_core} PUBLIC ${ICP_INCLUDE_DIRS})
+    endif()
+    target_link_libraries(${_core} PUBLIC
+            imagiro_processor_core imagiro_util_core ${ICP_CORE_LIBS})
+    if(TARGET imagiro_fastmath)
+        target_link_libraries(${_core} PRIVATE imagiro_fastmath)
+    endif()
+    if(ICP_CORE_PCH)
+        target_precompile_headers(${_core} PRIVATE
+                "$<$<COMPILE_LANGUAGE:CXX>:${ICP_CORE_PCH}>")
+    endif()
+
+    # Editor UI tree (built only where the ivl stack is configured; wasm skips it).
+    # ivl's Label.h pulls a visage-generated embedded-fonts header by a literal
+    # build-relative path, so consumers need the build root on their include path.
+    set(_have_ui FALSE)
+    if(ICP_UI_SOURCES AND TARGET ivl)
+        add_library(${_ui} STATIC ${ICP_UI_SOURCES})
+        target_link_libraries(${_ui} PUBLIC ${_core} ivl)
+        target_include_directories(${_ui} PUBLIC "${CMAKE_BINARY_DIR}")
+        set(_have_ui TRUE)
+    endif()
+
+    if(NOT ICP_BUILD_CLAP)
+        return()
+    endif()
+
+    # Clap-first core: STATIC so the .clap module AND every wrapper format link the
+    # exact same self-contained core. It exports the entry hooks but NOT clap_entry;
+    # the ENTRY_SOURCE shim exports that per-format. GUI sources + the IMAGIRO_CLAP_GUI
+    # define are PUBLIC so wrapped formats inherit the gui, while headless test
+    # binaries that compile CLAP_SOURCE without linking this core stay gui-less.
+    add_library(${_clap_core} STATIC ${ICP_CLAP_SOURCE})
+    target_link_libraries(${_clap_core} PUBLIC ${_core} imagiro_processor_clap)
+    if(_have_ui)
+        if(ICP_GUI_SOURCES)
+            target_sources(${_clap_core} PRIVATE ${ICP_GUI_SOURCES})
+        endif()
+        target_link_libraries(${_clap_core} PUBLIC ${_ui})
+        target_compile_definitions(${_clap_core} PUBLIC IMAGIRO_CLAP_GUI)
+    endif()
+
+    # Headless .clap: SHARED module with a .clap suffix, exporting only clap_entry.
+    add_library(${_clap} MODULE ${ICP_ENTRY_SOURCE})
+    target_link_libraries(${_clap} PRIVATE ${_clap_core})
+    set_target_properties(${_clap} PROPERTIES
+            PREFIX "" SUFFIX ".clap" OUTPUT_NAME "${ICP_OUTPUT_NAME}")
+    if(APPLE)
+        set_target_properties(${_clap} PROPERTIES
+                LINK_FLAGS "-Wl,-exported_symbol,_clap_entry")
+    elseif(UNIX)
+        set(_version_script "${ICP_VERSION_SCRIPT}")
+        if(NOT _version_script)
+            set(_version_script "${CMAKE_CURRENT_BINARY_DIR}/${ICP_NAME}_clap.version")
+            file(WRITE "${_version_script}" "{ global: clap_entry; local: *; };\n")
+        endif()
+        target_link_options(${_clap} PRIVATE
+                "LINKER:--version-script=${_version_script}")
+    endif()
+
+    # Additive VST3/AUv2/AUv3/AAX/Standalone bundles from the same static core.
+    if(ICP_BUILD_WRAPPERS AND ICP_FORMATS)
+        imagiro_add_clap_wrapper(
+                TARGET_NAME ${ICP_NAME}_wrapped
+                IMPL_TARGET ${_clap_core}
+                ENTRY_SOURCE ${ICP_ENTRY_SOURCE}
+                OUTPUT_NAME "${ICP_OUTPUT_NAME}"
+                CLAP_ID "${ICP_CLAP_ID}"
+                BUNDLE_IDENTIFIER "${ICP_BUNDLE_IDENTIFIER}"
+                BUNDLE_VERSION "${ICP_BUNDLE_VERSION}"
+                FORMATS ${ICP_FORMATS}
+                AUV2_MANUFACTURER_NAME "${ICP_AUV2_MANUFACTURER_NAME}"
+                AUV2_MANUFACTURER_CODE "${ICP_AUV2_MANUFACTURER_CODE}"
+                AUV2_SUBTYPE_CODE "${ICP_AUV2_SUBTYPE_CODE}"
+                AUV2_INSTRUMENT_TYPE "${ICP_AUV2_INSTRUMENT_TYPE}"
+                ASSET_OUTPUT_DIRECTORY "${ICP_ASSET_OUTPUT_DIRECTORY}")
+    endif()
+endfunction()
+
 # JUCE-free static lib exposing the parameter/preset/processor/synth headers plus
 # the small set of out-of-line sources (ADSR). Header-only for the rest.
 add_library(imagiro_processor STATIC
