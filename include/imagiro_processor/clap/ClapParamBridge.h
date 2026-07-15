@@ -10,22 +10,10 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
-#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace imagiro {
-
-// Frozen FNV-1a (32-bit) over a param uid -> stable CLAP param id. Duplicated
-// here (also in ClapProcessor) so the bridge is self-contained; the mapping is
-// frozen and must match.
-constexpr uint32_t clapBridgeParamId(std::string_view uid) {
-    uint32_t h = 2166136261u;
-    for (char c : uid) {
-        h ^= static_cast<uint8_t>(c);
-        h *= 16777619u;
-    }
-    return h;
-}
 
 // JUCE-free HostParamBridge for the CLAP shell. UI-thread gestures/edits are
 // enqueued lock-free and drained into the host's output event stream on the
@@ -35,14 +23,15 @@ constexpr uint32_t clapBridgeParamId(std::string_view uid) {
 // dispatch so the final value is ordered inside its gesture.
 class ClapParamBridge : public HostParamBridge {
 public:
-    explicit ClapParamBridge(ParamController& params)
-        : params_(params) {
+    // ids are the frozen CLAP param ids, indexed by handle index (the order
+    // ParamController::forEach yields). Computed once by ClapProcessor from the
+    // single clapParamId() hash and handed in, so the mapping lives in one place.
+    ClapParamBridge(ParamController& params, std::vector<clap_id> ids)
+        : params_(params), ids_(std::move(ids)) {
         const auto n = params_.size();
-        ids_.reserve(n);
         lastSent_.assign(n, std::numeric_limits<double>::quiet_NaN());
 
-        params_.forEach([&](Handle h, const ParamConfig& cfg) {
-            ids_.push_back(clapBridgeParamId(cfg.uid));
+        params_.forEach([&](Handle h, const ParamConfig&) {
             conns_.push_back(params_.uiSignal(h).connect_scoped(
                 [this, h](float) { onUiChanged(h); }));
         });

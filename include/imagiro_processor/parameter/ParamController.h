@@ -18,6 +18,9 @@ public:
     ParamController()
         : registry_(std::make_shared<StateRegistry<ParamValue>>()) {}
 
+    // registry_ is a lock-free snapshot: readers (UI/serialization) load the
+    // current immutable registry; writers publish a replacement in one store.
+
     ParamController(const ParamController&) = delete;
     ParamController& operator=(const ParamController&) = delete;
 
@@ -31,28 +34,26 @@ public:
             .toProcessor = config.toProcessor
         };
 
-        auto current = std::atomic_load(&registry_);
+        auto current = registry_.load();
         auto updated = std::make_shared<StateRegistry<ParamValue>>(*current);
         const Handle h = updated->add(config.uid, value);
-        std::atomic_store(&registry_, updated);
+        registry_.store(updated);
 
         configs_.push_back(std::move(config));
         uiDirty_.emplace_back(false);
-        audioDirty_.emplace_back(false);
         locked_.emplace_back(false);
         values01_.emplace_back(default01);
         uiSignals_.emplace_back();
-        audioSignals_.emplace_back();
 
         return h;
     }
 
     Handle handle(const std::string& uid) const {
-        return std::atomic_load(&registry_)->handle(uid);
+        return registry_.load()->handle(uid);
     }
 
     bool has(const std::string& uid) const {
-        return std::atomic_load(&registry_)->has(uid);
+        return registry_.load()->has(uid);
     }
 
     const ParamConfig& config(Handle h) const {
@@ -77,7 +78,6 @@ public:
         auto clamped = std::clamp(normalized, 0.f, 1.f);
         values01_[h.index].store(clamped, std::memory_order_release);
         uiDirty_[h.index].store(true, std::memory_order_release);
-        audioDirty_[h.index].store(true, std::memory_order_release);
     }
 
     void resetToDefault(Handle h) {
@@ -90,10 +90,6 @@ public:
 
     sigslot::signal<float>& uiSignal(Handle h) {
         return uiSignals_[h.index];
-    }
-
-    sigslot::signal<float>& audioSignal(Handle h) {
-        return audioSignals_[h.index];
     }
 
     template<typename Func>
@@ -125,29 +121,36 @@ public:
     }
 
     void dispatchUIChanges() {
+        StateRegistry<ParamValue> reg;
+        bool anyChanged = false;
+
         for (size_t i = 0; i < configs_.size(); i++) {
             if (uiDirty_[i].exchange(false, std::memory_order_acq_rel)) {
                 auto v01 = values01_[i].load(std::memory_order_acquire);
                 auto userVal = configs_[i].range.denormalize(v01);
                 uiSignals_[i](userVal);
 
-                // Sync to registry for preset serialization
+                // Accumulate registry edits; publish once below so a batch of
+                // changes (e.g. preset apply) swaps the snapshot atomically.
+                if (!anyChanged) {
+                    reg = *registry_.load();
+                    anyChanged = true;
+                }
                 const Handle h{static_cast<uint32_t>(i)};
-                auto current = std::atomic_load(&registry_);
-                const ParamValue pv{
+                reg = reg.set(h, ParamValue{
                     .value01 = v01,
                     .userValue = userVal,
                     .toProcessor = configs_[i].toProcessor
-                };
-                auto updated = std::make_shared<StateRegistry<ParamValue>>(
-                    current->set(h, pv));
-                std::atomic_store(&registry_, updated);
+                });
             }
         }
+
+        if (anyChanged)
+            registry_.store(std::make_shared<StateRegistry<ParamValue>>(std::move(reg)));
     }
 
     StateRegistry<ParamValue> registryUI() const {
-        return *std::atomic_load(&registry_);
+        return *registry_.load();
     }
 
     void setRegistryUI(StateRegistry<ParamValue> reg, bool skipLocked = true) {
@@ -179,26 +182,14 @@ public:
             }
 
             uiDirty_[i].store(true, std::memory_order_release);
-            audioDirty_[i].store(true, std::memory_order_release);
         }
 
-        std::atomic_store(&registry_,
-            std::make_shared<StateRegistry<ParamValue>>(std::move(reg)));
+        registry_.store(std::make_shared<StateRegistry<ParamValue>>(std::move(reg)));
     }
 
     // =====================================================================
     // Audio thread
     // =====================================================================
-
-    void dispatchAudioChanges() {
-        for (size_t i = 0; i < configs_.size(); i++) {
-            if (audioDirty_[i].exchange(false, std::memory_order_acq_rel)) {
-                auto v01 = values01_[i].load(std::memory_order_acquire);
-                auto userVal = configs_[i].range.denormalize(v01);
-                audioSignals_[i](userVal);
-            }
-        }
-    }
 
     void snapshotInto(std::vector<ParamValue>& out) {
         for (size_t i = 0; i < configs_.size(); i++) {
@@ -210,15 +201,13 @@ public:
     }
 
 private:
-    std::shared_ptr<StateRegistry<ParamValue>> registry_;
+    std::atomic<std::shared_ptr<StateRegistry<ParamValue>>> registry_;
 
     std::deque<ParamConfig> configs_;
     std::deque<std::atomic<bool>> uiDirty_;
-    std::deque<std::atomic<bool>> audioDirty_;
     std::deque<std::atomic<bool>> locked_;
     std::deque<std::atomic<float>> values01_;
     std::deque<sigslot::signal<float>> uiSignals_;
-    std::deque<sigslot::signal<float>> audioSignals_;
 };
 
 } // namespace imagiro

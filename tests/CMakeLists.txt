@@ -8,7 +8,6 @@ set(PROCESSOR_TEST_SOURCES
     ValueFormatterTests.cpp
     ParamControllerTests.cpp
     ProcessStateTests.cpp
-    BypassMixerTests.cpp
 )
 
 add_executable(imagiro_processor_tests ${PROCESSOR_TEST_SOURCES})

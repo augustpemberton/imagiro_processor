@@ -50,8 +50,9 @@ public:
     ClapProcessor(const clap_plugin_descriptor* desc, const clap_host* host)
         : ClapPluginBase(desc, host)
     {
-        noteTracker_.onNoteOn  = [this](const NoteInfo& n) { handleNoteOn(n); };
-        noteTracker_.onNoteOff = [this](const NoteInfo& n) { handleNoteOff(n); };
+        noteTracker_.onNoteOn    = [this](const NoteInfo& n) { handleNoteOn(n); };
+        noteTracker_.onNoteOff   = [this](const NoteInfo& n) { handleNoteOff(n); };
+        noteTracker_.onNoteChoke = [this](const NoteInfo& n) { handleNoteChoke(n); };
     }
 
     // Accessors for tests / harnesses.
@@ -85,6 +86,9 @@ protected:
                              int startSample, int numSamples) = 0;
     virtual void handleNoteOn(const NoteInfo& note) = 0;
     virtual void handleNoteOff(const NoteInfo& note) = 0;
+    // Note choke: the host demands the voice(s) stop immediately (e.g. a sample
+    // was replaced). Defaults to a release; override for a hard, instant stop.
+    virtual void handleNoteChoke(const NoteInfo& note) { handleNoteOff(note); }
     virtual json onSaveState() = 0;
     virtual bool onLoadState(const json& state) = 0;
 
@@ -93,6 +97,15 @@ protected:
     virtual void onDeactivate() {}
     virtual void onReset() {}
     virtual void onBlockStart(const ProcessState& state) {}
+
+    // Audio I/O shape. Overridden by plugins that aren't stereo or that report
+    // processing latency to the host.
+    virtual uint32_t numChannels() const { return 2; }
+    virtual int latencySamples() const { return 0; }
+
+    // Return true when the plugin is fully silent (no active voices, empty tail)
+    // so process() can report CLAP_PROCESS_SLEEP and let the host idle it.
+    virtual bool wantsSleep() const { return false; }
 
     // Optional GUI hooks. A plugin with an embeddable editor overrides both:
     // hasGui() -> true and createPluginView() returning its concrete view. When
@@ -120,7 +133,7 @@ protected:
             paramIds_.push_back(id);
         });
 
-        bridge_ = std::make_unique<ClapParamBridge>(core().params());
+        bridge_ = std::make_unique<ClapParamBridge>(core().params(), paramIds_);
         bridge_->setRequestFlush([this] {
             if (_host.canUseParams()) _host.paramsRequestFlush();
         });
@@ -135,7 +148,6 @@ protected:
     bool activate(double sampleRate, uint32_t, uint32_t maxFrames) noexcept override {
         sampleRate_ = sampleRate;
         onActivate(sampleRate, maxFrames);
-        core().prepare(sampleRate, 2, 0);
         core().transport().update({}, sampleRate);
         return true;
     }
@@ -150,9 +162,10 @@ protected:
         const uint32_t nframes = p->frames_count;
 
         int numCh = 0;
-        float* out[2] = {nullptr, nullptr};
+        float* out[kMaxChannels] = {nullptr, nullptr};
         if (p->audio_outputs_count > 0 && p->audio_outputs[0].data32) {
-            numCh = static_cast<int>(std::min<uint32_t>(2, p->audio_outputs[0].channel_count));
+            const uint32_t want = std::min<uint32_t>(numChannels(), kMaxChannels);
+            numCh = static_cast<int>(std::min<uint32_t>(want, p->audio_outputs[0].channel_count));
             for (int ch = 0; ch < numCh; ch++) out[ch] = p->audio_outputs[0].data32[ch];
         }
         for (int ch = 0; ch < numCh; ch++)
@@ -194,7 +207,7 @@ protected:
 
         if (bridge_) bridge_->flush(p->out_events);
 
-        return CLAP_PROCESS_CONTINUE;
+        return wantsSleep() ? CLAP_PROCESS_SLEEP : CLAP_PROCESS_CONTINUE;
     }
 
     // ---- clap.audio-ports: 0 inputs, 1 stereo output ---------------------
@@ -203,13 +216,22 @@ protected:
     bool audioPortsInfo(uint32_t index, bool isInput,
                         clap_audio_port_info* info) const noexcept override {
         if (isInput || index != 0) return false;
+        const uint32_t ch = std::min<uint32_t>(numChannels(), kMaxChannels);
         info->id = 0;
         std::snprintf(info->name, sizeof(info->name), "%s", "Output");
         info->flags = CLAP_AUDIO_PORT_IS_MAIN;
-        info->channel_count = 2;
-        info->port_type = CLAP_PORT_STEREO;
+        info->channel_count = ch;
+        info->port_type = ch == 2 ? CLAP_PORT_STEREO
+                        : ch == 1 ? CLAP_PORT_MONO
+                                  : nullptr;
         info->in_place_pair = CLAP_INVALID_ID;
         return true;
+    }
+
+    // ---- clap.latency: reported only when the plugin declares latency --------
+    bool implementsLatency() const noexcept override { return latencySamples() > 0; }
+    uint32_t latencyGet() const noexcept override {
+        return static_cast<uint32_t>(std::max(0, latencySamples()));
     }
 
     // ---- clap.note-ports: 1 input, prefers CLAP dialect, accepts MIDI ----
@@ -387,7 +409,9 @@ protected:
     bool implementsTimerSupport() const noexcept override { return hasGui(); }
     void onTimer(clap_id timerId) noexcept override {
         if (timerId != timerId_) return;
-        core().params().dispatchUIChanges();
+        // Fallback driver only: the view's own vsync loop owns the frame tick
+        // (and the UI param dispatch it carries). view_->tick() no-ops when that
+        // loop is live, so this just covers hidden/unpainted windows.
         if (view_) view_->tick();
     }
 
@@ -470,13 +494,17 @@ private:
     void processEvent(const clap_event_header* h, const clap_output_events*) {
         if (h->space_id != CLAP_CORE_EVENT_SPACE_ID) return;
 
+        // Both dialects flow through noteTracker_ so sustain (CC64) and the
+        // held-note bookkeeping apply uniformly whichever the host sends.
         switch (h->type) {
             case CLAP_EVENT_NOTE_ON:
-                handleNoteOn(toNoteInfo(*reinterpret_cast<const clap_event_note*>(h)));
+                noteTracker_.noteOn(toNoteInfo(*reinterpret_cast<const clap_event_note*>(h)));
                 break;
             case CLAP_EVENT_NOTE_OFF:
+                noteTracker_.noteOff(toNoteInfo(*reinterpret_cast<const clap_event_note*>(h)));
+                break;
             case CLAP_EVENT_NOTE_CHOKE:
-                handleNoteOff(toNoteInfo(*reinterpret_cast<const clap_event_note*>(h)));
+                noteTracker_.noteChoke(toNoteInfo(*reinterpret_cast<const clap_event_note*>(h)));
                 break;
             case CLAP_EVENT_MIDI: {
                 const auto* m = reinterpret_cast<const clap_event_midi*>(h);
@@ -508,6 +536,7 @@ private:
     std::unique_ptr<IPluginView> view_;
     clap_id timerId_ = CLAP_INVALID_ID;
     static constexpr uint32_t kTimerMs = 16;
+    static constexpr uint32_t kMaxChannels = 2;
 };
 
 } // namespace imagiro
