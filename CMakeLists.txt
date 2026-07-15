@@ -23,9 +23,12 @@ target_link_libraries(imagiro_processor_core INTERFACE
         nlohmann_json::nlohmann_json
 )
 
-# AudioFFT + downstream DSP use vDSP under AUDIOFFT_APPLE_ACCELERATE. Attaching
-# both the macro and the framework to the core INTERFACE means every plugin that
-# links imagiro_processor_core inherits them (previously set per-plugin).
+# AUDIOFFT_APPLE_ACCELERATE is the ONE sanctioned platform-parallel backend
+# (owner-approved exception to the no-parallel-implementations policy): AudioFFT's
+# hot analysis FFTs run on Apple's vDSP here, and on the Ooura reference backend
+# everywhere else. Ooura is the Linux-CI-tested reference path; keep it building.
+# Attaching both the macro and the framework to the core INTERFACE means every
+# plugin that links imagiro_processor_core inherits them (previously set per-plugin).
 if(APPLE)
     target_compile_definitions(imagiro_processor_core INTERFACE AUDIOFFT_APPLE_ACCELERATE)
     target_link_libraries(imagiro_processor_core INTERFACE "-framework Accelerate")
