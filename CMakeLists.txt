@@ -198,6 +198,19 @@ function(imagiro_add_clap_wrapper)
                 BUNDLE_VERSION "${ICW_BUNDLE_VERSION}"
                 STATICALLY_LINKED_CLAP_ENTRY TRUE
                 PLUGIN_ID "${ICW_CLAP_ID}")
+
+        # Shared, ivl-based device settings backing: implements
+        # ivl::IDeviceSettings over clap-wrapper's StandaloneHost and registers
+        # itself so any plugin's in-window settings panel works in standalone.
+        # Compiled straight into the standalone executable so it sees the
+        # standalone-only getStandaloneHost()/RtAudio/RtMidi symbols (inherited
+        # from the wrapper lib) and the ivl headers (inherited from IMPL_TARGET).
+        # Guarded on ivl so plugins that don't use ivl still build.
+        if(TARGET ivl)
+            target_sources(${_t} PRIVATE
+                    "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/include/imagiro_processor/standalone/DeviceSettingsStandalone.cpp")
+        endif()
+
         if(DEFINED ICW_ASSET_OUTPUT_DIRECTORY)
             set_target_properties(${_t} PROPERTIES
                     RUNTIME_OUTPUT_DIRECTORY "${ICW_ASSET_OUTPUT_DIRECTORY}")
